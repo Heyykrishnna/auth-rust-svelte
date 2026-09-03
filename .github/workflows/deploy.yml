@@ -1,0 +1,64 @@
+name: Deploy via Argo CD
+
+on:
+  workflow_run:
+    workflows: ["Build & Push Docker Images"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Update K8s Manifests & Trigger Argo CD Sync
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write  # to push manifest updates
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Get image SHA tag
+        id: sha
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          echo "tag=sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Update auth-api image tag in prod overlay
+        run: |
+          cd infra/k8s/overlays/prod
+          kustomize edit set image \
+            auth-api=ghcr.io/your-org/auth-api:${{ steps.sha.outputs.tag }}
+
+      - name: Update frontend image tag in prod overlay
+        run: |
+          cd infra/k8s/overlays/prod
+          kustomize edit set image \
+            frontend=ghcr.io/your-org/frontend:${{ steps.sha.outputs.tag }}
+
+      - name: Commit and push manifest updates
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add infra/k8s/overlays/prod/kustomization.yaml
+          git commit -m "chore(deploy): update image tags to ${{ steps.sha.outputs.tag }} [skip ci]" || exit 0
+          git push
+
+      - name: Trigger Argo CD sync (optional — Argo CD auto-syncs on git change)
+        if: ${{ secrets.ARGOCD_SERVER != '' }}
+        uses: clowdhaus/argo-cd-action@main
+        with:
+          command: app sync auth-api frontend observability --prune
+          options: --server ${{ secrets.ARGOCD_SERVER }} --auth-token ${{ secrets.ARGOCD_TOKEN }} --insecure
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Deployment Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** production" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** ${{ steps.sha.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Argo CD:** Syncing infra/k8s/overlays/prod" >> $GITHUB_STEP_SUMMARY

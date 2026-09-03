@@ -1,65 +1,210 @@
-# Svelte library
+# 🔐 auth-rust-svelte
 
-Everything you need to build a Svelte library, powered by [`sv`](https://npmjs.com/package/sv).
+> Production-grade authentication platform — Rust (Axum) + SvelteKit + PostgreSQL + Redis + Kubernetes + Argo CD + OpenTelemetry
 
-Read more about creating a library [in the docs](https://svelte.dev/docs/kit/packaging).
+[![CI](https://github.com/your-org/auth-rust-svelte/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/auth-rust-svelte/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](LICENSE)
 
-## Creating a project
+---
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Architecture
 
-```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+```
+Internet → Cloudflare (WAF + DDoS + TLS)
+         → Kubernetes
+           → NGINX Ingress
+             → SvelteKit Frontend    (apps/frontend)
+             → Rust Auth API (Axum)  (apps/auth-api)
+               ├── PostgreSQL        (sessions, users, OIDC accounts)
+               ├── Redis             (session cache, JWT blacklist)
+               └── OIDC             (Google, GitHub)
+         → Observability
+           → OpenTelemetry Collector
+             ├── Tempo   (traces)
+             ├── Loki    (logs)
+             └── Prometheus → Grafana (metrics + dashboards)
 ```
 
-To recreate this project with the same configuration:
+### DevOps Flow
 
-```sh
-# recreate this project
-npx sv@0.17.0 create --template library --types ts --install npm auth-rust-svelte
+```
+Developer → GitHub → CI (Rust/Svelte tests, Clippy, security scan)
+                  → Container Registry (ghcr.io)
+                  → Argo CD → Kubernetes
 ```
 
-## Developing
+---
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Quick Start (Local Dev)
 
-```sh
-npm run dev
+### Prerequisites
+- Docker + Docker Compose
+- `make`
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+### Start everything
+
+```bash
+cp .env.example .env      # fill in your secrets
+make dev                  # starts all 9 services
 ```
 
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
+| Service      | URL                        |
+|-------------|----------------------------|
+| Frontend    | http://localhost:3000       |
+| Auth API    | http://localhost:8080       |
+| Grafana     | http://localhost:3001       |
+| Prometheus  | http://localhost:9090       |
+| Tempo       | http://localhost:3200       |
 
-## Building
+### Common commands
 
-To build your library:
-
-```sh
-npm pack
+```bash
+make test          # run all tests (Rust + Svelte)
+make lint          # clippy + fmt check + eslint
+make migrate       # run SQLx migrations
+make db-shell      # open psql shell
+make redis-shell   # open redis-cli
+make build         # build Docker images
+make audit         # cargo-audit + npm audit
 ```
 
-To create a production version of your showcase app:
+---
 
-```sh
-npm run build
+## Project Structure
+
+```
+auth-rust-svelte/
+├── apps/
+│   ├── frontend/              # SvelteKit 5 (Svelte Runes)
+│   │   └── src/
+│   │       ├── lib/
+│   │       │   ├── api/       # Type-safe API client
+│   │       │   ├── stores/    # auth.svelte.ts (Runes state)
+│   │       │   └── components/
+│   │       └── routes/        # login, register, dashboard, callback
+│   │
+│   └── auth-api/              # Rust Axum API (DDD)
+│       └── src/
+│           ├── domain/        # User, Session, Token entities
+│           ├── application/   # Use cases (register, login, logout, refresh, oidc)
+│           ├── infrastructure/# PostgreSQL, Redis, OTel adapters
+│           └── api/           # Axum routes, handlers, middleware
+│
+├── infra/
+│   ├── k8s/
+│   │   ├── base/              # Kustomize base (frontend, auth-api, postgres, redis, ingress)
+│   │   ├── overlays/          # dev + prod patches
+│   │   └── observability/     # OTel, Prometheus, Grafana, ServiceMonitors
+│   ├── argocd/                # Argo CD app-of-apps + child apps
+│   └── otel/                  # Local observability config files
+│
+├── .github/workflows/
+│   ├── ci.yml                 # Tests, Clippy, fmt, Trivy
+│   ├── docker-build.yml       # Build + push + cosign sign
+│   └── deploy.yml             # Update Kustomize tags → trigger Argo CD
+│
+├── docker-compose.yml         # Full local stack
+├── docker-compose.override.yml# Hot-reload overrides
+└── Makefile                   # All convenience targets
 ```
 
-You can preview the production build with `npm run preview`.
+---
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Auth API Endpoints
 
-## Publishing
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/auth/register` | Register with email + password |
+| `POST` | `/auth/login`    | Login, get JWT pair |
+| `POST` | `/auth/logout`   | Revoke access token (blacklist JTI) |
+| `POST` | `/auth/refresh`  | Rotate refresh token, get new pair |
+| `GET`  | `/auth/me`       | Get current user profile |
+| `GET`  | `/auth/oidc/:provider` | Get OIDC authorization URL |
+| `POST` | `/auth/oidc/:provider/callback` | Handle OIDC callback |
+| `GET`  | `/health`  | Liveness probe |
+| `GET`  | `/ready`   | Readiness probe (checks DB + Redis) |
+| `GET`  | `/metrics` | Prometheus metrics |
 
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
+---
 
-To publish your library to [npm](https://www.npmjs.com):
+## Kubernetes Deployment
 
-```sh
-npm publish
+### Prerequisites
+- Kubernetes cluster
+- `kubectl` + `kustomize`
+- NGINX Ingress Controller
+- `cert-manager` (Let's Encrypt)
+- Argo CD
+
+### Bootstrap Argo CD (once)
+
+```bash
+kubectl apply -f infra/argocd/app-of-apps.yaml
 ```
+
+### Manual apply
+
+```bash
+make k8s-apply-dev    # dev overlay
+make k8s-apply-prod   # prod overlay
+make k8s-diff         # diff before applying
+```
+
+### Required Secrets
+
+Create these secrets in the `auth-system` namespace before deploying:
+
+```bash
+# Auth API secrets
+kubectl create secret generic auth-api-secrets \
+  --from-literal=DATABASE_URL=postgres://... \
+  --from-literal=REDIS_URL=redis://... \
+  --from-literal=JWT_SECRET=... \
+  --from-literal=GOOGLE_CLIENT_ID=... \
+  --from-literal=GOOGLE_CLIENT_SECRET=... \
+  --from-literal=GITHUB_CLIENT_ID=... \
+  --from-literal=GITHUB_CLIENT_SECRET=... \
+  -n auth-system
+
+# PostgreSQL credentials
+kubectl create secret generic postgres-secret \
+  --from-literal=POSTGRES_USER=authuser \
+  --from-literal=POSTGRES_PASSWORD=... \
+  --from-literal=POSTGRES_DB=authdb \
+  -n auth-system
+```
+
+---
+
+## Security Features
+
+- **Argon2id** password hashing (memory-hard, tunable)
+- **JWT** access tokens (15 min) + **refresh tokens** (7 days) with rotation
+- **Token blacklisting** on logout (Redis TTL-matched)
+- **Refresh token reuse detection** (detects token theft)
+- **Rate limiting** per IP (tower-governor in Rust, NGINX annotations in K8s)
+- **Non-root containers** with `readOnlyRootFilesystem`
+- **Pod Anti-Affinity** for HA across nodes
+- **PodDisruptionBudget** ensures 2+ auth-api replicas during drains
+- **SBOM generation** + **cosign image signing** in CI
+- **Trivy** vulnerability scanning on every PR
+
+---
+
+## TODO — Before Production
+
+Replace all `# TODO` comments:
+
+- [ ] `infra/argocd/*.yaml` — set your GitHub repo URL
+- [ ] `infra/k8s/base/ingress.yaml` — set your domain (`auth.example.com`)
+- [ ] `infra/k8s/overlays/prod/kustomization.yaml` — set your registry (`ghcr.io/your-org`)
+- [ ] `.github/workflows/docker-build.yml` — set `ORG` variable
+- [ ] `.github/workflows/deploy.yml` — set `ARGOCD_SERVER` + `ARGOCD_TOKEN` secrets
+- [ ] `.env` — fill in all secrets (never commit!)
+- [ ] OIDC — provide Google/GitHub OAuth2 app credentials
+
+---
+
+## License
+
+MIT

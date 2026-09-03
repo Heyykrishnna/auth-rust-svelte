@@ -1,0 +1,56 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: auth-api-rules
+  namespace: observability
+  labels:
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: auth-api.availability
+      interval: 30s
+      rules:
+        - alert: AuthApiDown
+          expr: up{job="auth-api"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Auth API is down"
+            description: "auth-api instance {{ $labels.instance }} has been unreachable for 1 minute."
+
+        - alert: AuthApiHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{job="auth-api",status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="auth-api"}[5m])) > 0.05
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Auth API high error rate"
+            description: "Error rate is {{ $value | humanizePercentage }} over last 5 minutes."
+
+        - alert: AuthApiHighLatency
+          expr: |
+            histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="auth-api"}[5m])) by (le))
+            > 1.0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Auth API p99 latency > 1s"
+            description: "99th percentile latency is {{ $value }}s."
+
+    - name: auth-api.security
+      rules:
+        - alert: AuthApiHighFailedLoginRate
+          expr: |
+            sum(rate(auth_login_failed_total[5m])) > 10
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High failed login rate — possible brute force attack"
+            description: "{{ $value }} failed logins per second."

@@ -1,0 +1,38 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Prod overlay — production image tags, full replicas
+bases:
+  - ../../base
+
+namespace: auth-system
+
+# Image tags are updated by CI/CD pipeline using:
+# kustomize edit set image frontend=ghcr.io/your-org/frontend:SHA
+# kustomize edit set image auth-api=ghcr.io/your-org/auth-api:SHA
+images:
+  - name: frontend
+    newName: ghcr.io/your-org/frontend  # TODO: Replace with your registry
+    newTag: latest
+  - name: auth-api
+    newName: ghcr.io/your-org/auth-api  # TODO: Replace with your registry
+    newTag: latest
+
+# Production resource patches
+patches:
+  # Ensure full replica counts in prod
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: frontend
+
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: auth-api
