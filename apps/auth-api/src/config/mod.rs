@@ -29,8 +29,11 @@ impl AppConfig {
     pub fn from_env() -> Result<Self> {
         let _ = dotenvy::dotenv();
 
-        let host = env::var("AUTH_API_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+        let host = env::var("AUTH_API_HOST")
+            .or_else(|_| env::var("HOST"))
+            .unwrap_or_else(|_| "0.0.0.0".to_string());
         let port = env::var("AUTH_API_PORT")
+            .or_else(|_| env::var("PORT"))
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8080);
