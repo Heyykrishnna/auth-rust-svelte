@@ -35,7 +35,7 @@
 			status = 'success';
 			addToast('Successfully signed in!', 'success');
 			setTimeout(() => goto('/dashboard'), 1000);
-		} catch (err) {
+		} catch {
 			status = 'error';
 			errorMessage = 'Failed to complete sign-in. Please try again.';
 		}
