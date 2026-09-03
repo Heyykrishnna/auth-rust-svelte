@@ -1,4 +1,4 @@
-<script lang="ts">
+<script module lang="ts">
 	type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 	export interface Toast {
@@ -8,7 +8,6 @@
 		duration?: number;
 	}
 
-	// Global toast state
 	let toasts = $state<Toast[]>([]);
 
 	export function addToast(message: string, type: ToastType = 'info', duration = 4000) {
@@ -26,7 +25,9 @@
 	export function removeToast(id: string) {
 		toasts = toasts.filter((t) => t.id !== id);
 	}
+</script>
 
+<script lang="ts">
 	const icons: Record<ToastType, string> = {
 		success: '✓',
 		error: '✕',

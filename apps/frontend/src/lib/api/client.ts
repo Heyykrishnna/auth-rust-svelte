@@ -1,6 +1,3 @@
-// ─── API Client ───────────────────────────────────────────────────────────────
-// Type-safe HTTP client wrapping fetch with base URL, auth headers, and error handling
-
 const API_BASE = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 export class ApiError extends Error {
@@ -21,8 +18,6 @@ export interface ApiResponse<T> {
 
 async function getAuthToken(): Promise<string | null> {
 	if (typeof document !== 'undefined') {
-		// Read from cookie (httpOnly cookie set by auth-api)
-		// In SSR, this is handled server-side via request headers
 		return null;
 	}
 	return null;

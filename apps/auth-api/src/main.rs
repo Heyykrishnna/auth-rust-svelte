@@ -1,17 +1,21 @@
 use anyhow::Result;
+use deadpool_redis::{Config as RedisConfig, Pool as RedisPool, Runtime as RedisRuntime};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::info;
 
-mod api;
-mod application;
-mod config;
-mod domain;
-mod infrastructure;
+pub mod config;
+pub mod errors;
+pub mod handlers;
+pub mod middleware;
+pub mod models;
+pub mod repositories;
+pub mod routes;
+pub mod services;
 
 use config::AppConfig;
-use infrastructure::{postgres::PgPool, redis::RedisPool};
 
-/// Shared application state passed to all Axum handlers.
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<AppConfig>,
@@ -21,14 +25,11 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Load .env if present (dev only; in production, env vars come from k8s secrets)
     let _ = dotenvy::dotenv();
 
-    // Load config
     let config = Arc::new(AppConfig::from_env()?);
 
-    // Initialize tracing + OpenTelemetry
-    infrastructure::telemetry::init_telemetry(&config)?;
+    middleware::init_telemetry(&config)?;
 
     info!(
         version = env!("CARGO_PKG_VERSION"),
@@ -37,16 +38,19 @@ async fn main() -> Result<()> {
         "Starting auth-api"
     );
 
-    // Connect to PostgreSQL
-    let db = infrastructure::postgres::connect(&config.database_url, config.db_max_connections).await?;
+    let db = PgPoolOptions::new()
+        .max_connections(config.db_max_connections)
+        .min_connections(1)
+        .acquire_timeout(std::time::Duration::from_secs(5))
+        .connect(&config.database_url)
+        .await?;
 
-    // Run migrations automatically on startup
     sqlx::migrate!("./migrations").run(&db).await?;
     info!("Database migrations applied successfully");
 
-    // Connect to Redis
-    let redis = infrastructure::redis::connect(&config.redis_url).await?;
-    info!("Connected to Redis");
+    let redis_cfg = RedisConfig::from_url(&config.redis_url);
+    let redis = redis_cfg.create_pool(Some(RedisRuntime::Tokio1))?;
+    info!("Redis connection pool initialized");
 
     let state = AppState {
         config: config.clone(),
@@ -54,10 +58,8 @@ async fn main() -> Result<()> {
         redis,
     };
 
-    // Build the Axum router
-    let app = api::routes::build_router(state);
+    let app = routes::build_router(state);
 
-    // Bind and serve
     let addr = format!("{}:{}", config.host, config.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
 
@@ -67,13 +69,11 @@ async fn main() -> Result<()> {
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
-    // Flush telemetry on shutdown
     opentelemetry::global::shutdown_tracer_provider();
 
     Ok(())
 }
 
-/// Handle SIGTERM / Ctrl-C for graceful shutdown.
 async fn shutdown_signal() {
     use tokio::signal;
 
@@ -95,7 +95,11 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => { info!("Received Ctrl-C, shutting down..."); },
-        _ = terminate => { info!("Received SIGTERM, shutting down..."); },
+        _ = ctrl_c => {
+            info!("Received Ctrl-C, shutting down...");
+        },
+        _ = terminate => {
+            info!("Received SIGTERM, shutting down...");
+        },
     }
 }

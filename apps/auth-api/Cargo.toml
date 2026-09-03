@@ -13,15 +13,13 @@ path = "src/main.rs"
 default = []
 
 [dependencies]
-# ─── Web Framework ────────────────────────────────────────────────────────────
-axum              = { version = "0.7", features = ["macros", "multipart"] }
-axum-extra        = { version = "0.9", features = ["cookie", "typed-header"] }
-tower             = { version = "0.4", features = ["full"] }
-tower-http        = { version = "0.5", features = ["cors", "trace", "request-id", "timeout", "compression-gzip"] }
-tokio             = { version = "1",   features = ["full"] }
-hyper             = { version = "1",   features = ["full"] }
+axum = { version = "0.7", features = ["macros", "multipart"] }
+axum-extra = { version = "0.9", features = ["cookie", "typed-header"] }
+tower = { version = "0.4", features = ["full"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "request-id", "timeout", "compression-gzip"] }
+tokio = { version = "1", features = ["full"] }
+hyper = { version = "1", features = ["full"] }
 
-# ─── Database ────────────────────────────────────────────────────────────────
 sqlx = { version = "0.8", features = [
     "runtime-tokio-rustls",
     "postgres",
@@ -31,67 +29,60 @@ sqlx = { version = "0.8", features = [
     "migrate",
 ] }
 
-# ─── Redis ───────────────────────────────────────────────────────────────────
 deadpool-redis = { version = "0.15", features = ["rt_tokio_1"] }
-redis          = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 
-# ─── Auth / Crypto ───────────────────────────────────────────────────────────
-argon2        = "0.5"
-jsonwebtoken  = "9"
-uuid          = { version = "1", features = ["v4", "serde"] }
-rand          = "0.8"
-rand_core     = "0.6"
+argon2 = "0.5"
+jsonwebtoken = "9"
+uuid = { version = "1", features = ["v4", "serde"] }
+rand = "0.8"
+rand_core = "0.6"
+sha2 = "0.10"
+hex = "0.4"
+urlencoding = "2.1"
 
-# ─── OIDC ────────────────────────────────────────────────────────────────────
 openidconnect = { version = "3", features = ["reqwest"] }
-reqwest       = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
-oauth2        = "4"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+oauth2 = "4"
 
-# ─── Serialization ────────────────────────────────────────────────────────────
-serde         = { version = "1", features = ["derive"] }
-serde_json    = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
-# ─── Observability ────────────────────────────────────────────────────────────
-tracing                    = "0.1"
-tracing-subscriber         = { version = "0.3", features = ["env-filter", "json"] }
-tracing-opentelemetry      = "0.23"
-opentelemetry              = "0.22"
-opentelemetry_sdk          = { version = "0.22", features = ["rt-tokio"] }
-opentelemetry-otlp         = { version = "0.15", features = ["tonic", "grpc-tonic"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.23"
+opentelemetry = "0.22"
+opentelemetry_sdk = { version = "0.22", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.15", features = ["tonic", "grpc-tonic"] }
 opentelemetry-semantic-conventions = "0.14"
-axum-prometheus            = "0.7"
-metrics                    = "0.23"
+axum-prometheus = "0.7"
+metrics = "0.23"
 metrics-exporter-prometheus = "0.15"
 
-# ─── Config ──────────────────────────────────────────────────────────────────
-config  = { version = "0.14", features = ["toml", "env"] }
+config = { version = "0.14", features = ["toml"] }
 dotenvy = "0.15"
 
-# ─── Time ────────────────────────────────────────────────────────────────────
 chrono = { version = "0.4", features = ["serde"] }
-time   = { version = "0.3", features = ["serde"] }
+time = { version = "0.3", features = ["serde"] }
 
-# ─── Error Handling ───────────────────────────────────────────────────────────
 thiserror = "1"
-anyhow    = "1"
+anyhow = "1"
 
-# ─── Validation ───────────────────────────────────────────────────────────────
 validator = { version = "0.18", features = ["derive"] }
 
-# ─── Rate Limiting ────────────────────────────────────────────────────────────
 tower_governor = { version = "0.4", features = ["axum"] }
-governor       = "0.6"
+governor = "0.6"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 axum-test = "14"
 
 [profile.release]
-opt-level     = 3
-lto           = true
+opt-level = 3
+lto = true
 codegen-units = 1
-panic         = "abort"
-strip         = true
+panic = "abort"
+strip = true
 
 [profile.dev]
 opt-level = 1

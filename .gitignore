@@ -1,9 +1,7 @@
-# ─── Environment ────────────────────────────────────────────────────────────
 .env
 .env.local
 .env.*.local
 
-# ─── Node / SvelteKit ───────────────────────────────────────────────────────
 node_modules/
 .svelte-kit/
 dist/
@@ -12,28 +10,22 @@ build/
 .vercel/
 .netlify/
 
-# ─── Rust / Cargo ───────────────────────────────────────────────────────────
 apps/auth-api/target/
 Cargo.lock
 *.pdb
 
-# ─── Docker ─────────────────────────────────────────────────────────────────
 *.tar
 
-# ─── IDEs ───────────────────────────────────────────────────────────────────
 .vscode/settings.json
 .idea/
 *.swp
 *.swo
 .DS_Store
 
-# ─── Logs ───────────────────────────────────────────────────────────────────
 *.log
 logs/
 
-# ─── Kubernetes secrets ─────────────────────────────────────────────────────
 infra/k8s/**/secrets-actual.yaml
 infra/k8s/**/*-secret-values.yaml
 
-# ─── Generated ──────────────────────────────────────────────────────────────
 sqlx-data.json

@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
-      contents: write  # to push manifest updates
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -33,23 +33,23 @@ jobs:
         run: |
           cd infra/k8s/overlays/prod
           kustomize edit set image \
-            auth-api=ghcr.io/your-org/auth-api:${{ steps.sha.outputs.tag }}
+            auth-api=ghcr.io/${{ github.repository_owner }}/auth-api:${{ steps.sha.outputs.tag }}
 
       - name: Update frontend image tag in prod overlay
         run: |
           cd infra/k8s/overlays/prod
           kustomize edit set image \
-            frontend=ghcr.io/your-org/frontend:${{ steps.sha.outputs.tag }}
+            frontend=ghcr.io/${{ github.repository_owner }}/frontend:${{ steps.sha.outputs.tag }}
 
       - name: Commit and push manifest updates
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add infra/k8s/overlays/prod/kustomization.yaml
           git commit -m "chore(deploy): update image tags to ${{ steps.sha.outputs.tag }} [skip ci]" || exit 0
           git push
 
-      - name: Trigger Argo CD sync (optional — Argo CD auto-syncs on git change)
+      - name: Trigger Argo CD sync
         if: ${{ secrets.ARGOCD_SERVER != '' }}
         uses: clowdhaus/argo-cd-action@main
         with:
@@ -58,7 +58,7 @@ jobs:
 
       - name: Deployment summary
         run: |
-          echo "## 🚀 Deployment Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Triggered" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** production" >> $GITHUB_STEP_SUMMARY
           echo "**Image Tag:** ${{ steps.sha.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Argo CD:** Syncing infra/k8s/overlays/prod" >> $GITHUB_STEP_SUMMARY

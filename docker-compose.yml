@@ -1,5 +1,4 @@
 services:
-  # ─── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -17,7 +16,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -32,7 +30,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─── Rust Auth API ──────────────────────────────────────────────────────────
   auth-api:
     build:
       context: apps/auth-api
@@ -62,7 +59,6 @@ services:
       retries: 5
       start_period: 10s
 
-  # ─── SvelteKit Frontend ─────────────────────────────────────────────────────
   frontend:
     build:
       context: apps/frontend
@@ -79,7 +75,6 @@ services:
       auth-api:
         condition: service_healthy
 
-  # ─── OpenTelemetry Collector ─────────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.104.0
     restart: unless-stopped
@@ -87,14 +82,13 @@ services:
     volumes:
       - ./infra/otel/otel-collector-local.yaml:/etc/otel-collector.yaml:ro
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8889:8889"   # Prometheus exporter
+      - "4317:4317"   
+      - "4318:4318"   
+      - "8889:8889"  
     depends_on:
       - tempo
       - loki
 
-  # ─── Tempo (Distributed Tracing) ─────────────────────────────────────────────
   tempo:
     image: grafana/tempo:2.5.0
     restart: unless-stopped
@@ -106,7 +100,6 @@ services:
       - "3200:3200"   # HTTP API
       - "9095:9095"   # gRPC
 
-  # ─── Loki (Log Aggregation) ──────────────────────────────────────────────────
   loki:
     image: grafana/loki:3.1.0
     restart: unless-stopped
@@ -117,7 +110,6 @@ services:
     ports:
       - "3100:3100"
 
-  # ─── Prometheus ──────────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.53.0
     restart: unless-stopped
@@ -130,7 +122,6 @@ services:
     ports:
       - "9090:9090"
 
-  # ─── Grafana ─────────────────────────────────────────────────────────────────
   grafana:
     image: grafana/grafana:11.1.0
     restart: unless-stopped

@@ -15,7 +15,6 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # ─── Rust CI ───────────────────────────────────────────────────────────────
   rust-ci:
     name: Rust — Test, Clippy, Fmt
     runs-on: ubuntu-latest
@@ -71,7 +70,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-  # ─── Rust Security Audit ───────────────────────────────────────────────────
   rust-audit:
     name: Rust — Security Audit (cargo-audit)
     runs-on: ubuntu-latest
@@ -86,7 +84,6 @@ jobs:
       - name: Run cargo audit
         run: cargo audit
 
-  # ─── Svelte CI ─────────────────────────────────────────────────────────────
   svelte-ci:
     name: Svelte — Check, Lint, Test
     runs-on: ubuntu-latest
@@ -116,7 +113,6 @@ jobs:
       - name: Run Vitest
         run: npm run test
 
-  # ─── Docker Build Validation ───────────────────────────────────────────────
   docker-build-check:
     name: Docker — Build Check (no push)
     runs-on: ubuntu-latest
@@ -146,7 +142,6 @@ jobs:
           cache-to: type=gha,mode=max
           tags: frontend:ci-check
 
-  # ─── Trivy Security Scan ──────────────────────────────────────────────────
   trivy-scan:
     name: Trivy — Image Security Scan
     runs-on: ubuntu-latest

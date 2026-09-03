@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { authApi } from '$lib/api/auth';
 	import { setAuth } from '$lib/stores/auth.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';

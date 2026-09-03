@@ -1,17 +1,10 @@
-// ─── Auth Store ───────────────────────────────────────────────────────────────
-// Svelte 5 runes-based reactive auth state
-
 import type { AuthUser, AuthTokens } from '$lib/api/auth';
 import { authApi } from '$lib/api/auth';
-
-// ─── State ────────────────────────────────────────────────────────────────────
 
 let _user = $state<AuthUser | null>(null);
 let _tokens = $state<AuthTokens | null>(null);
 let _loading = $state(false);
 let _initialized = $state(false);
-
-// ─── Derived ──────────────────────────────────────────────────────────────────
 
 export const authStore = {
 	get user() { return _user; },
@@ -22,11 +15,6 @@ export const authStore = {
 	get accessToken() { return _tokens?.access_token ?? null; }
 };
 
-// ─── Actions ──────────────────────────────────────────────────────────────────
-
-/**
- * Initialize auth state from localStorage (called on app mount).
- */
 export function initAuth() {
 	if (typeof localStorage === 'undefined') return;
 
@@ -55,9 +43,6 @@ export function initAuth() {
 	}
 }
 
-/**
- * Set authenticated state after login/register.
- */
 export function setAuth(user: AuthUser, tokens: AuthTokens) {
 	_user = user;
 	_tokens = tokens;
@@ -66,9 +51,6 @@ export function setAuth(user: AuthUser, tokens: AuthTokens) {
 	}
 }
 
-/**
- * Clear authenticated state (logout).
- */
 export function clearAuth() {
 	_user = null;
 	_tokens = null;
@@ -77,9 +59,6 @@ export function clearAuth() {
 	}
 }
 
-/**
- * Attempt to refresh the access token.
- */
 export async function tryRefresh(refreshToken: string): Promise<boolean> {
 	try {
 		const newTokens = await authApi.refresh({ refresh_token: refreshToken });
@@ -97,9 +76,6 @@ export async function tryRefresh(refreshToken: string): Promise<boolean> {
 	}
 }
 
-/**
- * Logout: call API then clear local state.
- */
 export async function logout() {
 	_loading = true;
 	try {

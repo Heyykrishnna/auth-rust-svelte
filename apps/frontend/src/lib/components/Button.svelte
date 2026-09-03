@@ -23,11 +23,11 @@
 		children
 	}: Props = $props();
 
-	const sizeClass = {
+	let sizeClass = $derived({
 		sm: 'btn-sm',
 		md: '',
 		lg: 'btn-lg'
-	}[size];
+	}[size]);
 </script>
 
 {#if href}

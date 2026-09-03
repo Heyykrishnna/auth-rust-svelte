@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  ORG: your-org  # TODO: Replace with your GitHub org/username
+  ORG: ${{ github.repository_owner }}
 
 jobs:
   build-and-push:
@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write   # for cosign OIDC
+      id-token: write
 
     strategy:
       matrix:
@@ -62,19 +62,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: true
-          sbom: true  # Generate Software Bill of Materials
+          sbom: true
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign the image with cosign (keyless OIDC)
+      - name: Sign the image with cosign
         run: |
           cosign sign --yes \
             "${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.service }}@${{ steps.build.outputs.digest }}"
 
       - name: Output image digest
         run: |
-          echo "## 🐳 Docker Image Built" >> $GITHUB_STEP_SUMMARY
+          echo "## Docker Image Built" >> $GITHUB_STEP_SUMMARY
           echo "**Service:** ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
           echo "**Digest:** ${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
           echo "**Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY

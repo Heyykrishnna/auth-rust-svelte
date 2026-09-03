@@ -1,4 +1,4 @@
-import { sveltekit } from '@sveltejs/vite-plugin-svelte';
+import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -12,10 +12,5 @@ export default defineConfig({
 				rewrite: (path) => path.replace(/^\/api/, '')
 			}
 		}
-	},
-	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}'],
-		environment: 'jsdom',
-		globals: true
 	}
 });
