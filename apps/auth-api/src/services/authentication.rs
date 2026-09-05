@@ -1,5 +1,5 @@
 use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version};
 use rand_core::OsRng;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -23,6 +23,10 @@ pub struct AuthContext<'a> {
     pub redis: &'a RedisPool,
 }
 
+fn create_argon2id() -> Argon2<'static> {
+    Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default())
+}
+
 pub async fn register(
     ctx: AuthContext<'_>,
     email: String,
@@ -35,7 +39,7 @@ pub async fn register(
     }
 
     let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
+    let argon2 = create_argon2id();
     let password_hash = argon2
         .hash_password(password.as_bytes(), &salt)
         .map_err(|e| AppError::PasswordHash(e.to_string()))?
@@ -87,9 +91,16 @@ pub async fn login(
 
     let parsed_hash = PasswordHash::new(password_hash).map_err(|_| AppError::InvalidCredentials)?;
 
-    Argon2::default()
+    let argon2 = create_argon2id();
+    argon2
         .verify_password(password.as_bytes(), &parsed_hash)
         .map_err(|_| AppError::InvalidCredentials)?;
+
+    if !user.is_active() {
+        return Err(AppError::Forbidden(
+            "Account is suspended or inactive".to_string(),
+        ));
+    }
 
     let session_id = Uuid::new_v4();
     let tokens = generate_token_pair(

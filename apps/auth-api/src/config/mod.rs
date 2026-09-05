@@ -20,6 +20,8 @@ pub struct AppConfig {
     pub github_client_secret: Option<String>,
     pub github_redirect_uri: Option<String>,
     pub cors_origins: Vec<String>,
+    pub cookie_secure: bool,
+    pub cookie_domain: Option<String>,
     pub otel_exporter_otlp_endpoint: String,
     pub otel_service_name: String,
     pub otel_service_version: String,
@@ -61,6 +63,12 @@ impl AppConfig {
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(604_800);
 
+        let cookie_secure = env::var("COOKIE_SECURE")
+            .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
+            .unwrap_or(false);
+
+        let cookie_domain = env::var("COOKIE_DOMAIN").ok();
+
         let google_client_id = env::var("GOOGLE_CLIENT_ID").ok();
         let google_client_secret = env::var("GOOGLE_CLIENT_SECRET").ok();
         let google_redirect_uri = env::var("GOOGLE_REDIRECT_URI").ok();
@@ -96,6 +104,8 @@ impl AppConfig {
             jwt_secret,
             jwt_access_expiry_secs,
             jwt_refresh_expiry_secs,
+            cookie_secure,
+            cookie_domain,
             google_client_id,
             google_client_secret,
             google_redirect_uri,

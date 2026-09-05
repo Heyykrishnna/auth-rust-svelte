@@ -24,15 +24,34 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let auth_header = parts
+        // 1. Check cookie first (session_token or access_token)
+        let cookie_token = parts
             .headers
-            .get("authorization")
-            .and_then(|value| value.to_str().ok())
-            .ok_or_else(|| AppError::Unauthorized("Missing Authorization header".to_string()))?;
+            .get(axum::http::header::COOKIE)
+            .and_then(|h| h.to_str().ok())
+            .and_then(|cookie_str| {
+                cookie_str.split(';').find_map(|s| {
+                    let mut parts = s.trim().splitn(2, '=');
+                    let name = parts.next()?;
+                    let val = parts.next()?;
+                    if name == "session_token" || name == "access_token" {
+                        Some(val.to_string())
+                    } else {
+                        None
+                    }
+                })
+            });
 
-        let token = auth_header
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| AppError::Unauthorized("Invalid authorization scheme".to_string()))?;
+        // 2. Fallback to Authorization: Bearer header
+        let token = if let Some(ref t) = cookie_token {
+            t.as_str()
+        } else if let Some(auth_val) = parts.headers.get("authorization").and_then(|v| v.to_str().ok()) {
+            auth_val
+                .strip_prefix("Bearer ")
+                .ok_or_else(|| AppError::Unauthorized("Invalid authorization scheme".to_string()))?
+        } else {
+            return Err(AppError::Unauthorized("Authentication required".to_string()));
+        };
 
         let claims = validate_access_token(token, &state.config.jwt_secret)?;
 

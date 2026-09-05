@@ -31,7 +31,7 @@
 
 		try {
 			const session = await authApi.oidcCallback(provider, code, state);
-			setAuth(session.user, session.tokens);
+			setAuth(session.user);
 			status = 'success';
 			addToast('Successfully signed in!', 'success');
 			setTimeout(() => goto('/dashboard'), 1000);

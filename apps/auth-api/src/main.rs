@@ -1,27 +1,11 @@
 use anyhow::Result;
-use deadpool_redis::{Config as RedisConfig, Pool as RedisPool, Runtime as RedisRuntime};
+use deadpool_redis::{Config as RedisConfig, Runtime as RedisRuntime};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::info;
 
-pub mod config;
-pub mod errors;
-pub mod handlers;
-pub mod middleware;
-pub mod models;
-pub mod repositories;
-pub mod routes;
-pub mod services;
-
-use config::AppConfig;
-
-#[derive(Clone)]
-pub struct AppState {
-    pub config: Arc<AppConfig>,
-    pub db: PgPool,
-    pub redis: RedisPool,
-}
+use auth_api::config::AppConfig;
+use auth_api::{middleware, routes, AppState};
 
 #[tokio::main]
 async fn main() -> Result<()> {

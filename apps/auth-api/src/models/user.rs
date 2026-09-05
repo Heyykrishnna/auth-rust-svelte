@@ -11,6 +11,7 @@ pub struct User {
     pub password_hash: Option<String>,
     pub avatar_url: Option<String>,
     pub email_verified: bool,
+    pub status: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -25,9 +26,14 @@ impl User {
             password_hash,
             avatar_url: None,
             email_verified: false,
+            status: "active".to_string(),
             created_at: now,
             updated_at: now,
         }
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.status == "active"
     }
 }
 
@@ -45,6 +51,7 @@ pub struct UserProfile {
     pub display_name: String,
     pub avatar_url: Option<String>,
     pub email_verified: bool,
+    pub status: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -56,6 +63,7 @@ impl From<User> for UserProfile {
             display_name: u.display_name,
             avatar_url: u.avatar_url,
             email_verified: u.email_verified,
+            status: u.status,
             created_at: u.created_at,
         }
     }

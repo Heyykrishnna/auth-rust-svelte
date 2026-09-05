@@ -2,72 +2,53 @@ import type { AuthUser, AuthTokens } from '$lib/api/auth';
 import { authApi } from '$lib/api/auth';
 
 let _user = $state<AuthUser | null>(null);
-let _tokens = $state<AuthTokens | null>(null);
 let _loading = $state(false);
 let _initialized = $state(false);
 
 export const authStore = {
 	get user() { return _user; },
-	get tokens() { return _tokens; },
 	get loading() { return _loading; },
 	get initialized() { return _initialized; },
-	get isAuthenticated() { return _user !== null && _tokens !== null; },
-	get accessToken() { return _tokens?.access_token ?? null; }
+	get isAuthenticated() { return _user !== null; }
 };
 
-export function initAuth() {
-	if (typeof localStorage === 'undefined') return;
+export async function initAuth() {
+	if (typeof window === 'undefined') return;
 
+	_loading = true;
 	try {
-		const stored = localStorage.getItem('auth_tokens');
-		if (stored) {
-			const tokens = JSON.parse(stored) as AuthTokens;
-			_tokens = tokens;
-			// Fetch user profile with stored token
-			authApi.me(tokens.access_token)
-				.then((user) => {
-					_user = user;
-				})
-				.catch(() => {
-					// Token invalid — try refresh
-					tryRefresh(tokens.refresh_token);
-				})
-				.finally(() => {
-					_initialized = true;
-				});
-		} else {
-			_initialized = true;
-		}
+		// Session cookies are sent automatically with credentials: 'include'
+		const user = await authApi.me();
+		_user = user;
 	} catch {
+		// Attempt silent session refresh via HttpOnly refresh_token cookie
+		try {
+			await authApi.refresh();
+			const user = await authApi.me();
+			_user = user;
+		} catch {
+			_user = null;
+		}
+	} finally {
+		_loading = false;
 		_initialized = true;
 	}
 }
 
-export function setAuth(user: AuthUser, tokens: AuthTokens) {
+export function setAuth(user: AuthUser, _tokens?: AuthTokens) {
 	_user = user;
-	_tokens = tokens;
-	if (typeof localStorage !== 'undefined') {
-		localStorage.setItem('auth_tokens', JSON.stringify(tokens));
-	}
+	// Session tokens are kept in HttpOnly, Secure, SameSite=Lax cookies by design.
+	// Never persist auth tokens in browser localStorage.
 }
 
 export function clearAuth() {
 	_user = null;
-	_tokens = null;
-	if (typeof localStorage !== 'undefined') {
-		localStorage.removeItem('auth_tokens');
-	}
 }
 
-export async function tryRefresh(refreshToken: string): Promise<boolean> {
+export async function tryRefresh(): Promise<boolean> {
 	try {
-		const newTokens = await authApi.refresh({ refresh_token: refreshToken });
-		_tokens = newTokens;
-		if (typeof localStorage !== 'undefined') {
-			localStorage.setItem('auth_tokens', JSON.stringify(newTokens));
-		}
-		// Re-fetch user
-		const user = await authApi.me(newTokens.access_token);
+		await authApi.refresh();
+		const user = await authApi.me();
 		_user = user;
 		return true;
 	} catch {
@@ -79,9 +60,7 @@ export async function tryRefresh(refreshToken: string): Promise<boolean> {
 export async function logout() {
 	_loading = true;
 	try {
-		if (_tokens?.access_token) {
-			await authApi.logout(_tokens.access_token);
-		}
+		await authApi.logout();
 	} finally {
 		clearAuth();
 		_loading = false;

@@ -6,6 +6,7 @@ export interface AuthUser {
 	display_name: string;
 	avatar_url: string | null;
 	email_verified: boolean;
+	status: string;
 	created_at: string;
 }
 
@@ -18,7 +19,8 @@ export interface AuthTokens {
 
 export interface AuthSession {
 	user: AuthUser;
-	tokens: AuthTokens;
+	tokens?: AuthTokens;
+	message?: string;
 }
 
 export interface RegisterRequest {
@@ -33,7 +35,7 @@ export interface LoginRequest {
 }
 
 export interface RefreshRequest {
-	refresh_token: string;
+	refresh_token?: string;
 }
 
 export interface OidcProvider {
@@ -43,25 +45,25 @@ export interface OidcProvider {
 
 export const authApi = {
 	register: (data: RegisterRequest) =>
-		apiClient.post<AuthSession>('/auth/register', data),
+		apiClient.post<AuthSession>('/api/auth/register', data),
 
 	login: (data: LoginRequest) =>
-		apiClient.post<AuthSession>('/auth/login', data),
+		apiClient.post<AuthSession>('/api/auth/login', data),
 
-	logout: (token: string) =>
-		apiClient.post<void>('/auth/logout', {}, { token }),
+	logout: () =>
+		apiClient.post<void>('/api/auth/logout', {}),
 
-	refresh: (data: RefreshRequest) =>
-		apiClient.post<AuthTokens>('/auth/refresh', data),
+	refresh: (data?: RefreshRequest) =>
+		apiClient.post<AuthTokens>('/api/auth/refresh', data ?? {}),
 
-	me: (token: string) =>
-		apiClient.get<AuthUser>('/auth/me', { token }),
+	me: () =>
+		apiClient.get<AuthUser>('/api/auth/me'),
 
 	getOidcUrl: (provider: 'google' | 'github') =>
-		apiClient.get<OidcProvider>(`/auth/oidc/${provider}`),
+		apiClient.get<OidcProvider>(`/api/auth/oidc/${provider}`),
 
 	oidcCallback: (provider: 'google' | 'github', code: string, state: string) =>
-		apiClient.post<AuthSession>(`/auth/oidc/${provider}/callback`, { code, state }),
+		apiClient.post<AuthSession>(`/api/auth/oidc/${provider}/callback`, { code, state }),
 
 	health: () => apiClient.get<{ status: string; version: string }>('/health')
 };

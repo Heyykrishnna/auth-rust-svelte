@@ -7,9 +7,9 @@ use crate::models::User;
 pub async fn create_user(pool: &PgPool, user: User) -> Result<User, AppError> {
     let created = sqlx::query_as::<_, User>(
         r#"
-        INSERT INTO users (id, email, display_name, password_hash, avatar_url, email_verified, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id, email, display_name, password_hash, avatar_url, email_verified, created_at, updated_at
+        INSERT INTO users (id, email, display_name, password_hash, avatar_url, email_verified, status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id, email, display_name, password_hash, avatar_url, email_verified, status, created_at, updated_at
         "#
     )
     .bind(user.id)
@@ -18,6 +18,7 @@ pub async fn create_user(pool: &PgPool, user: User) -> Result<User, AppError> {
     .bind(user.password_hash)
     .bind(user.avatar_url)
     .bind(user.email_verified)
+    .bind(user.status)
     .bind(user.created_at)
     .bind(user.updated_at)
     .fetch_one(pool)
@@ -29,7 +30,7 @@ pub async fn create_user(pool: &PgPool, user: User) -> Result<User, AppError> {
 pub async fn find_user_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
         r#"
-        SELECT id, email, display_name, password_hash, avatar_url, email_verified, created_at, updated_at
+        SELECT id, email, display_name, password_hash, avatar_url, email_verified, status, created_at, updated_at
         FROM users
         WHERE email = $1
         LIMIT 1
@@ -45,7 +46,7 @@ pub async fn find_user_by_email(pool: &PgPool, email: &str) -> Result<Option<Use
 pub async fn find_user_by_id(pool: &PgPool, id: Uuid) -> Result<Option<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
         r#"
-        SELECT id, email, display_name, password_hash, avatar_url, email_verified, created_at, updated_at
+        SELECT id, email, display_name, password_hash, avatar_url, email_verified, status, created_at, updated_at
         FROM users
         WHERE id = $1
         LIMIT 1
@@ -85,7 +86,7 @@ pub async fn update_profile(
         UPDATE users
         SET display_name = $1, avatar_url = $2, updated_at = NOW()
         WHERE id = $3
-        RETURNING id, email, display_name, password_hash, avatar_url, email_verified, created_at, updated_at
+        RETURNING id, email, display_name, password_hash, avatar_url, email_verified, status, created_at, updated_at
         "#
     )
     .bind(display_name)

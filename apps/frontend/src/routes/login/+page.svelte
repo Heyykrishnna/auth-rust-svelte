@@ -28,7 +28,7 @@
 		loading = true;
 		try {
 			const session = await authApi.login({ email, password });
-			setAuth(session.user, session.tokens);
+			setAuth(session.user);
 			addToast('Welcome back!', 'success');
 			goto('/dashboard');
 		} catch (err) {
@@ -125,7 +125,7 @@
 			</div>
 
 			<Button type="submit" variant="primary" full {loading}>
-				{loading ? 'Signing in…' : 'Sign In'}
+				{loading ? 'Logging in…' : 'Login'}
 			</Button>
 		</form>
 

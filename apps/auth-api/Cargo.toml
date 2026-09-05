@@ -5,6 +5,10 @@ edition = "2021"
 authors = ["Your Name <you@example.com>"]
 description = "Production-grade Rust authentication API"
 
+[lib]
+name = "auth_api"
+path = "src/lib.rs"
+
 [[bin]]
 name = "auth-api"
 path = "src/main.rs"

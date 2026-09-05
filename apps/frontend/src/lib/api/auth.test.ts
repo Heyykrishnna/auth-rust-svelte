@@ -18,7 +18,7 @@ describe('authApi', () => {
 		};
 
 		await authApi.register(payload);
-		expect(apiClient.post).toHaveBeenCalledWith('/auth/register', payload);
+		expect(apiClient.post).toHaveBeenCalledWith('/api/auth/register', payload);
 	});
 
 	it('calls login with expected endpoint and payload', async () => {
@@ -28,17 +28,17 @@ describe('authApi', () => {
 		};
 
 		await authApi.login(payload);
-		expect(apiClient.post).toHaveBeenCalledWith('/auth/login', payload);
+		expect(apiClient.post).toHaveBeenCalledWith('/api/auth/login', payload);
 	});
 
-	it('calls logout with token header', async () => {
-		await authApi.logout('sample-token');
-		expect(apiClient.post).toHaveBeenCalledWith('/auth/logout', {}, { token: 'sample-token' });
+	it('calls logout with secure cookie support', async () => {
+		await authApi.logout();
+		expect(apiClient.post).toHaveBeenCalledWith('/api/auth/logout', {});
 	});
 
-	it('calls me with token header', async () => {
-		await authApi.me('sample-token');
-		expect(apiClient.get).toHaveBeenCalledWith('/auth/me', { token: 'sample-token' });
+	it('calls me with cookie support', async () => {
+		await authApi.me();
+		expect(apiClient.get).toHaveBeenCalledWith('/api/auth/me');
 	});
 
 	it('calls health endpoint', async () => {

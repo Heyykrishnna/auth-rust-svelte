@@ -61,7 +61,7 @@
 				password,
 				display_name: displayName
 			});
-			setAuth(session.user, session.tokens);
+			setAuth(session.user);
 			addToast('Account created! Welcome aboard 🎉', 'success');
 			goto('/dashboard');
 		} catch (err) {

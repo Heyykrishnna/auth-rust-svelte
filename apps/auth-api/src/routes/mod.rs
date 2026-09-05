@@ -44,8 +44,11 @@ pub fn build_router(state: AppState) -> Router {
             get(move || async move { metrics_handle.render() }),
         )
         .nest("/auth", auth::routes())
+        .nest("/api/auth", auth::routes())
         .nest("/users", users::routes())
+        .nest("/api/users", users::routes())
         .nest("/sessions", sessions::routes())
+        .nest("/api/sessions", sessions::routes())
         .layer(TimeoutLayer::new(Duration::from_secs(30)))
         .layer(TraceLayer::new_for_http())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))

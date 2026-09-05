@@ -1,6 +1,3 @@
--- Migration 001: Initial users table
--- Creates the core users table with password hash, email verification, and timestamps
-
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS users (
@@ -10,12 +7,14 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash   TEXT,              -- NULL for OIDC-only accounts
     avatar_url      TEXT,
     email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
+    status          VARCHAR(20) NOT NULL DEFAULT 'active',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Index for fast email lookups (login)
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 
 -- Auto-update updated_at on row modification
 CREATE OR REPLACE FUNCTION update_updated_at()
