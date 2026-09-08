@@ -70,6 +70,16 @@ pub async fn register(
     )
     .await?;
 
+    let _ = crate::services::audit::log_event(
+        ctx.db,
+        Some(user.id),
+        crate::models::AuditEvent::LoginSuccess,
+        None,
+        None,
+        serde_json::json!({ "email": user.email, "action": "register" }),
+    )
+    .await;
+
     Ok((UserProfile::from(user), tokens))
 }
 
@@ -80,23 +90,79 @@ pub async fn login(
     user_agent: Option<String>,
     ip_address: Option<String>,
 ) -> Result<(UserProfile, TokenPair), AppError> {
-    let user = user_repo::find_user_by_email(ctx.db, &email)
-        .await?
-        .ok_or(AppError::InvalidCredentials)?;
+    let user_opt = user_repo::find_user_by_email(ctx.db, &email).await?;
+    let user = match user_opt {
+        Some(u) => u,
+        None => {
+            let _ = crate::services::audit::log_event(
+                ctx.db,
+                None,
+                crate::models::AuditEvent::LoginFailed,
+                ip_address,
+                user_agent,
+                serde_json::json!({ "email": email, "reason": "user_not_found" }),
+            )
+            .await;
+            return Err(AppError::InvalidCredentials);
+        }
+    };
 
-    let password_hash = user
-        .password_hash
-        .as_deref()
-        .ok_or(AppError::InvalidCredentials)?;
+    let password_hash = match user.password_hash.as_deref() {
+        Some(h) => h,
+        None => {
+            let _ = crate::services::audit::log_event(
+                ctx.db,
+                Some(user.id),
+                crate::models::AuditEvent::LoginFailed,
+                ip_address,
+                user_agent,
+                serde_json::json!({ "email": email, "reason": "no_password" }),
+            )
+            .await;
+            return Err(AppError::InvalidCredentials);
+        }
+    };
 
-    let parsed_hash = PasswordHash::new(password_hash).map_err(|_| AppError::InvalidCredentials)?;
+    let parsed_hash = match PasswordHash::new(password_hash) {
+        Ok(h) => h,
+        Err(_) => {
+            let _ = crate::services::audit::log_event(
+                ctx.db,
+                Some(user.id),
+                crate::models::AuditEvent::LoginFailed,
+                ip_address,
+                user_agent,
+                serde_json::json!({ "email": email, "reason": "hash_error" }),
+            )
+            .await;
+            return Err(AppError::InvalidCredentials);
+        }
+    };
 
     let argon2 = create_argon2id();
-    argon2
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .map_err(|_| AppError::InvalidCredentials)?;
+    if argon2.verify_password(password.as_bytes(), &parsed_hash).is_err() {
+        let _ = crate::services::audit::log_event(
+            ctx.db,
+            Some(user.id),
+            crate::models::AuditEvent::LoginFailed,
+            ip_address,
+            user_agent,
+            serde_json::json!({ "email": email, "reason": "invalid_password" }),
+        )
+        .await;
+        return Err(AppError::InvalidCredentials);
+    }
 
     if !user.is_active() {
+        let _ = crate::services::audit::log_event(
+            ctx.db,
+            Some(user.id),
+            crate::models::AuditEvent::AccountLocked,
+            ip_address,
+            user_agent,
+            serde_json::json!({ "email": email, "status": user.status }),
+        )
+        .await;
         return Err(AppError::Forbidden(
             "Account is suspended or inactive".to_string(),
         ));
@@ -119,10 +185,20 @@ pub async fn login(
         user.id,
         &tokens.refresh_token,
         ctx.config.refresh_token_duration(),
-        user_agent,
-        ip_address,
+        user_agent.clone(),
+        ip_address.clone(),
     )
     .await?;
+
+    let _ = crate::services::audit::log_event(
+        ctx.db,
+        Some(user.id),
+        crate::models::AuditEvent::LoginSuccess,
+        ip_address,
+        user_agent,
+        serde_json::json!({ "email": user.email, "session_id": session_id }),
+    )
+    .await;
 
     Ok((UserProfile::from(user), tokens))
 }
@@ -190,6 +266,18 @@ pub async fn logout(ctx: AuthContext<'_>, access_token: &str) -> Result<(), AppE
     let ttl_secs = (claims.exp - chrono::Utc::now().timestamp()).max(0) as u64;
     session_repo::blacklist_token(ctx.redis, &claims.jti, ttl_secs).await?;
 
+    if let Ok(user_id) = Uuid::parse_str(&claims.sub) {
+        let _ = crate::services::audit::log_event(
+            ctx.db,
+            Some(user_id),
+            crate::models::AuditEvent::Logout,
+            None,
+            None,
+            serde_json::json!({ "jti": claims.jti }),
+        )
+        .await;
+    }
+
     Ok(())
 }
 
@@ -198,7 +286,19 @@ pub async fn verify_email(ctx: AuthContext<'_>, token: &str) -> Result<(), AppEr
     let user_id = Uuid::parse_str(&claims.sub)
         .map_err(|_| AppError::InvalidToken("Invalid user ID in verification token".to_string()))?;
 
-    user_repo::set_email_verified(ctx.db, user_id, true).await
+    user_repo::set_email_verified(ctx.db, user_id, true).await?;
+
+    let _ = crate::services::audit::log_event(
+        ctx.db,
+        Some(user_id),
+        crate::models::AuditEvent::EmailVerified,
+        None,
+        None,
+        serde_json::json!({ "email": claims.email }),
+    )
+    .await;
+
+    Ok(())
 }
 
 pub async fn get_oidc_authorization_url(

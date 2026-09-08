@@ -25,5 +25,16 @@ pub async fn revoke_session(
 ) -> Result<StatusCode, AppError> {
     ensure_session_ownership(&state.db, user.user_id, session_id).await?;
     session_service::invalidate_session(&state.db, &state.redis, session_id).await?;
+
+    let _ = crate::services::audit::log_event(
+        &state.db,
+        Some(user.user_id),
+        crate::models::AuditEvent::SessionRevoked,
+        None,
+        None,
+        serde_json::json!({ "session_id": session_id }),
+    )
+    .await;
+
     Ok(StatusCode::NO_CONTENT)
 }

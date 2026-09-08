@@ -108,18 +108,20 @@ pub async fn is_token_blacklisted(pool: &RedisPool, jti: &str) -> Result<bool, A
 pub async fn create_pg_session(pool: &PgPool, session: &Session) -> Result<(), AppError> {
     sqlx::query(
         r#"
-        INSERT INTO sessions (id, user_id, refresh_token_hash, user_agent, ip_address, created_at, expires_at, last_used_at)
-        VALUES ($1, $2, $3, $4, $5::inet, $6, $7, $8)
+        INSERT INTO sessions (id, user_id, refresh_token_hash, session_hash, user_agent, ip_address, created_at, expires_at, last_used_at, revoked_at)
+        VALUES ($1, $2, $3, $4, $5, $6::inet, $7, $8, $9, $10)
         "#
     )
     .bind(session.id)
     .bind(session.user_id)
     .bind(&session.refresh_token_hash)
+    .bind(&session.session_hash)
     .bind(&session.user_agent)
     .bind(&session.ip_address)
     .bind(session.created_at)
     .bind(session.expires_at)
     .bind(session.last_used_at)
+    .bind(session.revoked_at)
     .execute(pool)
     .await?;
 
@@ -132,7 +134,7 @@ pub async fn find_pg_session_by_id(
 ) -> Result<Option<Session>, AppError> {
     let session = sqlx::query_as::<_, Session>(
         r#"
-        SELECT id, user_id, refresh_token_hash, user_agent, host(ip_address) as ip_address, created_at, expires_at, last_used_at
+        SELECT id, user_id, refresh_token_hash, session_hash, user_agent, host(ip_address) as ip_address, created_at, expires_at, last_used_at, revoked_at
         FROM sessions
         WHERE id = $1
         LIMIT 1
@@ -148,9 +150,9 @@ pub async fn find_pg_session_by_id(
 pub async fn list_user_pg_sessions(pool: &PgPool, user_id: Uuid) -> Result<Vec<Session>, AppError> {
     let sessions = sqlx::query_as::<_, Session>(
         r#"
-        SELECT id, user_id, refresh_token_hash, user_agent, host(ip_address) as ip_address, created_at, expires_at, last_used_at
+        SELECT id, user_id, refresh_token_hash, session_hash, user_agent, host(ip_address) as ip_address, created_at, expires_at, last_used_at, revoked_at
         FROM sessions
-        WHERE user_id = $1 AND expires_at > NOW()
+        WHERE user_id = $1 AND expires_at > NOW() AND revoked_at IS NULL
         ORDER BY last_used_at DESC
         "#
     )
@@ -159,6 +161,24 @@ pub async fn list_user_pg_sessions(pool: &PgPool, user_id: Uuid) -> Result<Vec<S
     .await?;
 
     Ok(sessions)
+}
+
+pub async fn revoke_pg_session(pool: &PgPool, session_id: Uuid) -> Result<(), AppError> {
+    sqlx::query("UPDATE sessions SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL")
+        .bind(session_id)
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+
+pub async fn revoke_all_user_pg_sessions(pool: &PgPool, user_id: Uuid) -> Result<(), AppError> {
+    sqlx::query("UPDATE sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL")
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+
+    Ok(())
 }
 
 pub async fn delete_pg_session(pool: &PgPool, session_id: Uuid) -> Result<(), AppError> {

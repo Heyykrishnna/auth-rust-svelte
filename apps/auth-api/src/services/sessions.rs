@@ -5,7 +5,8 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use crate::errors::AppError;
-use crate::models::{Session, SessionResponse};
+use crate::models::{RefreshToken, Session, SessionResponse};
+use crate::repositories::refresh_tokens as refresh_repo;
 use crate::repositories::sessions as session_repo;
 use crate::services::tokens::hash_token;
 
@@ -22,10 +23,19 @@ pub async fn create_session(
     let expires_at = Utc::now()
         + chrono::Duration::from_std(duration).map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let session = Session::new(user_id, token_hash, expires_at, user_agent, ip_address);
+    let session = Session::new(user_id, token_hash.clone(), expires_at, user_agent, ip_address);
 
     session_repo::store_redis_session(redis, &session).await?;
     let _ = session_repo::create_pg_session(db, &session).await;
+
+    let refresh_token_record = RefreshToken::new(
+        user_id,
+        Some(session.id),
+        token_hash,
+        session.id,
+        expires_at,
+    );
+    let _ = refresh_repo::create_refresh_token(db, &refresh_token_record).await;
 
     Ok(session)
 }
@@ -36,10 +46,18 @@ pub async fn get_session(
     session_id: Uuid,
 ) -> Result<Option<Session>, AppError> {
     if let Ok(Some(session)) = session_repo::get_redis_session(redis, session_id).await {
-        return Ok(Some(session));
+        if session.is_active() {
+            return Ok(Some(session));
+        } else {
+            let _ = session_repo::delete_redis_session(redis, session_id).await;
+            return Ok(None);
+        }
     }
 
-    session_repo::find_pg_session_by_id(db, session_id).await
+    match session_repo::find_pg_session_by_id(db, session_id).await? {
+        Some(session) if session.is_active() => Ok(Some(session)),
+        _ => Ok(None),
+    }
 }
 
 pub async fn invalidate_session(
@@ -48,7 +66,9 @@ pub async fn invalidate_session(
     session_id: Uuid,
 ) -> Result<(), AppError> {
     let _ = session_repo::delete_redis_session(redis, session_id).await;
+    let _ = session_repo::revoke_pg_session(db, session_id).await;
     let _ = session_repo::delete_pg_session(db, session_id).await;
+    let _ = refresh_repo::revoke_family(db, session_id).await;
     Ok(())
 }
 
@@ -77,5 +97,7 @@ pub async fn list_user_sessions(
 }
 
 pub async fn revoke_all_user_sessions(db: &PgPool, user_id: Uuid) -> Result<(), AppError> {
+    let _ = refresh_repo::revoke_all_user_tokens(db, user_id).await;
+    let _ = session_repo::revoke_all_user_pg_sessions(db, user_id).await;
     session_repo::delete_all_user_pg_sessions(db, user_id).await
 }
