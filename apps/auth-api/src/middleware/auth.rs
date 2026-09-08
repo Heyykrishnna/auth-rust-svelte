@@ -31,9 +31,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
             .and_then(|h| h.to_str().ok())
             .and_then(|cookie_str| {
                 cookie_str.split(';').find_map(|s| {
-                    let mut parts = s.trim().splitn(2, '=');
-                    let name = parts.next()?;
-                    let val = parts.next()?;
+                    let (name, val) = s.trim().split_once('=')?;
                     if name == "session_token" || name == "access_token" {
                         Some(val.to_string())
                     } else {
@@ -45,12 +43,18 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
         // 2. Fallback to Authorization: Bearer header
         let token = if let Some(ref t) = cookie_token {
             t.as_str()
-        } else if let Some(auth_val) = parts.headers.get("authorization").and_then(|v| v.to_str().ok()) {
+        } else if let Some(auth_val) = parts
+            .headers
+            .get("authorization")
+            .and_then(|v| v.to_str().ok())
+        {
             auth_val
                 .strip_prefix("Bearer ")
                 .ok_or_else(|| AppError::Unauthorized("Invalid authorization scheme".to_string()))?
         } else {
-            return Err(AppError::Unauthorized("Authentication required".to_string()));
+            return Err(AppError::Unauthorized(
+                "Authentication required".to_string(),
+            ));
         };
 
         let claims = validate_access_token(token, &state.config.jwt_secret)?;

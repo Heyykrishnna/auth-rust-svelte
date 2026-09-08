@@ -1,9 +1,10 @@
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
-use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use axum_extra::extract::cookie::CookieJar;
 
 use crate::errors::AppError;
 use crate::services::authentication::{self, AuthContext};
+use crate::services::cookies::clear_auth_cookies;
 use crate::AppState;
 
 pub async fn logout(
@@ -31,27 +32,7 @@ pub async fn logout(
         let _ = authentication::logout(ctx, &token).await;
     }
 
-    let mut clear_session = Cookie::build(("session_token", ""))
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .max_age(time::Duration::ZERO);
-
-    if let Some(ref domain) = state.config.cookie_domain {
-        clear_session = clear_session.domain(domain.clone());
-    }
-
-    let mut clear_refresh = Cookie::build(("refresh_token", ""))
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .max_age(time::Duration::ZERO);
-
-    if let Some(ref domain) = state.config.cookie_domain {
-        clear_refresh = clear_refresh.domain(domain.clone());
-    }
-
-    let jar = jar.add(clear_session).add(clear_refresh);
+    let jar = clear_auth_cookies(jar, &state.config);
 
     Ok((jar, StatusCode::NO_CONTENT))
 }

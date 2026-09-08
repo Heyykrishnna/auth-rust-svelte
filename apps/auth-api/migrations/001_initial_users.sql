@@ -3,8 +3,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS users (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email           VARCHAR(320) NOT NULL UNIQUE,
-    display_name    VARCHAR(100) NOT NULL,
-    password_hash   TEXT,              -- NULL for OIDC-only accounts
+    password_hash   TEXT,
+    display_name    VARCHAR(100) NOT NULL DEFAULT '',
     avatar_url      TEXT,
     email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
     status          VARCHAR(20) NOT NULL DEFAULT 'active',
@@ -13,10 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 
--- Auto-update updated_at on row modification
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN

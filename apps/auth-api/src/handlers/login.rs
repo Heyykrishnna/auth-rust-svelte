@@ -1,13 +1,14 @@
 use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::Json;
-use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use axum_extra::extract::cookie::CookieJar;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 use crate::errors::AppError;
 use crate::models::{TokenPair, UserProfile};
 use crate::services::authentication::{self, AuthContext};
+use crate::services::cookies::attach_auth_cookies;
 use crate::AppState;
 
 #[derive(Debug, Deserialize, Validate)]
@@ -32,7 +33,6 @@ pub async fn login(
     headers: HeaderMap,
     Json(payload): Json<LoginRequest>,
 ) -> Result<(CookieJar, Json<LoginResponse>), AppError> {
-    // 1. Validate request
     payload
         .validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
@@ -57,35 +57,12 @@ pub async fn login(
     let (user, tokens) =
         authentication::login(ctx, payload.email, payload.password, user_agent, ip_address).await?;
 
-    let mut session_cookie = Cookie::build(("session_token", tokens.access_token.clone()))
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .max_age(time::Duration::seconds(state.config.jwt_access_expiry_secs as i64));
-
-    if state.config.cookie_secure {
-        session_cookie = session_cookie.secure(true);
-    }
-
-    if let Some(ref domain) = state.config.cookie_domain {
-        session_cookie = session_cookie.domain(domain.clone());
-    }
-
-    let mut refresh_cookie = Cookie::build(("refresh_token", tokens.refresh_token.clone()))
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .max_age(time::Duration::seconds(state.config.jwt_refresh_expiry_secs as i64));
-
-    if state.config.cookie_secure {
-        refresh_cookie = refresh_cookie.secure(true);
-    }
-
-    if let Some(ref domain) = state.config.cookie_domain {
-        refresh_cookie = refresh_cookie.domain(domain.clone());
-    }
-
-    let jar = jar.add(session_cookie).add(refresh_cookie);
+    let jar = attach_auth_cookies(
+        jar,
+        &state.config,
+        tokens.access_token.clone(),
+        tokens.refresh_token.clone(),
+    );
 
     Ok((
         jar,

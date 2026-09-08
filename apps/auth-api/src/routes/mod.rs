@@ -49,6 +49,9 @@ pub fn build_router(state: AppState) -> Router {
         .nest("/api/users", users::routes())
         .nest("/sessions", sessions::routes())
         .nest("/api/sessions", sessions::routes())
+        .layer(axum::middleware::from_fn(
+            crate::middleware::security_headers_middleware,
+        ))
         .layer(TimeoutLayer::new(Duration::from_secs(30)))
         .layer(TraceLayer::new_for_http())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))

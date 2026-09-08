@@ -43,6 +43,20 @@ export interface OidcProvider {
 	authorization_url: string;
 }
 
+export interface SessionItem {
+	id: string;
+	user_agent: string | null;
+	ip_address: string | null;
+	created_at: string;
+	last_used_at: string;
+	is_current: boolean;
+}
+
+export interface UpdateProfileRequest {
+	display_name: string;
+	avatar_url?: string | null;
+}
+
 export const authApi = {
 	register: (data: RegisterRequest) =>
 		apiClient.post<AuthSession>('/api/auth/register', data),
@@ -59,6 +73,15 @@ export const authApi = {
 	me: () =>
 		apiClient.get<AuthUser>('/api/auth/me'),
 
+	updateProfile: (data: UpdateProfileRequest) =>
+		apiClient.put<AuthUser>('/api/users/profile', data),
+
+	listSessions: () =>
+		apiClient.get<SessionItem[]>('/api/sessions'),
+
+	revokeSession: (sessionId: string) =>
+		apiClient.delete<void>(`/api/sessions/${sessionId}`),
+
 	getOidcUrl: (provider: 'google' | 'github') =>
 		apiClient.get<OidcProvider>(`/api/auth/oidc/${provider}`),
 
@@ -67,3 +90,4 @@ export const authApi = {
 
 	health: () => apiClient.get<{ status: string; version: string }>('/health')
 };
+

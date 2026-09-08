@@ -20,6 +20,7 @@ apps/auth-api/target/
 *.swp
 *.swo
 .DS_Store
+SKILLS.md
 
 *.log
 logs/

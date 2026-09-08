@@ -53,35 +53,83 @@ pub enum AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, message) = match &self {
-            AppError::UserNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            AppError::InvalidCredentials => (StatusCode::UNAUTHORIZED, self.to_string()),
-            AppError::EmailAlreadyExists => (StatusCode::CONFLICT, self.to_string()),
-            AppError::SessionNotFound => (StatusCode::UNAUTHORIZED, self.to_string()),
-            AppError::InvalidToken(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
-            AppError::TokenExpired => (StatusCode::UNAUTHORIZED, self.to_string()),
-            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg.clone()),
-            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg.clone()),
-            AppError::Validation(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
-            AppError::TokenCreation(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Token generation failed".to_string(),
+        let (status, code, message) = match &self {
+            AppError::UserNotFound => (StatusCode::NOT_FOUND, "USER_NOT_FOUND", self.to_string()),
+            AppError::InvalidCredentials => (
+                StatusCode::UNAUTHORIZED,
+                "INVALID_CREDENTIALS",
+                self.to_string(),
             ),
-            AppError::PasswordHash(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Authentication error".to_string(),
+            AppError::EmailAlreadyExists => (
+                StatusCode::CONFLICT,
+                "EMAIL_ALREADY_EXISTS",
+                self.to_string(),
             ),
-            AppError::OidcError(msg) => (StatusCode::BAD_GATEWAY, msg.clone()),
-            AppError::Database(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Database error".to_string(),
+            AppError::SessionNotFound => (
+                StatusCode::UNAUTHORIZED,
+                "SESSION_NOT_FOUND",
+                self.to_string(),
             ),
-            AppError::Redis(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Cache error".to_string()),
-            AppError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
+            AppError::InvalidToken(msg) => (StatusCode::UNAUTHORIZED, "INVALID_TOKEN", msg.clone()),
+            AppError::TokenExpired => (StatusCode::UNAUTHORIZED, "TOKEN_EXPIRED", self.to_string()),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", msg.clone()),
+            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg.clone()),
+            AppError::Validation(msg) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "VALIDATION_ERROR",
+                msg.clone(),
+            ),
+            AppError::TokenCreation(err) => {
+                tracing::error!(error = %err, "Token generation failed");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "TOKEN_GENERATION_FAILED",
+                    "Token generation failed".to_string(),
+                )
+            }
+            AppError::PasswordHash(err) => {
+                tracing::error!(error = %err, "Password operation failed");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "AUTHENTICATION_ERROR",
+                    "Authentication error".to_string(),
+                )
+            }
+            AppError::OidcError(msg) => {
+                tracing::warn!(error = %msg, "OIDC provider error");
+                (StatusCode::BAD_GATEWAY, "OIDC_ERROR", msg.clone())
+            }
+            AppError::Database(err) => {
+                tracing::error!(error = %err, "Database error");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "DATABASE_ERROR",
+                    "A database error occurred".to_string(),
+                )
+            }
+            AppError::Redis(err) => {
+                tracing::error!(error = %err, "Redis error");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "CACHE_ERROR",
+                    "A cache error occurred".to_string(),
+                )
+            }
+            AppError::Internal(err) => {
+                tracing::error!(error = %err, "Internal server error");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "INTERNAL_ERROR",
+                    "An unexpected error occurred".to_string(),
+                )
+            }
         };
 
         let body = json!({
-            "error": message,
+            "error": {
+                "code": code,
+                "message": message,
+            },
             "status": status.as_u16(),
         });
 

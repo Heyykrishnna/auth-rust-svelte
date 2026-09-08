@@ -41,6 +41,9 @@ impl AppConfig {
             .unwrap_or(8080);
 
         let database_url = env::var("DATABASE_URL").context("DATABASE_URL must be specified")?;
+        if !database_url.starts_with("postgres://") && !database_url.starts_with("postgresql://") {
+            anyhow::bail!("DATABASE_URL must start with postgres:// or postgresql://");
+        }
 
         let db_max_connections = env::var("DATABASE_MAX_CONNECTIONS")
             .ok()
@@ -52,6 +55,12 @@ impl AppConfig {
 
         let jwt_secret = env::var("JWT_SECRET")
             .unwrap_or_else(|_| "dev_jwt_secret_change_me_in_production_min_32_chars".to_string());
+
+        if jwt_secret.trim().len() < 32 {
+            anyhow::bail!(
+                "JWT_SECRET must be at least 32 characters long for cryptographic security"
+            );
+        }
 
         let jwt_access_expiry_secs = env::var("JWT_ACCESS_EXPIRY_SECS")
             .ok()

@@ -2,6 +2,7 @@ use axum::routing::{get, post};
 use axum::Router;
 
 use crate::handlers;
+use crate::middleware::rate_limit_layer;
 use crate::AppState;
 
 pub fn routes() -> Router<AppState> {
@@ -21,4 +22,5 @@ pub fn routes() -> Router<AppState> {
             "/oidc/:provider/callback",
             post(handlers::oidc::oidc_callback),
         )
+        .layer(rate_limit_layer())
 }

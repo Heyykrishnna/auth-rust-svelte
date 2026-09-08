@@ -1,6 +1,8 @@
 const API_BASE = import.meta.env.PUBLIC_API_BASE_URL || '';
 
 export class ApiError extends Error {
+	public code?: string;
+
 	constructor(
 		public status: number,
 		message: string,
@@ -8,6 +10,13 @@ export class ApiError extends Error {
 	) {
 		super(message);
 		this.name = 'ApiError';
+
+		if (typeof body === 'object' && body !== null && 'error' in body) {
+			const err = (body as { error: unknown }).error;
+			if (typeof err === 'object' && err !== null && 'code' in err) {
+				this.code = String((err as { code: unknown }).code);
+			}
+		}
 	}
 }
 
@@ -17,9 +26,6 @@ export interface ApiResponse<T> {
 }
 
 async function getAuthToken(): Promise<string | null> {
-	if (typeof document !== 'undefined') {
-		return null;
-	}
 	return null;
 }
 
@@ -46,7 +52,7 @@ async function request<T>(
 	const response = await fetch(`${API_BASE}${path}`, {
 		method,
 		headers,
-		credentials: 'include', // send cookies for session-based auth
+		credentials: 'include',
 		body: options.body ? JSON.stringify(options.body) : undefined
 	});
 
@@ -58,10 +64,23 @@ async function request<T>(
 			errorBody = await response.text();
 		}
 
-		const message =
-			typeof errorBody === 'object' && errorBody !== null && 'message' in errorBody
-				? String((errorBody as { message: unknown }).message)
-				: `HTTP ${response.status} ${response.statusText}`;
+		let message = `HTTP ${response.status} ${response.statusText}`;
+		if (typeof errorBody === 'object' && errorBody !== null) {
+			const record = errorBody as Record<string, unknown>;
+			if (
+				typeof record.error === 'object' &&
+				record.error !== null &&
+				'message' in (record.error as Record<string, unknown>)
+			) {
+				message = String((record.error as Record<string, unknown>).message);
+			} else if (typeof record.error === 'string') {
+				message = record.error;
+			} else if (typeof record.message === 'string') {
+				message = record.message;
+			}
+		} else if (typeof errorBody === 'string' && errorBody.trim().length > 0) {
+			message = errorBody;
+		}
 
 		throw new ApiError(response.status, message, errorBody);
 	}
