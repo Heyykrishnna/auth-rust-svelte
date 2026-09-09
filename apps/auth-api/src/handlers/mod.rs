@@ -2,6 +2,7 @@ pub mod health;
 pub mod login;
 pub mod logout;
 pub mod oidc;
+pub mod password_reset;
 pub mod refresh;
 pub mod register;
 pub mod sessions;

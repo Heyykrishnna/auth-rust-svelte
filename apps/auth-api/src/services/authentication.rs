@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::config::AppConfig;
 use crate::errors::AppError;
 use crate::models::{TokenPair, User, UserProfile};
+use crate::repositories::redis_ephemeral;
 use crate::repositories::sessions as session_repo;
 use crate::repositories::users as user_repo;
 use crate::services::sessions as session_service;
@@ -90,17 +91,52 @@ pub async fn login(
     user_agent: Option<String>,
     ip_address: Option<String>,
 ) -> Result<(UserProfile, TokenPair), AppError> {
+    // 1. Check login attempts counter in Redis before expensive DB query or Argon2id verification
+    if let Err(err) =
+        redis_ephemeral::check_login_attempts(ctx.redis, &email, ctx.config.login_max_attempts)
+            .await
+    {
+        let _ = crate::services::audit::log_event(
+            ctx.db,
+            None,
+            crate::models::AuditEvent::AccountLocked,
+            ip_address.clone(),
+            user_agent.clone(),
+            serde_json::json!({
+                "email": email,
+                "reason": "brute_force_lockout",
+                "max_attempts": ctx.config.login_max_attempts
+            }),
+        )
+        .await;
+        return Err(err);
+    }
+
     let user_opt = user_repo::find_user_by_email(ctx.db, &email).await?;
     let user = match user_opt {
         Some(u) => u,
         None => {
+            let attempts = redis_ephemeral::record_failed_login(
+                ctx.redis,
+                &email,
+                ctx.config.login_lockout_duration_secs,
+            )
+            .await
+            .unwrap_or(1);
+
+            let event = if attempts >= ctx.config.login_max_attempts {
+                crate::models::AuditEvent::AccountLocked
+            } else {
+                crate::models::AuditEvent::LoginFailed
+            };
+
             let _ = crate::services::audit::log_event(
                 ctx.db,
                 None,
-                crate::models::AuditEvent::LoginFailed,
+                event,
                 ip_address,
                 user_agent,
-                serde_json::json!({ "email": email, "reason": "user_not_found" }),
+                serde_json::json!({ "email": email, "reason": "user_not_found", "attempts": attempts }),
             )
             .await;
             return Err(AppError::InvalidCredentials);
@@ -110,13 +146,27 @@ pub async fn login(
     let password_hash = match user.password_hash.as_deref() {
         Some(h) => h,
         None => {
+            let attempts = redis_ephemeral::record_failed_login(
+                ctx.redis,
+                &email,
+                ctx.config.login_lockout_duration_secs,
+            )
+            .await
+            .unwrap_or(1);
+
+            let event = if attempts >= ctx.config.login_max_attempts {
+                crate::models::AuditEvent::AccountLocked
+            } else {
+                crate::models::AuditEvent::LoginFailed
+            };
+
             let _ = crate::services::audit::log_event(
                 ctx.db,
                 Some(user.id),
-                crate::models::AuditEvent::LoginFailed,
+                event,
                 ip_address,
                 user_agent,
-                serde_json::json!({ "email": email, "reason": "no_password" }),
+                serde_json::json!({ "email": email, "reason": "no_password", "attempts": attempts }),
             )
             .await;
             return Err(AppError::InvalidCredentials);
@@ -141,13 +191,27 @@ pub async fn login(
 
     let argon2 = create_argon2id();
     if argon2.verify_password(password.as_bytes(), &parsed_hash).is_err() {
+        let attempts = redis_ephemeral::record_failed_login(
+            ctx.redis,
+            &email,
+            ctx.config.login_lockout_duration_secs,
+        )
+        .await
+        .unwrap_or(1);
+
+        let event = if attempts >= ctx.config.login_max_attempts {
+            crate::models::AuditEvent::AccountLocked
+        } else {
+            crate::models::AuditEvent::LoginFailed
+        };
+
         let _ = crate::services::audit::log_event(
             ctx.db,
             Some(user.id),
-            crate::models::AuditEvent::LoginFailed,
+            event,
             ip_address,
             user_agent,
-            serde_json::json!({ "email": email, "reason": "invalid_password" }),
+            serde_json::json!({ "email": email, "reason": "invalid_password", "attempts": attempts }),
         )
         .await;
         return Err(AppError::InvalidCredentials);
@@ -167,6 +231,9 @@ pub async fn login(
             "Account is suspended or inactive".to_string(),
         ));
     }
+
+    // Login succeeded: clear recorded failed login attempts in Redis
+    let _ = redis_ephemeral::clear_login_attempts(ctx.redis, &email).await;
 
     let session_id = Uuid::new_v4();
     let tokens = generate_token_pair(
@@ -299,6 +366,126 @@ pub async fn verify_email(ctx: AuthContext<'_>, token: &str) -> Result<(), AppEr
     .await;
 
     Ok(())
+}
+
+pub async fn request_password_reset(
+    ctx: AuthContext<'_>,
+    email: String,
+) -> Result<Option<String>, AppError> {
+    let normalized = redis_ephemeral::normalize_email(&email);
+    let user_opt = user_repo::find_user_by_email(ctx.db, &normalized).await?;
+
+    if let Some(user) = user_opt {
+        let token = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
+
+        redis_ephemeral::store_password_reset_token(
+            ctx.redis,
+            &token,
+            user.id,
+            ctx.config.password_reset_expiry_secs,
+        )
+        .await?;
+
+        return Ok(Some(token));
+    }
+
+    Ok(None)
+}
+
+pub async fn reset_password(
+    ctx: AuthContext<'_>,
+    token: String,
+    new_password: String,
+) -> Result<(), AppError> {
+    if new_password.trim().len() < 8 {
+        return Err(AppError::Validation(
+            "Password must be at least 8 characters long".to_string(),
+        ));
+    }
+
+    let user_id = redis_ephemeral::consume_password_reset_token(ctx.redis, &token)
+        .await?
+        .ok_or_else(|| AppError::InvalidToken("Invalid or expired password reset token".to_string()))?;
+
+    let user = user_repo::find_user_by_id(ctx.db, user_id)
+        .await?
+        .ok_or(AppError::UserNotFound)?;
+
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = create_argon2id();
+    let password_hash = argon2
+        .hash_password(new_password.as_bytes(), &salt)
+        .map_err(|e| AppError::PasswordHash(e.to_string()))?
+        .to_string();
+
+    user_repo::update_password_hash(ctx.db, user.id, &password_hash).await?;
+
+    // Invalidate all existing sessions and refresh tokens on password change
+    let _ = session_service::revoke_all_user_sessions(ctx.db, user.id).await;
+
+    // Clear any brute-force lockout counter for this email
+    let _ = redis_ephemeral::clear_login_attempts(ctx.redis, &user.email).await;
+
+    let _ = crate::services::audit::log_event(
+        ctx.db,
+        Some(user.id),
+        crate::models::AuditEvent::PasswordChanged,
+        None,
+        None,
+        serde_json::json!({ "email": user.email }),
+    )
+    .await;
+
+    Ok(())
+}
+
+pub async fn generate_verification_code(
+    ctx: AuthContext<'_>,
+    user_id: Uuid,
+    email: String,
+) -> Result<String, AppError> {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    let code: u32 = rng.gen_range(100_000..=999_999);
+    let code_str = code.to_string();
+
+    let data = redis_ephemeral::VerificationCodeData {
+        user_id,
+        email,
+    };
+
+    redis_ephemeral::store_verification_code(
+        ctx.redis,
+        &code_str,
+        &data,
+        ctx.config.verification_code_expiry_secs,
+    )
+    .await?;
+
+    Ok(code_str)
+}
+
+pub async fn verify_email_code(
+    ctx: AuthContext<'_>,
+    code: &str,
+) -> Result<redis_ephemeral::VerificationCodeData, AppError> {
+    let data = redis_ephemeral::consume_verification_code(ctx.redis, code)
+        .await?
+        .ok_or_else(|| AppError::InvalidToken("Invalid or expired verification code".to_string()))?;
+
+    user_repo::set_email_verified(ctx.db, data.user_id, true).await?;
+
+    let _ = crate::services::audit::log_event(
+        ctx.db,
+        Some(data.user_id),
+        crate::models::AuditEvent::EmailVerified,
+        None,
+        None,
+        serde_json::json!({ "email": data.email, "method": "otp_code" }),
+    )
+    .await;
+
+    Ok(data)
 }
 
 pub async fn get_oidc_authorization_url(

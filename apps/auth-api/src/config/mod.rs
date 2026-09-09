@@ -13,6 +13,10 @@ pub struct AppConfig {
     pub jwt_secret: String,
     pub jwt_access_expiry_secs: u64,
     pub jwt_refresh_expiry_secs: u64,
+    pub login_max_attempts: u32,
+    pub login_lockout_duration_secs: u64,
+    pub verification_code_expiry_secs: u64,
+    pub password_reset_expiry_secs: u64,
     pub google_client_id: Option<String>,
     pub google_client_secret: Option<String>,
     pub google_redirect_uri: Option<String>,
@@ -72,6 +76,26 @@ impl AppConfig {
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(604_800);
 
+        let login_max_attempts = env::var("LOGIN_MAX_ATTEMPTS")
+            .ok()
+            .and_then(|v| v.parse::<u32>().ok())
+            .unwrap_or(5);
+
+        let login_lockout_duration_secs = env::var("LOGIN_LOCKOUT_DURATION_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(900); // 15 minutes
+
+        let verification_code_expiry_secs = env::var("VERIFICATION_CODE_EXPIRY_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(900); // 15 minutes
+
+        let password_reset_expiry_secs = env::var("PASSWORD_RESET_EXPIRY_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(900); // 15 minutes
+
         let cookie_secure = env::var("COOKIE_SECURE")
             .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
             .unwrap_or(false);
@@ -113,6 +137,10 @@ impl AppConfig {
             jwt_secret,
             jwt_access_expiry_secs,
             jwt_refresh_expiry_secs,
+            login_max_attempts,
+            login_lockout_duration_secs,
+            verification_code_expiry_secs,
+            password_reset_expiry_secs,
             cookie_secure,
             cookie_domain,
             google_client_id,

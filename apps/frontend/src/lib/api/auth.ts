@@ -88,6 +88,15 @@ export const authApi = {
 	oidcCallback: (provider: 'google' | 'github', code: string, state: string) =>
 		apiClient.post<AuthSession>(`/api/auth/oidc/${provider}/callback`, { code, state }),
 
+	forgotPassword: (email: string) =>
+		apiClient.post<{ message: string; reset_token?: string }>('/api/auth/forgot-password', { email }),
+
+	resetPassword: (token: string, new_password: string) =>
+		apiClient.post<{ message: string }>('/api/auth/reset-password', { token, new_password }),
+
+	verifyCode: (code: string) =>
+		apiClient.post<{ message: string }>('/api/auth/verify-code', { code }),
+
 	health: () => apiClient.get<{ status: string; version: string }>('/health')
 };
 

@@ -21,6 +21,7 @@ apps/auth-api/target/
 *.swo
 .DS_Store
 SKILLS.md
+AGENTS.md
 
 *.log
 logs/
@@ -29,3 +30,4 @@ infra/k8s/**/secrets-actual.yaml
 infra/k8s/**/*-secret-values.yaml
 
 sqlx-data.json
+auth-api/AGENTS.md

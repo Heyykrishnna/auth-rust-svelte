@@ -16,6 +16,15 @@ pub fn routes() -> Router<AppState> {
             get(handlers::verify_email::verify_email)
                 .post(handlers::verify_email::verify_email_post),
         )
+        .route("/verify-code", post(handlers::verify_email::verify_code))
+        .route(
+            "/forgot-password",
+            post(handlers::password_reset::forgot_password),
+        )
+        .route(
+            "/reset-password",
+            post(handlers::password_reset::reset_password),
+        )
         .route("/me", get(handlers::users::get_me))
         .route("/oidc/:provider", get(handlers::oidc::oidc_url))
         .route(

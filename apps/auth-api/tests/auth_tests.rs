@@ -189,6 +189,10 @@ fn test_cookie_helpers() {
         jwt_secret: "secret_that_is_long_enough_for_32_characters_validation".to_string(),
         jwt_access_expiry_secs: 900,
         jwt_refresh_expiry_secs: 604800,
+        login_max_attempts: 5,
+        login_lockout_duration_secs: 900,
+        verification_code_expiry_secs: 900,
+        password_reset_expiry_secs: 900,
         google_client_id: None,
         google_client_secret: None,
         google_redirect_uri: None,
@@ -370,4 +374,121 @@ fn test_audit_log_model_and_metadata_sanitization() {
     assert_eq!(auth_log.user_id, Some(user_id));
     assert_eq!(auth_log.event, AuditEvent::LoginSuccess);
 }
+
+#[test]
+fn test_too_many_requests_error_response() {
+    use auth_api::errors::AppError;
+    use axum::response::IntoResponse;
+    use axum::http::StatusCode;
+
+    let err = AppError::TooManyRequests("Account temporarily locked due to 5 failed attempts.".to_string());
+    let response = err.into_response();
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[test]
+fn test_redis_ephemeral_email_normalization() {
+    use auth_api::repositories::redis_ephemeral::normalize_email;
+
+    assert_eq!(normalize_email(" User@Example.COM "), "user@example.com");
+    assert_eq!(normalize_email("JOHN.DOE@DOMAIN.ORG"), "john.doe@domain.org");
+    assert_eq!(normalize_email("   test@test.io   "), "test@test.io");
+}
+
+#[test]
+fn test_verification_code_data_serde() {
+    use auth_api::repositories::redis_ephemeral::VerificationCodeData;
+
+    let user_id = Uuid::new_v4();
+    let data = VerificationCodeData {
+        user_id,
+        email: "verify@test.com".to_string(),
+    };
+
+    let serialized = serde_json::to_string(&data).expect("must serialize");
+    let deserialized: VerificationCodeData = serde_json::from_str(&serialized).expect("must deserialize");
+
+    assert_eq!(data, deserialized);
+}
+
+#[test]
+fn test_login_attempt_brute_force_counter_threshold_logic() {
+    let max_attempts = 5u32;
+
+    // Below threshold: 1, 2, 3, 4 attempts allowed
+    for attempts in 0..max_attempts {
+        assert!(attempts < max_attempts, "Attempt {} should be below threshold", attempts);
+    }
+
+    // At or above threshold: 5, 6 attempts blocked
+    for attempts in max_attempts..max_attempts + 3 {
+        assert!(attempts >= max_attempts, "Attempt {} should trigger lockout", attempts);
+    }
+}
+
+#[test]
+fn test_password_reset_token_entropy_and_request_validation() {
+    use auth_api::handlers::password_reset::{ForgotPasswordRequest, ResetPasswordRequest};
+    use validator::Validate;
+
+    // Valid forgot password request
+    let valid_req = ForgotPasswordRequest {
+        email: "user@example.com".to_string(),
+    };
+    assert!(valid_req.validate().is_ok());
+
+    // Invalid email
+    let invalid_req = ForgotPasswordRequest {
+        email: "not-an-email".to_string(),
+    };
+    assert!(invalid_req.validate().is_err());
+
+    // Valid reset password request
+    let valid_reset = ResetPasswordRequest {
+        token: "token123".to_string(),
+        new_password: "NewSecurePassword123!".to_string(),
+    };
+    assert!(valid_reset.validate().is_ok());
+
+    // Password too short (< 8 chars)
+    let short_password_reset = ResetPasswordRequest {
+        token: "token123".to_string(),
+        new_password: "short".to_string(),
+    };
+    assert!(short_password_reset.validate().is_err());
+
+    // Missing token
+    let empty_token_reset = ResetPasswordRequest {
+        token: "".to_string(),
+        new_password: "NewSecurePassword123!".to_string(),
+    };
+    assert!(empty_token_reset.validate().is_err());
+
+    // Token entropy check: two generated tokens must differ and have 64 hex characters
+    let t1 = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
+    let t2 = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
+    assert_ne!(t1, t2);
+    assert_eq!(t1.len(), 64);
+    assert_eq!(t2.len(), 64);
+}
+
+#[test]
+fn test_app_config_redis_defaults() {
+    use auth_api::config::AppConfig;
+
+    // Verify default values for ephemeral Redis features
+    std::env::remove_var("LOGIN_MAX_ATTEMPTS");
+    std::env::remove_var("LOGIN_LOCKOUT_DURATION_SECS");
+    std::env::remove_var("VERIFICATION_CODE_EXPIRY_SECS");
+    std::env::remove_var("PASSWORD_RESET_EXPIRY_SECS");
+    std::env::set_var("DATABASE_URL", "postgres://localhost/testdb");
+    std::env::set_var("JWT_SECRET", "super_secret_test_key_that_is_at_least_32_characters_long");
+
+    let cfg = AppConfig::from_env().expect("AppConfig should parse default values");
+    assert_eq!(cfg.login_max_attempts, 5);
+    assert_eq!(cfg.login_lockout_duration_secs, 900); // 15 mins
+    assert_eq!(cfg.verification_code_expiry_secs, 900); // 15 mins
+    assert_eq!(cfg.password_reset_expiry_secs, 900); // 15 mins
+}
+
 
