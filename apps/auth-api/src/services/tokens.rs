@@ -21,12 +21,45 @@ pub fn generate_token_pair(
     access_expiry_secs: u64,
     refresh_expiry_secs: u64,
 ) -> Result<TokenPair, AppError> {
+    let default_roles = vec!["user".to_string()];
+    let default_permissions = vec![
+        "profile.read".to_string(),
+        "profile.write".to_string(),
+        "sessions.read".to_string(),
+        "sessions.delete".to_string(),
+    ];
+    generate_token_pair_with_roles_and_permissions(
+        user_id,
+        email,
+        display_name,
+        default_roles,
+        default_permissions,
+        session_id,
+        secret,
+        access_expiry_secs,
+        refresh_expiry_secs,
+    )
+}
+
+pub fn generate_token_pair_with_roles_and_permissions(
+    user_id: Uuid,
+    email: &str,
+    display_name: &str,
+    roles: Vec<String>,
+    permissions: Vec<String>,
+    session_id: Uuid,
+    secret: &str,
+    access_expiry_secs: u64,
+    refresh_expiry_secs: u64,
+) -> Result<TokenPair, AppError> {
     let now = Utc::now().timestamp();
 
     let access_claims = AccessTokenClaims {
         sub: user_id.to_string(),
         email: email.to_string(),
         display_name: display_name.to_string(),
+        roles,
+        permissions,
         iat: now,
         exp: now + access_expiry_secs as i64,
         jti: Uuid::new_v4().to_string(),

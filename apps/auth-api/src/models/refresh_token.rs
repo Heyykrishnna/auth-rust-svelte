@@ -54,6 +54,10 @@ pub struct AccessTokenClaims {
     pub sub: String,
     pub email: String,
     pub display_name: String,
+    #[serde(default)]
+    pub roles: Vec<String>,
+    #[serde(default)]
+    pub permissions: Vec<String>,
     pub iat: i64,
     pub exp: i64,
     pub jti: String,
