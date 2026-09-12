@@ -13,8 +13,8 @@ use crate::repositories::sessions as session_repo;
 use crate::repositories::users as user_repo;
 use crate::services::sessions as session_service;
 use crate::services::tokens::{
-    generate_token_pair, generate_token_pair_with_roles_and_permissions, hash_token,
-    validate_access_token, validate_email_verification_token, validate_refresh_token,
+    generate_token_pair_with_roles_and_permissions, hash_token, validate_access_token,
+    validate_email_verification_token, validate_refresh_token,
 };
 use deadpool_redis::Pool as RedisPool;
 
@@ -50,7 +50,8 @@ pub async fn register(
     let user = user_repo::create_user(ctx.db, user).await?;
 
     let _ = crate::repositories::authorization::assign_role_to_user(ctx.db, user.id, "user").await;
-    let (roles, permissions) = crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
+    let (roles, permissions) =
+        crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
     let session_id = Uuid::new_v4();
     let tokens = generate_token_pair_with_roles_and_permissions(
@@ -195,7 +196,10 @@ pub async fn login(
     };
 
     let argon2 = create_argon2id();
-    if argon2.verify_password(password.as_bytes(), &parsed_hash).is_err() {
+    if argon2
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_err()
+    {
         let attempts = redis_ephemeral::record_failed_login(
             ctx.redis,
             &email,
@@ -240,7 +244,8 @@ pub async fn login(
     // Login succeeded: clear recorded failed login attempts in Redis
     let _ = redis_ephemeral::clear_login_attempts(ctx.redis, &email).await;
 
-    let (roles, permissions) = crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
+    let (roles, permissions) =
+        crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
     let session_id = Uuid::new_v4();
     let tokens = generate_token_pair_with_roles_and_permissions(
@@ -309,7 +314,8 @@ pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenP
         .await?
         .ok_or(AppError::UserNotFound)?;
 
-    let (roles, permissions) = crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
+    let (roles, permissions) =
+        crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
     let new_session_id = Uuid::new_v4();
     let tokens = generate_token_pair_with_roles_and_permissions(
@@ -418,7 +424,9 @@ pub async fn reset_password(
 
     let user_id = redis_ephemeral::consume_password_reset_token(ctx.redis, &token)
         .await?
-        .ok_or_else(|| AppError::InvalidToken("Invalid or expired password reset token".to_string()))?;
+        .ok_or_else(|| {
+            AppError::InvalidToken("Invalid or expired password reset token".to_string())
+        })?;
 
     let user = user_repo::find_user_by_id(ctx.db, user_id)
         .await?
@@ -462,10 +470,7 @@ pub async fn generate_verification_code(
     let code: u32 = rng.gen_range(100_000..=999_999);
     let code_str = code.to_string();
 
-    let data = redis_ephemeral::VerificationCodeData {
-        user_id,
-        email,
-    };
+    let data = redis_ephemeral::VerificationCodeData { user_id, email };
 
     redis_ephemeral::store_verification_code(
         ctx.redis,
@@ -484,7 +489,9 @@ pub async fn verify_email_code(
 ) -> Result<redis_ephemeral::VerificationCodeData, AppError> {
     let data = redis_ephemeral::consume_verification_code(ctx.redis, code)
         .await?
-        .ok_or_else(|| AppError::InvalidToken("Invalid or expired verification code".to_string()))?;
+        .ok_or_else(|| {
+            AppError::InvalidToken("Invalid or expired verification code".to_string())
+        })?;
 
     user_repo::set_email_verified(ctx.db, data.user_id, true).await?;
 

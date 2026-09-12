@@ -10,8 +10,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
             "/me",
-            get(handlers::users::get_me)
-                .route_layer(require_permission(Permission::ProfileRead)),
+            get(handlers::users::get_me).route_layer(require_permission(Permission::ProfileRead)),
         )
         .route(
             "/profile",
@@ -20,8 +19,7 @@ pub fn routes() -> Router<AppState> {
         )
         .route(
             "/",
-            get(handlers::users::list_users)
-                .route_layer(require_permission(Permission::UsersRead)),
+            get(handlers::users::list_users).route_layer(require_permission(Permission::UsersRead)),
         )
         .route(
             "/:id",

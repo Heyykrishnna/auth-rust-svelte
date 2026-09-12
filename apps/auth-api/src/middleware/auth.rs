@@ -113,7 +113,11 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
             set.insert(Permission::SessionsDelete);
             set
         } else {
-            claims.permissions.into_iter().map(Permission::from).collect()
+            claims
+                .permissions
+                .into_iter()
+                .map(Permission::from)
+                .collect()
         };
 
         let authenticated_user = Self {

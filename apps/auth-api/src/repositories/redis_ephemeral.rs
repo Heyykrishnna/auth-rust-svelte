@@ -212,8 +212,9 @@ pub async fn consume_password_reset_token(
                 .await
                 .map_err(|e| AppError::Redis(e.to_string()))?;
 
-            let user_id = Uuid::parse_str(&user_id_str)
-                .map_err(|_| AppError::InvalidToken("Malformed user ID in reset token".to_string()))?;
+            let user_id = Uuid::parse_str(&user_id_str).map_err(|_| {
+                AppError::InvalidToken("Malformed user ID in reset token".to_string())
+            })?;
             Ok(Some(user_id))
         }
         None => Ok(None),

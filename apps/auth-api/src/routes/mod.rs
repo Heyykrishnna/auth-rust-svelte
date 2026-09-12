@@ -57,5 +57,6 @@ pub fn build_router(state: AppState) -> Router {
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(cors)
         .layer(prometheus_layer)
+        .layer(axum::Extension(state.clone()))
         .with_state(state)
 }

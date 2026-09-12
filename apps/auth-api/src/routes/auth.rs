@@ -27,8 +27,9 @@ pub fn routes() -> Router<AppState> {
         )
         .route(
             "/me",
-            get(handlers::users::get_me)
-                .route_layer(crate::middleware::require_permission(crate::models::Permission::ProfileRead)),
+            get(handlers::users::get_me).route_layer(crate::middleware::require_permission(
+                crate::models::Permission::ProfileRead,
+            )),
         )
         .route("/oidc/:provider", get(handlers::oidc::oidc_url))
         .route(

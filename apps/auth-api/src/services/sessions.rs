@@ -23,7 +23,13 @@ pub async fn create_session(
     let expires_at = Utc::now()
         + chrono::Duration::from_std(duration).map_err(|e| AppError::Internal(e.to_string()))?;
 
-    let session = Session::new(user_id, token_hash.clone(), expires_at, user_agent, ip_address);
+    let session = Session::new(
+        user_id,
+        token_hash.clone(),
+        expires_at,
+        user_agent,
+        ip_address,
+    );
 
     session_repo::store_redis_session(redis, &session).await?;
     let _ = session_repo::create_pg_session(db, &session).await;

@@ -61,7 +61,9 @@ pub async fn verify_code(
     Json(payload): Json<VerifyCodeRequest>,
 ) -> Result<Json<VerifyEmailResponse>, AppError> {
     use validator::Validate;
-    payload.validate().map_err(|e| AppError::Validation(e.to_string()))?;
+    payload
+        .validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
 
     let ctx = AuthContext {
         config: &state.config,

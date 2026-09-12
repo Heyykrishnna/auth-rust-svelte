@@ -41,6 +41,7 @@ pub fn generate_token_pair(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn generate_token_pair_with_roles_and_permissions(
     user_id: Uuid,
     email: &str,

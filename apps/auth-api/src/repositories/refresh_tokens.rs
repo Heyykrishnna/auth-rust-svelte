@@ -4,10 +4,7 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::models::RefreshToken;
 
-pub async fn create_refresh_token(
-    pool: &PgPool,
-    token: &RefreshToken,
-) -> Result<(), AppError> {
+pub async fn create_refresh_token(pool: &PgPool, token: &RefreshToken) -> Result<(), AppError> {
     sqlx::query(
         r#"
         INSERT INTO refresh_tokens (id, user_id, session_id, token_hash, family_id, expires_at, revoked_at, created_at)
@@ -38,7 +35,7 @@ pub async fn find_by_token_hash(
         FROM refresh_tokens
         WHERE token_hash = $1
         LIMIT 1
-        "#
+        "#,
     )
     .bind(token_hash)
     .fetch_optional(pool)
@@ -53,7 +50,7 @@ pub async fn revoke_token(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
         UPDATE refresh_tokens
         SET revoked_at = NOW()
         WHERE id = $1 AND revoked_at IS NULL
-        "#
+        "#,
     )
     .bind(id)
     .execute(pool)
@@ -68,7 +65,7 @@ pub async fn revoke_family(pool: &PgPool, family_id: Uuid) -> Result<u64, AppErr
         UPDATE refresh_tokens
         SET revoked_at = NOW()
         WHERE family_id = $1 AND revoked_at IS NULL
-        "#
+        "#,
     )
     .bind(family_id)
     .execute(pool)
@@ -83,7 +80,7 @@ pub async fn revoke_all_user_tokens(pool: &PgPool, user_id: Uuid) -> Result<u64,
         UPDATE refresh_tokens
         SET revoked_at = NOW()
         WHERE user_id = $1 AND revoked_at IS NULL
-        "#
+        "#,
     )
     .bind(user_id)
     .execute(pool)

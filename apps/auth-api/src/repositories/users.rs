@@ -118,11 +118,7 @@ pub async fn update_password_hash(
     Ok(())
 }
 
-pub async fn list_users(
-    pool: &PgPool,
-    limit: i64,
-    offset: i64,
-) -> Result<Vec<User>, AppError> {
+pub async fn list_users(pool: &PgPool, limit: i64, offset: i64) -> Result<Vec<User>, AppError> {
     let users = sqlx::query_as::<_, User>(
         r#"
         SELECT id, email, display_name, password_hash, avatar_url, email_verified, status, created_at, updated_at
@@ -131,7 +127,7 @@ pub async fn list_users(
         LIMIT $1 OFFSET $2
         "#,
     )
-    .bind(limit.min(100).max(1))
+    .bind(limit.clamp(1, 100))
     .bind(offset.max(0))
     .fetch_all(pool)
     .await?;

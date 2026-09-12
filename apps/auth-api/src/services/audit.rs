@@ -36,9 +36,20 @@ pub async fn list_user_audit_events(
 
 pub fn sanitize_audit_metadata(mut val: serde_json::Value) -> serde_json::Value {
     if let serde_json::Value::Object(ref mut map) = val {
-        for key in ["password", "password_hash", "token", "access_token", "refresh_token", "secret", "authorization"] {
+        for key in [
+            "password",
+            "password_hash",
+            "token",
+            "access_token",
+            "refresh_token",
+            "secret",
+            "authorization",
+        ] {
             if map.contains_key(key) {
-                map.insert(key.to_string(), serde_json::Value::String("[REDACTED]".to_string()));
+                map.insert(
+                    key.to_string(),
+                    serde_json::Value::String("[REDACTED]".to_string()),
+                );
             }
         }
     }
