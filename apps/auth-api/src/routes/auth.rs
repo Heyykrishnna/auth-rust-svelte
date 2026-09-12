@@ -25,7 +25,11 @@ pub fn routes() -> Router<AppState> {
             "/reset-password",
             post(handlers::password_reset::reset_password),
         )
-        .route("/me", get(handlers::users::get_me))
+        .route(
+            "/me",
+            get(handlers::users::get_me)
+                .route_layer(crate::middleware::require_permission(crate::models::Permission::ProfileRead)),
+        )
         .route("/oidc/:provider", get(handlers::oidc::oidc_url))
         .route(
             "/oidc/:provider/callback",

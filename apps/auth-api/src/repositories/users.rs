@@ -117,3 +117,38 @@ pub async fn update_password_hash(
 
     Ok(())
 }
+
+pub async fn list_users(
+    pool: &PgPool,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<User>, AppError> {
+    let users = sqlx::query_as::<_, User>(
+        r#"
+        SELECT id, email, display_name, password_hash, avatar_url, email_verified, status, created_at, updated_at
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+        "#,
+    )
+    .bind(limit.min(100).max(1))
+    .bind(offset.max(0))
+    .fetch_all(pool)
+    .await?;
+
+    Ok(users)
+}
+
+pub async fn delete_user(pool: &PgPool, id: Uuid) -> Result<bool, AppError> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM users
+        WHERE id = $1
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}

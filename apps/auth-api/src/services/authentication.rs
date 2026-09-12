@@ -13,8 +13,8 @@ use crate::repositories::sessions as session_repo;
 use crate::repositories::users as user_repo;
 use crate::services::sessions as session_service;
 use crate::services::tokens::{
-    generate_token_pair, hash_token, validate_access_token, validate_email_verification_token,
-    validate_refresh_token,
+    generate_token_pair, generate_token_pair_with_roles_and_permissions, hash_token,
+    validate_access_token, validate_email_verification_token, validate_refresh_token,
 };
 use deadpool_redis::Pool as RedisPool;
 
@@ -49,11 +49,16 @@ pub async fn register(
     let user = User::new(email, display_name, Some(password_hash));
     let user = user_repo::create_user(ctx.db, user).await?;
 
+    let _ = crate::repositories::authorization::assign_role_to_user(ctx.db, user.id, "user").await;
+    let (roles, permissions) = crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
+
     let session_id = Uuid::new_v4();
-    let tokens = generate_token_pair(
+    let tokens = generate_token_pair_with_roles_and_permissions(
         user.id,
         &user.email,
         &user.display_name,
+        roles.into_iter().map(|r| r.to_string()).collect(),
+        permissions.into_iter().map(|p| p.to_string()).collect(),
         session_id,
         &ctx.config.jwt_secret,
         ctx.config.jwt_access_expiry_secs,
@@ -235,11 +240,15 @@ pub async fn login(
     // Login succeeded: clear recorded failed login attempts in Redis
     let _ = redis_ephemeral::clear_login_attempts(ctx.redis, &email).await;
 
+    let (roles, permissions) = crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
+
     let session_id = Uuid::new_v4();
-    let tokens = generate_token_pair(
+    let tokens = generate_token_pair_with_roles_and_permissions(
         user.id,
         &user.email,
         &user.display_name,
+        roles.into_iter().map(|r| r.to_string()).collect(),
+        permissions.into_iter().map(|p| p.to_string()).collect(),
         session_id,
         &ctx.config.jwt_secret,
         ctx.config.jwt_access_expiry_secs,
@@ -300,11 +309,15 @@ pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenP
         .await?
         .ok_or(AppError::UserNotFound)?;
 
+    let (roles, permissions) = crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
+
     let new_session_id = Uuid::new_v4();
-    let tokens = generate_token_pair(
+    let tokens = generate_token_pair_with_roles_and_permissions(
         user.id,
         &user.email,
         &user.display_name,
+        roles.into_iter().map(|r| r.to_string()).collect(),
+        permissions.into_iter().map(|p| p.to_string()).collect(),
         new_session_id,
         &ctx.config.jwt_secret,
         ctx.config.jwt_access_expiry_secs,

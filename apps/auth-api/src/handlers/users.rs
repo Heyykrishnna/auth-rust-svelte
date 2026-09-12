@@ -50,3 +50,32 @@ pub async fn update_profile(
 
     Ok(Json(UserProfile::from(updated)))
 }
+
+#[derive(Debug, Deserialize)]
+pub struct PaginationQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+pub async fn list_users(
+    State(state): State<AppState>,
+    _user: AuthenticatedUser,
+    axum::extract::Query(query): axum::extract::Query<PaginationQuery>,
+) -> Result<Json<Vec<UserProfile>>, AppError> {
+    let limit = query.limit.unwrap_or(20);
+    let offset = query.offset.unwrap_or(0);
+    let users = user_repo::list_users(&state.db, limit, offset).await?;
+    Ok(Json(users.into_iter().map(UserProfile::from).collect()))
+}
+
+pub async fn delete_user(
+    State(state): State<AppState>,
+    _user: AuthenticatedUser,
+    axum::extract::Path(user_id): axum::extract::Path<uuid::Uuid>,
+) -> Result<axum::http::StatusCode, AppError> {
+    let deleted = user_repo::delete_user(&state.db, user_id).await?;
+    if !deleted {
+        return Err(AppError::UserNotFound);
+    }
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}

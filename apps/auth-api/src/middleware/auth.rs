@@ -1,9 +1,11 @@
 use axum::async_trait;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::errors::AppError;
+use crate::models::{Permission, Role};
 use crate::repositories::sessions as session_repo;
 use crate::services::tokens::validate_access_token;
 use crate::AppState;
@@ -14,6 +16,26 @@ pub struct AuthenticatedUser {
     pub email: String,
     pub display_name: String,
     pub jti: String,
+    pub roles: HashSet<Role>,
+    pub permissions: HashSet<Permission>,
+}
+
+impl AuthenticatedUser {
+    pub fn has_role(&self, role: &Role) -> bool {
+        self.roles.contains(role)
+    }
+
+    pub fn has_permission(&self, permission: &Permission) -> bool {
+        self.permissions.contains(permission)
+    }
+
+    pub fn has_any_permission(&self, perms: &[Permission]) -> bool {
+        perms.iter().any(|p| self.has_permission(p))
+    }
+
+    pub fn has_all_permissions(&self, perms: &[Permission]) -> bool {
+        perms.iter().all(|p| self.has_permission(p))
+    }
 }
 
 #[async_trait]
@@ -24,6 +46,11 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
+        // 0. Fast-path: Check if already authenticated by upstream middleware layer
+        if let Some(user) = parts.extensions.get::<AuthenticatedUser>() {
+            return Ok(user.clone());
+        }
+
         // 1. Check cookie first (session_token or access_token)
         let cookie_token = parts
             .headers
@@ -70,11 +97,37 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
         let user_id = Uuid::parse_str(&claims.sub)
             .map_err(|_| AppError::Unauthorized("Invalid subject in token".to_string()))?;
 
-        Ok(Self {
+        let roles: HashSet<Role> = if claims.roles.is_empty() {
+            let mut set = HashSet::new();
+            set.insert(Role::User);
+            set
+        } else {
+            claims.roles.into_iter().map(Role::from).collect()
+        };
+
+        let permissions: HashSet<Permission> = if claims.permissions.is_empty() {
+            let mut set = HashSet::new();
+            set.insert(Permission::ProfileRead);
+            set.insert(Permission::ProfileWrite);
+            set.insert(Permission::SessionsRead);
+            set.insert(Permission::SessionsDelete);
+            set
+        } else {
+            claims.permissions.into_iter().map(Permission::from).collect()
+        };
+
+        let authenticated_user = Self {
             user_id,
             email: claims.email,
             display_name: claims.display_name,
             jti: claims.jti,
-        })
+            roles,
+            permissions,
+        };
+
+        // Cache in request extensions for downstream handlers/extractors
+        parts.extensions.insert(authenticated_user.clone());
+
+        Ok(authenticated_user)
     }
 }
