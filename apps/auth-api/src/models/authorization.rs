@@ -148,7 +148,6 @@ impl<'de> Deserialize<'de> for Permission {
     }
 }
 
-// Marker traits for compile-time verified extractors
 pub trait PermissionCheck: Send + Sync + 'static {
     fn permission() -> Permission;
 }

@@ -97,7 +97,6 @@ pub async fn login(
     user_agent: Option<String>,
     ip_address: Option<String>,
 ) -> Result<(UserProfile, TokenPair), AppError> {
-    // 1. Check login attempts counter in Redis before expensive DB query or Argon2id verification
     if let Err(err) =
         redis_ephemeral::check_login_attempts(ctx.redis, &email, ctx.config.login_max_attempts)
             .await
@@ -241,7 +240,6 @@ pub async fn login(
         ));
     }
 
-    // Login succeeded: clear recorded failed login attempts in Redis
     let _ = redis_ephemeral::clear_login_attempts(ctx.redis, &email).await;
 
     let (roles, permissions) =
@@ -441,10 +439,7 @@ pub async fn reset_password(
 
     user_repo::update_password_hash(ctx.db, user.id, &password_hash).await?;
 
-    // Invalidate all existing sessions and refresh tokens on password change
     let _ = session_service::revoke_all_user_sessions(ctx.db, user.id).await;
-
-    // Clear any brute-force lockout counter for this email
     let _ = redis_ephemeral::clear_login_attempts(ctx.redis, &user.email).await;
 
     let _ = crate::services::audit::log_event(

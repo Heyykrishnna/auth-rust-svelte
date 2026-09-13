@@ -1,102 +1,96 @@
-import { apiClient } from './client';
+import { apiClient, type RequestOptions } from './client';
+import type {
+	AuthSession,
+	AuthTokens,
+	AuthUser,
+	ForgotPasswordRequest,
+	HealthResponse,
+	LoginRequest,
+	MessageResponse,
+	OidcProvider,
+	RefreshRequest,
+	RegisterRequest,
+	ResetPasswordRequest,
+	SessionItem,
+	UpdateProfileRequest,
+	VerifyCodeRequest
+} from './types';
 
-export interface AuthUser {
-	id: string;
-	email: string;
-	display_name: string;
-	avatar_url: string | null;
-	email_verified: boolean;
-	status: string;
-	created_at: string;
-}
-
-export interface AuthTokens {
-	access_token: string;
-	refresh_token: string;
-	token_type: 'Bearer';
-	expires_in: number;
-}
-
-export interface AuthSession {
-	user: AuthUser;
-	tokens?: AuthTokens;
-	message?: string;
-}
-
-export interface RegisterRequest {
-	email: string;
-	password: string;
-	display_name: string;
-}
-
-export interface LoginRequest {
-	email: string;
-	password: string;
-}
-
-export interface RefreshRequest {
-	refresh_token?: string;
-}
-
-export interface OidcProvider {
-	provider: 'google' | 'github';
-	authorization_url: string;
-}
-
-export interface SessionItem {
-	id: string;
-	user_agent: string | null;
-	ip_address: string | null;
-	created_at: string;
-	last_used_at: string;
-	is_current: boolean;
-}
-
-export interface UpdateProfileRequest {
-	display_name: string;
-	avatar_url?: string | null;
-}
+export * from './types';
 
 export const authApi = {
-	register: (data: RegisterRequest) =>
-		apiClient.post<AuthSession>('/api/auth/register', data),
+	register: (data: RegisterRequest, options?: RequestOptions) =>
+		options
+			? apiClient.post<AuthSession>('/api/auth/register', data, options)
+			: apiClient.post<AuthSession>('/api/auth/register', data),
 
-	login: (data: LoginRequest) =>
-		apiClient.post<AuthSession>('/api/auth/login', data),
+	login: (data: LoginRequest, options?: RequestOptions) =>
+		options
+			? apiClient.post<AuthSession>('/api/auth/login', data, options)
+			: apiClient.post<AuthSession>('/api/auth/login', data),
 
-	logout: () =>
-		apiClient.post<void>('/api/auth/logout', {}),
+	logout: (options?: RequestOptions) =>
+		options
+			? apiClient.post<void>('/api/auth/logout', {}, options)
+			: apiClient.post<void>('/api/auth/logout', {}),
 
-	refresh: (data?: RefreshRequest) =>
-		apiClient.post<AuthTokens>('/api/auth/refresh', data ?? {}),
+	refresh: (data?: RefreshRequest, options?: RequestOptions) =>
+		options
+			? apiClient.post<AuthTokens>('/api/auth/refresh', data ?? {}, options)
+			: apiClient.post<AuthTokens>('/api/auth/refresh', data ?? {}),
 
-	me: () =>
-		apiClient.get<AuthUser>('/api/auth/me'),
+	me: (options?: RequestOptions) =>
+		options
+			? apiClient.get<AuthUser>('/api/auth/me', options)
+			: apiClient.get<AuthUser>('/api/auth/me'),
 
-	updateProfile: (data: UpdateProfileRequest) =>
-		apiClient.put<AuthUser>('/api/users/profile', data),
+	updateProfile: (data: UpdateProfileRequest, options?: RequestOptions) =>
+		options
+			? apiClient.put<AuthUser>('/api/users/profile', data, options)
+			: apiClient.put<AuthUser>('/api/users/profile', data),
 
-	listSessions: () =>
-		apiClient.get<SessionItem[]>('/api/sessions'),
+	listSessions: (options?: RequestOptions) =>
+		options
+			? apiClient.get<SessionItem[]>('/api/sessions', options)
+			: apiClient.get<SessionItem[]>('/api/sessions'),
 
-	revokeSession: (sessionId: string) =>
-		apiClient.delete<void>(`/api/sessions/${sessionId}`),
+	revokeSession: (sessionId: string, options?: RequestOptions) =>
+		options
+			? apiClient.delete<void>(`/api/sessions/${sessionId}`, options)
+			: apiClient.delete<void>(`/api/sessions/${sessionId}`),
 
-	getOidcUrl: (provider: 'google' | 'github') =>
-		apiClient.get<OidcProvider>(`/api/auth/oidc/${provider}`),
+	getOidcUrl: (provider: 'google' | 'github', options?: RequestOptions) =>
+		options
+			? apiClient.get<OidcProvider>(`/api/auth/oidc/${provider}`, options)
+			: apiClient.get<OidcProvider>(`/api/auth/oidc/${provider}`),
 
-	oidcCallback: (provider: 'google' | 'github', code: string, state: string) =>
-		apiClient.post<AuthSession>(`/api/auth/oidc/${provider}/callback`, { code, state }),
+	oidcCallback: (
+		provider: 'google' | 'github',
+		code: string,
+		state: string,
+		options?: RequestOptions
+	) =>
+		options
+			? apiClient.post<AuthSession>(`/api/auth/oidc/${provider}/callback`, { code, state }, options)
+			: apiClient.post<AuthSession>(`/api/auth/oidc/${provider}/callback`, { code, state }),
 
-	forgotPassword: (email: string) =>
-		apiClient.post<{ message: string; reset_token?: string }>('/api/auth/forgot-password', { email }),
+	forgotPassword: (data: ForgotPasswordRequest, options?: RequestOptions) =>
+		options
+			? apiClient.post<MessageResponse>('/api/auth/forgot-password', data, options)
+			: apiClient.post<MessageResponse>('/api/auth/forgot-password', data),
 
-	resetPassword: (token: string, new_password: string) =>
-		apiClient.post<{ message: string }>('/api/auth/reset-password', { token, new_password }),
+	resetPassword: (data: ResetPasswordRequest, options?: RequestOptions) =>
+		options
+			? apiClient.post<MessageResponse>('/api/auth/reset-password', data, options)
+			: apiClient.post<MessageResponse>('/api/auth/reset-password', data),
 
-	verifyCode: (code: string) =>
-		apiClient.post<{ message: string }>('/api/auth/verify-code', { code }),
+	verifyCode: (data: VerifyCodeRequest, options?: RequestOptions) =>
+		options
+			? apiClient.post<MessageResponse>('/api/auth/verify-code', data, options)
+			: apiClient.post<MessageResponse>('/api/auth/verify-code', data),
 
-	health: () => apiClient.get<{ status: string; version: string }>('/health')
+	health: (options?: RequestOptions) =>
+		options
+			? apiClient.get<HealthResponse>('/health', options)
+			: apiClient.get<HealthResponse>('/health')
 };
-

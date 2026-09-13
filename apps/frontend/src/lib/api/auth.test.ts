@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { authApi } from './auth';
 import { apiClient } from './client';
 
@@ -10,6 +10,10 @@ vi.mock('./client', () => ({
 }));
 
 describe('authApi', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
 	it('calls register with expected endpoint and payload', async () => {
 		const payload = {
 			email: 'test@example.com',

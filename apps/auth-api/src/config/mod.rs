@@ -84,17 +84,17 @@ impl AppConfig {
         let login_lockout_duration_secs = env::var("LOGIN_LOCKOUT_DURATION_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(900); // 15 minutes
+            .unwrap_or(900);
 
         let verification_code_expiry_secs = env::var("VERIFICATION_CODE_EXPIRY_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(900); // 15 minutes
+            .unwrap_or(900);
 
         let password_reset_expiry_secs = env::var("PASSWORD_RESET_EXPIRY_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(900); // 15 minutes
+            .unwrap_or(900);
 
         let cookie_secure = env::var("COOKIE_SECURE")
             .map(|v| v.eq_ignore_ascii_case("true") || v == "1")

@@ -1,12 +1,6 @@
-/* =============================================================================
-   auth-app — Global Design System
-   ============================================================================= */
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ─── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
-  /* Colors */
   --color-bg:           #0a0a14;
   --color-bg-surface:   #0f0f23;
   --color-bg-elevated:  #15152e;
@@ -32,11 +26,9 @@
   --color-text-muted:   #94a3b8;
   --color-text-subtle:  #64748b;
 
-  /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Spacing */
   --space-1:  0.25rem;
   --space-2:  0.5rem;
   --space-3:  0.75rem;
@@ -46,26 +38,22 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* Border radius */
   --radius-sm:  0.375rem;
   --radius-md:  0.75rem;
   --radius-lg:  1rem;
   --radius-xl:  1.5rem;
   --radius-full: 9999px;
 
-  /* Shadows */
   --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg:  0 8px 32px rgba(0, 0, 0, 0.6);
   --shadow-glow: 0 0 24px var(--color-primary-glow);
 
-  /* Transitions */
   --transition-fast:   150ms ease;
   --transition-normal: 250ms ease;
   --transition-slow:   400ms ease;
 }
 
-/* ─── Reset & Base ──────────────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -88,13 +76,11 @@ body {
   overflow-x: hidden;
 }
 
-/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
 ::-webkit-scrollbar-thumb { background: var(--color-border-hover); border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
 
-/* ─── Typography ────────────────────────────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.2;
@@ -116,7 +102,6 @@ code, pre {
   font-size: 0.875em;
 }
 
-/* ─── Global Background ─────────────────────────────────────────────────────── */
 .app-bg {
   position: fixed;
   inset: 0;
@@ -127,7 +112,6 @@ code, pre {
     var(--color-bg);
 }
 
-/* ─── Glass Card ────────────────────────────────────────────────────────────── */
 .glass-card {
   background: var(--color-bg-glass);
   backdrop-filter: blur(16px) saturate(180%);
@@ -137,7 +121,6 @@ code, pre {
   box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* ─── Form Elements ─────────────────────────────────────────────────────────── */
 .input {
   width: 100%;
   padding: var(--space-3) var(--space-4);
@@ -164,7 +147,6 @@ code, pre {
   box-shadow: 0 0 0 3px var(--color-error-glow);
 }
 
-/* ─── Buttons ───────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -238,7 +220,6 @@ code, pre {
 
 .btn-full { width: 100%; }
 
-/* ─── Labels & Helper Text ──────────────────────────────────────────────────── */
 .label {
   display: block;
   font-size: 0.875rem;
@@ -259,7 +240,6 @@ code, pre {
   margin-top: var(--space-1);
 }
 
-/* ─── Badge ─────────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -276,7 +256,6 @@ code, pre {
 .badge-error   { background: rgba(239, 68, 68, 0.15);  color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.25); }
 .badge-info    { background: rgba(6, 182, 212, 0.15);  color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.25); }
 
-/* ─── Divider ───────────────────────────────────────────────────────────────── */
 .divider {
   display: flex;
   align-items: center;
@@ -293,7 +272,6 @@ code, pre {
   background: var(--color-border);
 }
 
-/* ─── Spinner ───────────────────────────────────────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -307,7 +285,6 @@ code, pre {
   animation: spin 0.7s linear infinite;
 }
 
-/* ─── Animations ────────────────────────────────────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -326,7 +303,6 @@ code, pre {
 .animate-fade-in-up { animation: fadeInUp var(--transition-slow) ease both; }
 .animate-fade-in    { animation: fadeIn var(--transition-normal) ease both; }
 
-/* ─── Auth Layout ───────────────────────────────────────────────────────────── */
 .auth-layout {
   display: flex;
   align-items: center;
@@ -390,7 +366,6 @@ code, pre {
 .auth-footer a { color: var(--color-primary-light); font-weight: 500; }
 .auth-footer a:hover { color: var(--color-primary); }
 
-/* ─── Social Auth Buttons ───────────────────────────────────────────────────── */
 .social-btn {
   display: flex;
   align-items: center;
@@ -415,7 +390,6 @@ code, pre {
   transform: translateY(-1px);
 }
 
-/* ─── Dashboard Layout ──────────────────────────────────────────────────────── */
 .dashboard-layout {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -436,7 +410,6 @@ code, pre {
   overflow-y: auto;
 }
 
-/* ─── Stats Card ────────────────────────────────────────────────────────────── */
 .stat-card {
   padding: var(--space-6);
   border-radius: var(--radius-lg);
@@ -450,7 +423,6 @@ code, pre {
 .stat-delta.up   { color: var(--color-success); }
 .stat-delta.down { color: var(--color-error); }
 
-/* ─── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .dashboard-layout {
     grid-template-columns: 1fr;

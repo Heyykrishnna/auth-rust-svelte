@@ -1,5 +1,3 @@
-const API_BASE = import.meta.env.PUBLIC_API_BASE_URL || '';
-
 export class ApiError extends Error {
 	public code?: string;
 
@@ -20,40 +18,46 @@ export class ApiError extends Error {
 	}
 }
 
-export interface ApiResponse<T> {
-	data?: T;
-	error?: string;
+export interface RequestOptions {
+	body?: unknown;
+	token?: string;
+	headers?: Record<string, string>;
+	customFetch?: typeof fetch;
 }
 
-async function getAuthToken(): Promise<string | null> {
-	return null;
+function resolveBaseUrl(): string {
+	if (typeof window !== 'undefined') {
+		return import.meta.env.PUBLIC_API_BASE_URL || '';
+	}
+
+	const serverEnvUrl =
+		typeof process !== 'undefined' ? process.env?.PUBLIC_API_BASE_URL : undefined;
+	return serverEnvUrl || 'http://127.0.0.1:8080';
 }
 
 async function request<T>(
 	method: string,
 	path: string,
-	options: {
-		body?: unknown;
-		token?: string;
-		headers?: Record<string, string>;
-	} = {}
+	options: RequestOptions = {}
 ): Promise<T> {
-	const token = options.token ?? (await getAuthToken());
-
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		...options.headers
 	};
 
-	if (token) {
-		headers['Authorization'] = `Bearer ${token}`;
+	if (options.token) {
+		headers['Authorization'] = `Bearer ${options.token}`;
 	}
 
-	const response = await fetch(`${API_BASE}${path}`, {
+	const baseUrl = resolveBaseUrl();
+	const url = path.startsWith('http://') || path.startsWith('https://') ? path : `${baseUrl}${path}`;
+	const fetchImpl = options.customFetch ?? fetch;
+
+	const response = await fetchImpl(url, {
 		method,
 		headers,
 		credentials: 'include',
-		body: options.body ? JSON.stringify(options.body) : undefined
+		body: options.body !== undefined ? JSON.stringify(options.body) : undefined
 	});
 
 	if (!response.ok) {
@@ -93,12 +97,12 @@ async function request<T>(
 }
 
 export const apiClient = {
-	get: <T>(path: string, options?: { token?: string }) => request<T>('GET', path, options),
-	post: <T>(path: string, body: unknown, options?: { token?: string }) =>
+	get: <T>(path: string, options?: RequestOptions) => request<T>('GET', path, options),
+	post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
 		request<T>('POST', path, { body, ...options }),
-	put: <T>(path: string, body: unknown, options?: { token?: string }) =>
+	put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
 		request<T>('PUT', path, { body, ...options }),
-	patch: <T>(path: string, body: unknown, options?: { token?: string }) =>
+	patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
 		request<T>('PATCH', path, { body, ...options }),
-	delete: <T>(path: string, options?: { token?: string }) => request<T>('DELETE', path, options)
+	delete: <T>(path: string, options?: RequestOptions) => request<T>('DELETE', path, options)
 };

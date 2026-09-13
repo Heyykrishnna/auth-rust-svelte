@@ -46,12 +46,10 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        // 0. Fast-path: Check if already authenticated by upstream middleware layer
         if let Some(user) = parts.extensions.get::<AuthenticatedUser>() {
             return Ok(user.clone());
         }
 
-        // 1. Check cookie first (session_token or access_token)
         let cookie_token = parts
             .headers
             .get(axum::http::header::COOKIE)
@@ -67,7 +65,6 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
                 })
             });
 
-        // 2. Fallback to Authorization: Bearer header
         let token = if let Some(ref t) = cookie_token {
             t.as_str()
         } else if let Some(auth_val) = parts
@@ -129,7 +126,6 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
             permissions,
         };
 
-        // Cache in request extensions for downstream handlers/extractors
         parts.extensions.insert(authenticated_user.clone());
 
         Ok(authenticated_user)

@@ -15,13 +15,10 @@ pub struct VerificationCodeData {
     pub email: String,
 }
 
-/// Normalizes email for consistent Redis key lookups.
 pub fn normalize_email(email: &str) -> String {
     email.trim().to_lowercase()
 }
 
-/// Checks current failed login attempts for an email.
-/// Returns Err(AppError::TooManyRequests) if the attempts meet or exceed max_attempts.
 pub async fn check_login_attempts(
     pool: &RedisPool,
     email: &str,
@@ -54,8 +51,6 @@ pub async fn check_login_attempts(
     Ok(None)
 }
 
-/// Records a failed login attempt by atomically incrementing the counter.
-/// Sets TTL on the first failure. Returns the updated attempt count.
 pub async fn record_failed_login(
     pool: &RedisPool,
     email: &str,
@@ -85,7 +80,6 @@ pub async fn record_failed_login(
     Ok(count as u32)
 }
 
-/// Clears failed login attempts upon successful login.
 pub async fn clear_login_attempts(pool: &RedisPool, email: &str) -> Result<(), AppError> {
     let mut conn = pool
         .get()
@@ -102,7 +96,6 @@ pub async fn clear_login_attempts(pool: &RedisPool, email: &str) -> Result<(), A
     Ok(())
 }
 
-/// Stores a temporary verification code in Redis with TTL.
 pub async fn store_verification_code(
     pool: &RedisPool,
     code: &str,
@@ -128,7 +121,6 @@ pub async fn store_verification_code(
     Ok(())
 }
 
-/// Consumes a verification code (single-use: retrieved and immediately deleted).
 pub async fn consume_verification_code(
     pool: &RedisPool,
     code: &str,
@@ -161,7 +153,6 @@ pub async fn consume_verification_code(
     }
 }
 
-/// Stores a password reset token mapped to user ID in Redis with TTL.
 pub async fn store_password_reset_token(
     pool: &RedisPool,
     token: &str,
@@ -187,7 +178,6 @@ pub async fn store_password_reset_token(
     Ok(())
 }
 
-/// Consumes a password reset token (single-use: retrieved and immediately deleted).
 pub async fn consume_password_reset_token(
     pool: &RedisPool,
     token: &str,
@@ -221,8 +211,6 @@ pub async fn consume_password_reset_token(
     }
 }
 
-/// Distributed rate limit counter checking using fixed window counter in Redis.
-/// Returns true if the request is within limits, false if exceeded.
 pub async fn check_and_increment_rate_limit(
     pool: &RedisPool,
     identifier: &str,

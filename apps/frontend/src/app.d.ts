@@ -1,4 +1,3 @@
-// See https://svelte.dev/docs/kit/types#app.d.ts
 import type { AuthUser } from '$lib/api/auth';
 
 declare global {
@@ -9,8 +8,6 @@ declare global {
 		interface PageData {
 			user?: AuthUser | null;
 		}
-		// interface Error {}
-		// interface Platform {}
 	}
 }
 

@@ -9,6 +9,7 @@ build/
 .output/
 .vercel/
 .netlify/
+*.timestamp-*.mjs
 
 apps/auth-api/target/
 *.pdb

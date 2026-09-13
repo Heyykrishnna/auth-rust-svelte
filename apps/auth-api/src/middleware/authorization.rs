@@ -13,7 +13,6 @@ use crate::middleware::AuthenticatedUser;
 use crate::models::{Permission, PermissionCheck, Role, RoleCheck};
 use crate::AppState;
 
-/// Helper to ensure user is authenticated from request extensions or from request parts.
 pub async fn extract_or_authenticate_user(
     req: &mut axum::extract::Request,
 ) -> Result<AuthenticatedUser, AppError> {
