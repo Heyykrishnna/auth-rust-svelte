@@ -2,10 +2,16 @@
 	import Input from '$lib/components/Input.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { authApi } from '$lib/api/auth';
-	import { setAuth } from '$lib/stores/auth.svelte';
+	import { setAuth, authStore } from '$lib/stores/auth.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { ApiError } from '$lib/api/client';
 	import { goto } from '$app/navigation';
+
+	$effect(() => {
+		if (authStore.initialized && authStore.isAuthenticated) {
+			goto('/dashboard');
+		}
+	});
 
 	let email = $state('');
 	let password = $state('');
@@ -69,7 +75,6 @@
 		<h1 class="auth-title">Welcome back</h1>
 		<p class="auth-subtitle">Sign in to your account to continue</p>
 
-		<!-- OIDC Buttons -->
 		<div class="social-buttons">
 			<button class="social-btn" onclick={() => loginWithOidc('google')} type="button">
 				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -91,7 +96,6 @@
 
 		<div class="divider">or</div>
 
-		<!-- Email/Password Form -->
 		<form class="auth-form" onsubmit={handleLogin} novalidate>
 			{#if errors.form}
 				<div class="form-error" role="alert">

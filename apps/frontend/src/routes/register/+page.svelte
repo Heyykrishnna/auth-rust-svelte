@@ -2,10 +2,16 @@
 	import Input from '$lib/components/Input.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { authApi } from '$lib/api/auth';
-	import { setAuth } from '$lib/stores/auth.svelte';
+	import { setAuth, authStore } from '$lib/stores/auth.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { ApiError } from '$lib/api/client';
 	import { goto } from '$app/navigation';
+
+	$effect(() => {
+		if (authStore.initialized && authStore.isAuthenticated) {
+			goto('/dashboard');
+		}
+	});
 
 	let email = $state('');
 	let password = $state('');

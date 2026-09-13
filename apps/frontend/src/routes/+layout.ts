@@ -1,1 +1,2 @@
-export const ssr = false; // Client-side rendering for auth app
+export const prerender = false;
+export const ssr = true;

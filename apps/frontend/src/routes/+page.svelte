@@ -15,19 +15,7 @@
 	<meta name="description" content="Production-grade authentication with Rust and SvelteKit. JWT, OIDC, sessions — all in one." />
 </svelte:head>
 
-<!-- Hero Section -->
-<main class="landing">
-	<header class="landing-header">
-		<div class="logo">
-			<div class="logo-icon">🔐</div>
-			<span class="logo-text">AuthApp</span>
-		</div>
-		<nav class="landing-nav">
-			<Button href="/login" variant="ghost">Sign In</Button>
-			<Button href="/register" variant="primary">Get Started</Button>
-		</nav>
-	</header>
-
+<div class="landing">
 	<section class="hero animate-fade-in-up">
 		<div class="hero-badge">
 			<span class="badge badge-info">✦ Built with Rust + SvelteKit</span>
@@ -70,7 +58,6 @@
 		</div>
 	</section>
 
-	<!-- Feature Cards -->
 	<section class="features">
 		{#each features as feature}
 			<div class="feature-card glass-card">
@@ -81,7 +68,6 @@
 		{/each}
 	</section>
 
-	<!-- Tech Stack -->
 	<section class="tech-stack">
 		<p class="stack-label">Powered by</p>
 		<div class="stack-logos">
@@ -93,7 +79,7 @@
 			{/each}
 		</div>
 	</section>
-</main>
+</div>
 
 <script lang="ts" module>
 	const features = [
@@ -146,37 +132,6 @@
 		padding: 0 var(--space-6);
 	}
 
-	/* Header */
-	.landing-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-6) 0;
-	}
-
-	.logo {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	.logo-icon {
-		font-size: 1.75rem;
-	}
-
-	.logo-text {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: var(--color-text);
-	}
-
-	.landing-nav {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-	}
-
-	/* Hero */
 	.hero {
 		text-align: center;
 		padding: var(--space-16) 0 var(--space-12);
@@ -253,7 +208,6 @@
 		background: var(--color-border);
 	}
 
-	/* Features */
 	.features {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -281,7 +235,6 @@
 		margin-bottom: var(--space-2);
 	}
 
-	/* Tech Stack */
 	.tech-stack {
 		text-align: center;
 		padding-bottom: var(--space-16);
