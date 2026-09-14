@@ -4,16 +4,30 @@ kind: Kustomization
 namespace: observability
 
 resources:
-  - namespace.yaml
+  # OpenTelemetry Collector
+  - otel-collector/configmap.yaml
   - otel-collector/daemonset.yaml
   - otel-collector/service.yaml
-  - otel-collector/configmap.yaml
-  - prometheus/service-monitor.yaml
+  # Prometheus
+  - prometheus/configmap.yaml
+  - prometheus/deployment.yaml
+  - prometheus/service.yaml
   - prometheus/rules.yaml
+  - prometheus/service-monitor.yaml
+  # Grafana
+  - grafana/configmap-datasources.yaml
   - grafana/configmap-dashboards.yaml
----
-# Observability namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: observability
+  - grafana/deployment.yaml
+  - grafana/service.yaml
+  # Loki
+  - loki/configmap.yaml
+  - loki/deployment.yaml
+  - loki/service.yaml
+  # Tempo
+  - tempo/configmap.yaml
+  - tempo/deployment.yaml
+  - tempo/service.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: auth-rust-svelte
+  app.kubernetes.io/managed-by: kustomize

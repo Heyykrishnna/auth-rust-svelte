@@ -3,6 +3,10 @@ kind: ConfigMap
 metadata:
   name: otel-collector-config
   namespace: observability
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: telemetry
+    app.kubernetes.io/part-of: auth-rust-svelte
 data:
   otel-collector.yaml: |
     receivers:
@@ -21,7 +25,7 @@ data:
               kubernetes_sd_configs:
                 - role: pod
                   namespaces:
-                    names: [auth-system]
+                    names: [auth]
               relabel_configs:
                 - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
                   action: keep
