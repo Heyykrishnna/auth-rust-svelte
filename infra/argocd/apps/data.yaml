@@ -1,23 +1,24 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: auth-api
+  name: data
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: auth-rust-svelte
   source:
-    repoURL: https://github.com/your-org/auth-rust-svelte  # TODO: Replace
+    repoURL: https://github.com/your-org/auth-rust-svelte # TODO: Replace
     targetRevision: HEAD
-    path: infra/k8s/base/auth-api
+    path: infra/k8s/base/data
   destination:
     server: https://kubernetes.default.svc
-    namespace: auth-system
+    namespace: data
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
   revisionHistoryLimit: 5

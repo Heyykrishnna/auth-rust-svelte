@@ -92,10 +92,14 @@ auth-rust-svelte/
 │
 ├── infra/
 │   ├── k8s/
-│   │   ├── base/              # Kustomize base (frontend, auth-api, postgres, redis, ingress)
+│   │   ├── base/              # Multi-namespace base (ingress, auth, data, network-policies)
+│   │   │   ├── namespaces.yaml# Declares ingress, auth, data, observability, argocd
+│   │   │   ├── network-policies.yaml # Zero-trust network policies
+│   │   │   ├── auth/          # auth-api, frontend, worker, ingress
+│   │   │   └── data/          # postgresql statefulset, redis deployment
 │   │   ├── overlays/          # dev + prod patches
-│   │   └── observability/     # OTel, Prometheus, Grafana, ServiceMonitors
-│   ├── argocd/                # Argo CD app-of-apps + child apps
+│   │   └── observability/     # Full LGTM+OTel stack (Prometheus, Grafana, Loki, Tempo, OTel Collector)
+│   ├── argocd/                # Argo CD app-of-apps + child apps (auth, data, observability)
 │   └── otel/                  # Local observability config files
 │
 ├── .github/workflows/
@@ -129,6 +133,22 @@ auth-rust-svelte/
 
 ## Kubernetes Deployment
 
+### Cluster Architecture
+
+```
+cluster
+│
+├── 🌐 ingress            (Ingress controller, TLS termination, Edge routing)
+│
+├── 🔐 auth               (Workloads: auth-api, frontend, worker)
+│
+├── 💾 data               (Stateful tier: PostgreSQL, Redis)
+│
+├── 📊 observability      (LGTM + OTel: Prometheus, Grafana, Loki, Tempo, OTel Collector)
+│
+└── 🐙 argocd             (GitOps engine & child applications)
+```
+
 ### Prerequisites
 - Kubernetes cluster
 - `kubectl` + `kustomize`
@@ -152,26 +172,26 @@ make k8s-diff         # diff before applying
 
 ### Required Secrets
 
-Create these secrets in the `auth-system` namespace before deploying:
+Create secrets in their respective namespaces:
 
 ```bash
-# Auth API secrets
-kubectl create secret generic auth-api-secrets \
-  --from-literal=DATABASE_URL=postgres://... \
-  --from-literal=REDIS_URL=redis://... \
-  --from-literal=JWT_SECRET=... \
-  --from-literal=GOOGLE_CLIENT_ID=... \
-  --from-literal=GOOGLE_CLIENT_SECRET=... \
-  --from-literal=GITHUB_CLIENT_ID=... \
-  --from-literal=GITHUB_CLIENT_SECRET=... \
-  -n auth-system
-
-# PostgreSQL credentials
+# 1. PostgreSQL credentials (in `data` namespace)
 kubectl create secret generic postgres-secret \
   --from-literal=POSTGRES_USER=authuser \
-  --from-literal=POSTGRES_PASSWORD=... \
+  --from-literal=POSTGRES_PASSWORD=your-secure-db-password \
   --from-literal=POSTGRES_DB=authdb \
-  -n auth-system
+  -n data
+
+# 2. Auth API & Worker secrets (in `auth` namespace)
+kubectl create secret generic auth-api-secrets \
+  --from-literal=DATABASE_URL=postgres://authuser:your-secure-db-password@postgres.data.svc.cluster.local:5432/authdb \
+  --from-literal=REDIS_URL=redis://redis.data.svc.cluster.local:6379 \
+  --from-literal=JWT_SECRET=your-32-byte-secret-key \
+  --from-literal=GOOGLE_CLIENT_ID=your-google-id \
+  --from-literal=GOOGLE_CLIENT_SECRET=your-google-secret \
+  --from-literal=GITHUB_CLIENT_ID=your-github-id \
+  --from-literal=GITHUB_CLIENT_SECRET=your-github-secret \
+  -n auth
 ```
 
 ---

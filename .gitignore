@@ -27,8 +27,22 @@ AGENTS.md
 *.log
 logs/
 
+.env
+.env.local
+.env.*.local
+*.env.local
+*-secrets.env
+
+vault-init.json
+vault-keys.json
+
 infra/k8s/**/secrets-actual.yaml
 infra/k8s/**/*-secret-values.yaml
+infra/k8s/**/*-secrets-real.yaml
+
+kubeconfig
+kubeconfig.yaml
+*.kubeconfig
 
 sqlx-data.json
 auth-api/AGENTS.md

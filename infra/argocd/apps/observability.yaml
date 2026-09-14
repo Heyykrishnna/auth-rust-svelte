@@ -6,9 +6,9 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: auth-rust-svelte
   source:
-    repoURL: https://github.com/your-org/auth-rust-svelte  # TODO: Replace
+    repoURL: https://github.com/your-org/auth-rust-svelte # TODO: Replace
     targetRevision: HEAD
     path: infra/k8s/observability
   destination:
@@ -20,4 +20,5 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
   revisionHistoryLimit: 3

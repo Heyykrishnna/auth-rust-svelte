@@ -6,9 +6,9 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: auth-rust-svelte
   source:
-    repoURL: https://github.com/your-org/auth-rust-svelte  # TODO: Replace with your repo
+    repoURL: https://github.com/your-org/auth-rust-svelte
     targetRevision: HEAD
     path: infra/argocd/apps
   destination:
@@ -20,3 +20,8 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jsonPointers:
+        - /spec/source/targetRevision

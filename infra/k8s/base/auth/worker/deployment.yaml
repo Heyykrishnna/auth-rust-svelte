@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-worker
+  labels:
+    app.kubernetes.io/name: auth-worker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: auth-rust-svelte
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth-worker
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth-worker
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/part-of: auth-rust-svelte
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534  # nobody
+        fsGroup: 65534
+      containers:
+        - name: auth-worker
+          image: auth-api:latest
+          # In container, can execute worker mode or periodic task runner
+          args: ["--worker"]
+          envFrom:
+            - secretRef:
+                name: auth-api-secrets
+          env:
+            - name: WORKER_MODE
+              value: "true"
+            - name: RUST_LOG
+              value: "auth_api=info,worker=info"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.observability.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "auth-worker"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

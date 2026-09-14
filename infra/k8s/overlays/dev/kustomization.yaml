@@ -2,10 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Dev overlay — lower replicas, debug logging, local images
-bases:
+resources:
   - ../../base
-
-namespace: auth-system-dev
 
 patches:
   # Lower replicas for dev
@@ -16,6 +14,7 @@ patches:
     target:
       kind: Deployment
       name: frontend
+      namespace: auth
 
   - patch: |-
       - op: replace
@@ -24,6 +23,16 @@ patches:
     target:
       kind: Deployment
       name: auth-api
+      namespace: auth
+
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: auth-worker
+      namespace: auth
 
   # Debug logging for auth-api
   - patch: |-
@@ -33,6 +42,7 @@ patches:
     target:
       kind: Deployment
       name: auth-api
+      namespace: auth
 
 images:
   - name: frontend

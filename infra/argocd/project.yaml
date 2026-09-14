@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: auth-rust-svelte
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Auth Rust + Svelte — all application workloads
+
+  sourceRepos:
+    - https://github.com/your-org/auth-rust-svelte
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: auth
+    - server: https://kubernetes.default.svc
+      namespace: data
+    - server: https://kubernetes.default.svc
+      namespace: observability
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: DaemonSet
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: policy
+      kind: PodDisruptionBudget
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: batch
+      kind: CronJob
+    - group: batch
+      kind: Job
+    - group: external-secrets.io
+      kind: ExternalSecret
+
+  clusterResourceBlacklist:
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+
+  roles:
+    - name: read-only
+      description: Read-only access to all apps in this project
+      policies:
+        - p, proj:auth-rust-svelte:read-only, applications, get, auth-rust-svelte/*, allow
+    - name: ci-deployer
+      description: Used by CI to trigger sync (not required in pure GitOps — kept for reference)
+      policies:
