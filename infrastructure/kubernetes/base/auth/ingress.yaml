@@ -1,0 +1,74 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-app-ingress
+  labels:
+    app.kubernetes.io/name: auth-ingress
+    app.kubernetes.io/part-of: auth-rust-svelte
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-body-size: "64k"
+
+    nginx.ingress.kubernetes.io/enable-cors: "false"
+
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/enable-owasp-core-rules: "true"
+    nginx.ingress.kubernetes.io/modsecurity-snippet: |
+      SecRuleEngine On
+      SecRequestBodyAccess On
+      SecRequestBodyLimit 65536
+      SecRequestBodyNoFilesLimit 65536
+
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+      add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none';" always;
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+      add_header Cross-Origin-Opener-Policy "same-origin" always;
+      add_header Cross-Origin-Resource-Policy "same-origin" always;
+      more_clear_headers "Server";
+      more_clear_headers "X-Powered-By";
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - auth.example.com # TODO: Replace with your domain
+      secretName: auth-app-tls
+  rules:
+    - host: auth.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  name: http
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-api
+                port:
+                  name: http
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: auth-api
+                port:
+                  name: http
+          # /metrics is intentionally absent from the public ingress.
+          # Access it via kubectl port-forward or an internal Prometheus scrape job.

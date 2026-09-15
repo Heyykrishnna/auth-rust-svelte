@@ -1,17 +1,19 @@
 {
-  "name": "auth-rust-svelte",
+  "name": "secure-auth-platform",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "apps/frontend"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "docker compose -f docker-compose.yml -f docker-compose.override.yml up",
-    "dev:frontend": "npm -w apps/frontend run dev",
-    "build": "npm -w apps/frontend run build",
-    "check": "npm -w apps/frontend run check",
-    "test": "npm -w apps/frontend run test",
-    "lint": "npm -w apps/frontend run lint"
+    "dev:web": "npm -w @secure-auth/web run dev",
+    "dev:api": "cd apps/auth-api && cargo watch -x run",
+    "build": "npm -w @secure-auth/shared-types run check && npm -w @secure-auth/web run build",
+    "check": "npm -w @secure-auth/shared-types run check && npm -w @secure-auth/web run check",
+    "test": "npm -w @secure-auth/web run test",
+    "lint": "npm -w @secure-auth/web run lint"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
