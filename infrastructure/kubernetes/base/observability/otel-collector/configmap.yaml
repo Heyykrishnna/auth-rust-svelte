@@ -17,7 +17,6 @@ data:
           http:
             endpoint: 0.0.0.0:4318
 
-      # Scrape Prometheus metrics from auth-api pods
       prometheus:
         config:
           scrape_configs:
@@ -57,17 +56,14 @@ data:
             action: upsert
 
     exporters:
-      # Traces → Tempo
       otlp/tempo:
         endpoint: tempo.observability.svc.cluster.local:4317
         tls:
           insecure: true
 
-      # Metrics → Prometheus (remote write)
       prometheusremotewrite:
         endpoint: http://prometheus.observability.svc.cluster.local:9090/api/v1/write
 
-      # Logs → Loki
       loki:
         endpoint: http://loki.observability.svc.cluster.local:3100/loki/api/v1/push
         labels:
@@ -75,7 +71,6 @@ data:
             service.name: "service_name"
             service.version: "service_version"
 
-      # Debug (stdout) — disable in prod
       logging:
         verbosity: normal
 

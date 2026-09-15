@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "secure-auth-platform.fullname" . }}-auth-api
+  labels:
+    {{- include "secure-auth-platform.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth-api
+spec:
+  {{- if not .Values.authApi.autoscaling.enabled }}
+  replicas: {{ .Values.authApi.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "secure-auth-platform.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: auth-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "secure-auth-platform.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: auth-api
+    spec:
+      containers:
+        - name: auth-api
+          image: "{{ .Values.authApi.image.repository }}:{{ .Values.authApi.image.tag }}"
+          imagePullPolicy: {{ .Values.authApi.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.authApi.resources | nindent 12 }}

@@ -1,5 +1,5 @@
 {
-  "name": "@auth-app/frontend",
+  "name": "@secure-auth/web",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@internationalized/date": "^3.5.4"
+    "@internationalized/date": "^3.5.4",
+    "@secure-auth/shared-types": "*"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

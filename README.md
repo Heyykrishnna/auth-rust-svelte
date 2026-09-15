@@ -1,230 +1,153 @@
-# 🔐 auth-rust-svelte
+# 🔐 Secure Auth Platform
 
-> Production-grade authentication platform — Rust (Axum) + SvelteKit + PostgreSQL + Redis + Kubernetes + Argo CD + OpenTelemetry
+> Production-grade authentication and identity platform built with Rust (Axum), SvelteKit 5, PostgreSQL 16, Redis 7, Terraform, Kubernetes (Kustomize & Helm), Argo CD GitOps, and OpenTelemetry.
 
 [![CI](https://github.com/your-org/auth-rust-svelte/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/auth-rust-svelte/actions/workflows/ci.yml)
+[![Security & Compliance](https://github.com/your-org/auth-rust-svelte/actions/workflows/security.yml/badge.svg)](https://github.com/your-org/auth-rust-svelte/actions/workflows/security.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](LICENSE)
 
 ---
 
-## Architecture
+## Architecture Overview
 
 ```
-Internet → Cloudflare (WAF + DDoS + TLS)
-         → Kubernetes
-           → NGINX Ingress
-             → SvelteKit Frontend    (apps/frontend)
-             → Rust Auth API (Axum)  (apps/auth-api)
-               ├── PostgreSQL        (sessions, users, OIDC accounts)
-               ├── Redis             (session cache, JWT blacklist)
-               └── OIDC             (Google, GitHub)
-         → Observability
-           → OpenTelemetry Collector
-             ├── Tempo   (traces)
-             ├── Loki    (logs)
-             └── Prometheus → Grafana (metrics + dashboards)
+Internet → Cloudflare / Edge WAF (TLS Termination + Rate Limiting)
+         → Kubernetes Ingress (NGINX)
+           ├── /api/* → Rust Auth API (Axum)       [apps/auth-api]
+           │            ├── PostgreSQL 16 (Users, Sessions, Audit Logs, OIDC)
+           │            ├── Redis 7 (Token Families, Session Cache, Rate Limiting)
+           │            └── External IdPs (Google, GitHub OIDC)
+           └── /*     → SvelteKit Web Application  [apps/web]
+         → Observability Stack                     [observability/]
+           └── OpenTelemetry Collector
+               ├── Tempo (Distributed Traces)
+               ├── Loki (Structured Logs)
+               └── Prometheus → Grafana (Metrics & Dashboards)
 ```
 
-### DevOps Flow
+For in-depth architecture diagrams, sequence charts, and design details, see [docs/architecture.md](docs/architecture.md).
 
-```
-Developer → GitHub → CI (Rust/Svelte tests, Clippy, security scan)
-                  → Container Registry (ghcr.io)
-                  → Argo CD → Kubernetes
+---
+
+## Repository Structure
+
+```text
+secure-auth-platform/
+│
+├── apps/
+│   ├── auth-api/          # Rust 1.80 + Axum REST & Auth Service
+│   └── web/               # SvelteKit 5 + TypeScript Web Frontend
+│
+├── packages/
+│   └── shared-types/      # Canonical TypeScript DTOs & API Contracts
+│
+├── infrastructure/
+│   ├── terraform/         # Cloud IaC (VPC, EKS, RDS PostgreSQL, Redis)
+│   ├── kubernetes/        # GitOps K8s manifests (base, dev, prod overlays)
+│   │   ├── base/
+│   │   ├── dev/
+│   │   └── prod/
+│   └── helm/              # Unified Helm Chart (values-dev, values-prod)
+│
+├── observability/
+│   ├── prometheus/        # Scrape configs and metric definitions
+│   ├── grafana/           # Datasources and pre-configured auth dashboards
+│   ├── loki/              # High-performance log aggregation
+│   └── tempo/             # Distributed tracing backend
+│
+├── .github/
+│   └── workflows/
+│       ├── ci.yml         # Fast feedback: tests, clippy, svelte-check, vitest
+│       ├── security.yml   # Cargo audit, npm audit, Gitleaks, Trivy CVE scan
+│       └── release.yml    # GitOps production manifest tag bump
+│
+├── docker/
+│   ├── Dockerfile.api     # Multi-stage distroless Rust build
+│   ├── Dockerfile.web     # Multi-stage Alpine Node.js build
+│   └── README.md
+│
+├── docs/
+│   ├── architecture.md    # System topology, layers, and service boundaries
+│   ├── authentication.md  # Argon2id, JWT lifecycle, refresh rotation, OIDC
+│   ├── security.md        # RBAC matrix, token-bucket limits, audit trails
+│   └── deployment.md      # Docker Compose, K8s overlays, Helm & Argo CD
+│
+├── docker-compose.yml     # Local orchestration for all 9 services
+└── README.md              # Monorepo developer guide
 ```
 
 ---
 
-## Quick Start (Local Dev)
+## Quick Start (Local Development)
 
 ### Prerequisites
-- Docker + Docker Compose
+- [Docker Engine & Docker Compose](https://docs.docker.com/get-docker/)
+- [Node.js 22+](https://nodejs.org/) & `npm`
+- [Rust 1.80+](https://rustup.rs/) (optional for local host compilation)
 - `make`
 
-### Start everything
-
+### 1. Launch Services
 ```bash
-cp .env.example .env      # fill in your secrets
-make dev                  # starts all 9 services
+# 1. Copy sample environment
+cp .env.example .env
+
+# 2. Start full stack (Hot-Reloading enabled for both API and Web)
+make dev
 ```
 
-| Service      | URL                        |
-|-------------|----------------------------|
-| Frontend    | http://localhost:3000       |
-| Auth API    | http://localhost:8080       |
-| Grafana     | http://localhost:3001       |
-| Prometheus  | http://localhost:9090       |
-| Tempo       | http://localhost:3200       |
+### 2. Service Endpoints
 
-### Common commands
+| Service | Local URL | Description | Default Credentials |
+|---------|-----------|-------------|---------------------|
+| **Web Frontend** | [http://localhost:3000](http://localhost:3000) | SvelteKit UI | — |
+| **Auth API** | [http://localhost:8080](http://localhost:8080) | Axum REST Service | — |
+| **Grafana** | [http://localhost:3001](http://localhost:3001) | Metrics & Tracing Dashboards | `admin` / `admin` |
+| **Prometheus** | [http://localhost:9090](http://localhost:9090) | Metric Scraper | — |
+| **Tempo** | [http://localhost:3200](http://localhost:3200) | Tracing Backend | — |
+| **Loki** | [http://localhost:3100](http://localhost:3100) | Log Collector | — |
+| **PostgreSQL** | `localhost:5432` | Relational Database | `authuser` / `authpassword` |
+| **Redis** | `localhost:6379` | In-Memory Cache | — |
+
+---
+
+## Developer Commands
 
 ```bash
-make test          # run all tests (Rust + Svelte)
-make lint          # clippy + fmt check + eslint
-make migrate       # run SQLx migrations
-make db-shell      # open psql shell
-make redis-shell   # open redis-cli
-make build         # build Docker images
-make audit         # cargo-audit + npm audit
+# Testing
+make test             # Run Rust tests + Vitest frontend suite
+make test-api         # Run cargo test --all-features
+make test-web         # Run npm -w @secure-auth/web run test
+
+# Linting & Type Checking
+make lint             # Check formatting, run clippy and eslint
+npm run check         # Type-check shared-types and web via TypeScript
+
+# Database
+make migrate          # Run pending SQLx database migrations
+make db-reset         # Reinitialize and wipe development database
+make db-shell         # Open interactive psql shell
+
+# Security
+make audit            # Run cargo-audit + npm audit --workspaces
+make scan             # Scan container images with Trivy
+
+# Kubernetes & GitOps
+make k8s-apply-dev    # Deploy development Kustomize overlay
+make k8s-apply-prod   # Deploy production Kustomize overlay
+make argocd-bootstrap # Bootstrap Argo CD App-of-Apps
 ```
 
 ---
 
-## Project Structure
+## Core Documentation
 
-```
-auth-rust-svelte/
-├── apps/
-│   ├── frontend/              # SvelteKit 5 (Svelte Runes)
-│   │   └── src/
-│   │       ├── lib/
-│   │       │   ├── api/       # Type-safe API client
-│   │       │   ├── stores/    # auth.svelte.ts (Runes state)
-│   │       │   └── components/
-│   │       └── routes/        # login, register, dashboard, callback
-│   │
-│   └── auth-api/              # Rust Axum API (DDD)
-│       └── src/
-│           ├── domain/        # User, Session, Token entities
-│           ├── application/   # Use cases (register, login, logout, refresh, oidc)
-│           ├── infrastructure/# PostgreSQL, Redis, OTel adapters
-│           └── api/           # Axum routes, handlers, middleware
-│
-├── infra/
-│   ├── k8s/
-│   │   ├── base/              # Multi-namespace base (ingress, auth, data, network-policies)
-│   │   │   ├── namespaces.yaml# Declares ingress, auth, data, observability, argocd
-│   │   │   ├── network-policies.yaml # Zero-trust network policies
-│   │   │   ├── auth/          # auth-api, frontend, worker, ingress
-│   │   │   └── data/          # postgresql statefulset, redis deployment
-│   │   ├── overlays/          # dev + prod patches
-│   │   └── observability/     # Full LGTM+OTel stack (Prometheus, Grafana, Loki, Tempo, OTel Collector)
-│   ├── argocd/                # Argo CD app-of-apps + child apps (auth, data, observability)
-│   └── otel/                  # Local observability config files
-│
-├── .github/workflows/
-│   ├── ci.yml                 # Tests, Clippy, fmt, Trivy
-│   ├── docker-build.yml       # Build + push + cosign sign
-│   └── deploy.yml             # Update Kustomize tags → trigger Argo CD
-│
-├── docker-compose.yml         # Full local stack
-├── docker-compose.override.yml# Hot-reload overrides
-└── Makefile                   # All convenience targets
-```
-
----
-
-## Auth API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/auth/register` | Register with email + password |
-| `POST` | `/auth/login`    | Login, get JWT pair |
-| `POST` | `/auth/logout`   | Revoke access token (blacklist JTI) |
-| `POST` | `/auth/refresh`  | Rotate refresh token, get new pair |
-| `GET`  | `/auth/me`       | Get current user profile |
-| `GET`  | `/auth/oidc/:provider` | Get OIDC authorization URL |
-| `POST` | `/auth/oidc/:provider/callback` | Handle OIDC callback |
-| `GET`  | `/health`  | Liveness probe |
-| `GET`  | `/ready`   | Readiness probe (checks DB + Redis) |
-| `GET`  | `/metrics` | Prometheus metrics |
-
----
-
-## Kubernetes Deployment
-
-### Cluster Architecture
-
-```
-cluster
-│
-├── 🌐 ingress            (Ingress controller, TLS termination, Edge routing)
-│
-├── 🔐 auth               (Workloads: auth-api, frontend, worker)
-│
-├── 💾 data               (Stateful tier: PostgreSQL, Redis)
-│
-├── 📊 observability      (LGTM + OTel: Prometheus, Grafana, Loki, Tempo, OTel Collector)
-│
-└── 🐙 argocd             (GitOps engine & child applications)
-```
-
-### Prerequisites
-- Kubernetes cluster
-- `kubectl` + `kustomize`
-- NGINX Ingress Controller
-- `cert-manager` (Let's Encrypt)
-- Argo CD
-
-### Bootstrap Argo CD (once)
-
-```bash
-kubectl apply -f infra/argocd/app-of-apps.yaml
-```
-
-### Manual apply
-
-```bash
-make k8s-apply-dev    # dev overlay
-make k8s-apply-prod   # prod overlay
-make k8s-diff         # diff before applying
-```
-
-### Required Secrets
-
-Create secrets in their respective namespaces:
-
-```bash
-# 1. PostgreSQL credentials (in `data` namespace)
-kubectl create secret generic postgres-secret \
-  --from-literal=POSTGRES_USER=authuser \
-  --from-literal=POSTGRES_PASSWORD=your-secure-db-password \
-  --from-literal=POSTGRES_DB=authdb \
-  -n data
-
-# 2. Auth API & Worker secrets (in `auth` namespace)
-kubectl create secret generic auth-api-secrets \
-  --from-literal=DATABASE_URL=postgres://authuser:your-secure-db-password@postgres.data.svc.cluster.local:5432/authdb \
-  --from-literal=REDIS_URL=redis://redis.data.svc.cluster.local:6379 \
-  --from-literal=JWT_SECRET=your-32-byte-secret-key \
-  --from-literal=GOOGLE_CLIENT_ID=your-google-id \
-  --from-literal=GOOGLE_CLIENT_SECRET=your-google-secret \
-  --from-literal=GITHUB_CLIENT_ID=your-github-id \
-  --from-literal=GITHUB_CLIENT_SECRET=your-github-secret \
-  -n auth
-```
-
----
-
-## Security Features
-
-- **Argon2id** password hashing (memory-hard, tunable)
-- **JWT** access tokens (15 min) + **refresh tokens** (7 days) with rotation
-- **Token blacklisting** on logout (Redis TTL-matched)
-- **Refresh token reuse detection** (detects token theft)
-- **Rate limiting** per IP (tower-governor in Rust, NGINX annotations in K8s)
-- **Non-root containers** with `readOnlyRootFilesystem`
-- **Pod Anti-Affinity** for HA across nodes
-- **PodDisruptionBudget** ensures 2+ auth-api replicas during drains
-- **SBOM generation** + **cosign image signing** in CI
-- **Trivy** vulnerability scanning on every PR
-
----
-
-## TODO — Before Production
-
-Replace all `# TODO` comments:
-
-- [ ] `infra/argocd/*.yaml` — set your GitHub repo URL
-- [ ] `infra/k8s/base/ingress.yaml` — set your domain (`auth.example.com`)
-- [ ] `infra/k8s/overlays/prod/kustomization.yaml` — set your registry (`ghcr.io/your-org`)
-- [ ] `.github/workflows/docker-build.yml` — set `ORG` variable
-- [ ] `.github/workflows/deploy.yml` — set `ARGOCD_SERVER` + `ARGOCD_TOKEN` secrets
-- [ ] `.env` — fill in all secrets (never commit!)
-- [ ] OIDC — provide Google/GitHub OAuth2 app credentials
+- 📐 **[System Architecture](docs/architecture.md)** — Architectural design, data flow diagrams, and tech stack specification.
+- 🔑 **[Authentication Specs](docs/authentication.md)** — Argon2id password hashing, JWT pairs, refresh token rotation with reuse detection, and OIDC flows.
+- 🛡️ **[Security Architecture](docs/security.md)** — Role-Based Access Control (RBAC), rate-limiting matrices, security headers, and compliance audits.
+- 🚀 **[Deployment Guide](docs/deployment.md)** — Comprehensive operations guide for Docker Compose, Kubernetes, Helm, and Argo CD GitOps.
 
 ---
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).

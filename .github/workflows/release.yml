@@ -1,0 +1,69 @@
+name: Deploy — Update GitOps Manifests
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to deploy (e.g. sha-abcdef1 or v1.0.0)"
+        required: true
+        type: string
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  update-manifests:
+    name: Update K8s Image Tags in Git
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          ref: main
+
+      - name: Install Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Derive image tag
+        id: image_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+            echo "tag=sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update image tags in production overlay
+        run: |
+          cd infrastructure/kubernetes/prod
+          kustomize edit set image \
+            auth-api=ghcr.io/${{ github.repository_owner }}/auth-api:${{ steps.image_tag.outputs.tag }}
+          kustomize edit set image \
+            frontend=ghcr.io/${{ github.repository_owner }}/web:${{ steps.image_tag.outputs.tag }}
+
+      - name: Commit and push manifest update
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add infrastructure/kubernetes/prod/kustomization.yaml
+          git diff --staged --quiet && echo "No manifest changes — skipping commit" && exit 0
+          git commit -m "chore(deploy): bump production images to ${{ steps.image_tag.outputs.tag }} [skip ci]"
+          git push
+
+      - name: Deployment summary
+        run: |
+          echo "## GitOps Manifest Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | production |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image tag** | \`${{ steps.image_tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Overlay** | \`infrastructure/kubernetes/prod\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Argo CD** | Watching repository — automated reconciliation active |" >> $GITHUB_STEP_SUMMARY

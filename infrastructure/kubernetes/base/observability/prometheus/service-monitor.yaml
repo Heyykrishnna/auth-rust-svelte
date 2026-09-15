@@ -1,4 +1,3 @@
-# ServiceMonitor for Prometheus Operator to scrape auth-api metrics
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

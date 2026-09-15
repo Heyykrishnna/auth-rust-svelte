@@ -8,7 +8,7 @@ metadata:
 spec:
   project: auth-rust-svelte
   source:
-    repoURL: https://github.com/your-org/auth-rust-svelte # TODO: Replace
+    repoURL: https://github.com/your-org/auth-rust-svelte
     targetRevision: HEAD
     path: infrastructure/kubernetes/base/observability
   destination:

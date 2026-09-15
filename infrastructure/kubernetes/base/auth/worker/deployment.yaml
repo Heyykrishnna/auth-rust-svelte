@@ -26,12 +26,11 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 65534  # nobody
+        runAsUser: 65534
         fsGroup: 65534
       containers:
         - name: auth-worker
           image: auth-api:latest
-          # In container, can execute worker mode or periodic task runner
           args: ["--worker"]
           envFrom:
             - secretRef:

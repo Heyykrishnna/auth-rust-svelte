@@ -1,0 +1,8 @@
+apiVersion: v2
+name: secure-auth-platform
+description: Unified Helm chart for deploying the Secure Authentication Platform (Rust Axum API + SvelteKit Web)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Platform Engineering Team

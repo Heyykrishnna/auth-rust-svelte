@@ -39,4 +39,4 @@ data:
       working_directory: /loki/compactor
 
     limits_config:
-      retention_period: 168h  # 7 days
+      retention_period: 168h

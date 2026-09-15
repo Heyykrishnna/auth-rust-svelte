@@ -50,7 +50,6 @@ metadata:
   name: otel-collector
   namespace: observability
 ---
-# ClusterRole for Prometheus kubernetes_sd_config
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

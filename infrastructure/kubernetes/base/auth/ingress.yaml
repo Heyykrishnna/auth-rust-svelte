@@ -43,7 +43,7 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - auth.example.com # TODO: Replace with your domain
+        - auth.example.com
       secretName: auth-app-tls
   rules:
     - host: auth.example.com
@@ -70,5 +70,3 @@ spec:
                 name: auth-api
                 port:
                   name: http
-          # /metrics is intentionally absent from the public ingress.
-          # Access it via kubectl port-forward or an internal Prometheus scrape job.

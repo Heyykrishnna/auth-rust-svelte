@@ -4,26 +4,21 @@ kind: Kustomization
 namespace: observability
 
 resources:
-  # OpenTelemetry Collector
   - otel-collector/configmap.yaml
   - otel-collector/daemonset.yaml
   - otel-collector/service.yaml
-  # Prometheus
   - prometheus/configmap.yaml
   - prometheus/deployment.yaml
   - prometheus/service.yaml
   - prometheus/rules.yaml
   - prometheus/service-monitor.yaml
-  # Grafana
   - grafana/configmap-datasources.yaml
   - grafana/configmap-dashboards.yaml
   - grafana/deployment.yaml
   - grafana/service.yaml
-  # Loki
   - loki/configmap.yaml
   - loki/deployment.yaml
   - loki/service.yaml
-  # Tempo
   - tempo/configmap.yaml
   - tempo/deployment.yaml
   - tempo/service.yaml

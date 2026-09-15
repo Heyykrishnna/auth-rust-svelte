@@ -1,0 +1,73 @@
+global:
+  environment: dev
+  domain: auth.example.com
+
+authApi:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/your-org/auth-api
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+web:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/your-org/web
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: auth.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: auth-api
+        - path: /
+          pathType: Prefix
+          service: web
+  tls:
+    - secretName: auth-platform-tls
+      hosts:
+        - auth.example.com
+
+config:
+  logLevel: "info"
+  cookieDomain: ".example.com"
+  sessionTtlHours: 168
+  jwtExpiryMinutes: 15

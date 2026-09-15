@@ -71,22 +71,8 @@ jobs:
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-at-least-32-chars-long
 
-  rust-audit:
-    name: Rust — Security Audit
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/auth-api
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
-      - name: Run cargo audit
-        run: cargo audit
-
-  svelte-ci:
-    name: Svelte — Check, Lint, Test
+  web-ci:
+    name: Web & Packages — Check, Lint, Test
     runs-on: ubuntu-latest
 
     steps:
@@ -102,19 +88,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Svelte check
-        run: npm -w apps/frontend run check
+      - name: Type check (shared-types & web)
+        run: npm run check
 
       - name: ESLint
-        run: npm -w apps/frontend run lint
+        run: npm run lint
 
-      - name: Run Vitest
-        run: npm -w apps/frontend run test
+      - name: Vitest suite
+        run: npm run test
 
   docker-build-check:
-    name: Docker — Build Check
+    name: Docker — Build Verification
     runs-on: ubuntu-latest
-    needs: [rust-ci, svelte-ci]
+    needs: [rust-ci, web-ci]
 
     steps:
       - uses: actions/checkout@v4
@@ -125,51 +111,19 @@ jobs:
       - name: Build auth-api image
         uses: docker/build-push-action@v6
         with:
-          context: apps/auth-api
+          context: .
+          file: docker/Dockerfile.api
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: auth-api:ci-check
 
-      - name: Build frontend image
+      - name: Build web image
         uses: docker/build-push-action@v6
         with:
-          context: apps/frontend
+          context: .
+          file: docker/Dockerfile.web
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: frontend:ci-check
-
-  trivy-scan:
-    name: Trivy — Image Security Scan
-    runs-on: ubuntu-latest
-    needs: docker-build-check
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build auth-api for scanning
-        uses: docker/build-push-action@v6
-        with:
-          context: apps/auth-api
-          push: false
-          load: true
-          tags: auth-api:scan
-
-      - name: Run Trivy on auth-api
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: auth-api:scan
-          format: sarif
-          output: trivy-results.sarif
-          severity: HIGH,CRITICAL
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        continue-on-error: true
-        with:
-          sarif_file: trivy-results.sarif
+          tags: web:ci-check

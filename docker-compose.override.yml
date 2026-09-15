@@ -1,11 +1,7 @@
-# docker-compose.override.yml — Development overrides (hot reload)
-# This file is automatically merged with docker-compose.yml by `docker compose up`
-
 services:
-  # Override auth-api to use cargo-watch for hot reload in dev
   auth-api:
     build:
-      target: builder    # Use the builder stage with full Rust toolchain
+      target: builder
     command: cargo watch -x run
     volumes:
       - ./apps/auth-api:/app
@@ -15,13 +11,12 @@ services:
     environment:
       RUST_LOG: auth_api=trace,tower_http=trace,sqlx=debug
 
-  # Override frontend to use Vite dev server with HMR
-  frontend:
+  web:
     build:
       target: builder
     command: npm run dev -- --host 0.0.0.0
     volumes:
-      - ./apps/frontend:/app
+      - ./apps/web:/app
       - /app/node_modules
     environment:
       PUBLIC_API_BASE_URL: http://localhost:8080

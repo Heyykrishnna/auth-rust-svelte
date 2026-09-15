@@ -1,0 +1,10 @@
+aws_region         = "us-east-1"
+environment        = "prod"
+project_name       = "secure-auth-platform"
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+k8s_version        = "1.30"
+db_instance_class  = "db.r6g.large"
+db_allocated_storage = 50
+redis_node_type    = "cache.r6g.large"
+redis_num_cache_clusters = 3

@@ -54,6 +54,21 @@ infrastructure/kubernetes/**/*-secret-values.yaml
 infrastructure/kubernetes/**/*-secrets-real.yaml
 
 # ==============================================================================
+# Terraform & Helm
+# ==============================================================================
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example
+*.tfplan
+*.tflint.hcl
+infrastructure/helm/*.tgz
+infrastructure/helm/charts/
+
+# ==============================================================================
 # Kubernetes & Cloud Tooling
 # ==============================================================================
 kubeconfig
