@@ -49,9 +49,12 @@ async fn main() -> Result<()> {
 
     info!(address = %addr, "Server listening");
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
 
     opentelemetry::global::shutdown_tracer_provider();
 

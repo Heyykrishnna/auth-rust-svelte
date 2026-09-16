@@ -35,6 +35,12 @@ function resolveBaseUrl(): string {
 	return serverEnvUrl || 'http://127.0.0.1:8080';
 }
 
+function getCsrfTokenFromCookie(): string | undefined {
+	if (typeof document === 'undefined') return undefined;
+	const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+	return match ? decodeURIComponent(match[1]) : undefined;
+}
+
 async function request<T>(
 	method: string,
 	path: string,
@@ -47,6 +53,13 @@ async function request<T>(
 
 	if (options.token) {
 		headers['Authorization'] = `Bearer ${options.token}`;
+	}
+
+	if (!headers['x-csrf-token']) {
+		const csrfToken = getCsrfTokenFromCookie();
+		if (csrfToken) {
+			headers['x-csrf-token'] = csrfToken;
+		}
 	}
 
 	const baseUrl = resolveBaseUrl();

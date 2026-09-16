@@ -24,6 +24,24 @@ pub async fn security_headers_middleware(req: Request, next: Next) -> Response {
         header::HeaderName::from_static("x-xss-protection"),
         HeaderValue::from_static("0"),
     );
+    headers.insert(
+        header::HeaderName::from_static("strict-transport-security"),
+        HeaderValue::from_static("max-age=63072000; includeSubDomains; preload"),
+    );
+    headers.insert(
+        header::HeaderName::from_static("content-security-policy"),
+        HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'"),
+    );
+    headers.insert(
+        header::HeaderName::from_static("cross-origin-opener-policy"),
+        HeaderValue::from_static("same-origin"),
+    );
+    headers.insert(
+        header::HeaderName::from_static("cross-origin-resource-policy"),
+        HeaderValue::from_static("same-origin"),
+    );
+
+    headers.remove("server");
 
     response
 }
