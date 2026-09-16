@@ -77,6 +77,22 @@ export interface RegisterRequest {
   display_name: string;
 }
 
+export interface RegisterInitiateResponse {
+  status: 'pending_verification' | string;
+  email: string;
+  message: string;
+}
+
+export interface RegisterVerifyRequest {
+  email: string;
+  code: string;
+}
+
+export interface ResendOtpRequest {
+  email: string;
+}
+
+
 export interface LoginRequest {
   email: string;
   password: string;

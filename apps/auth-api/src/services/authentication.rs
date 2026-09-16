@@ -28,6 +28,221 @@ fn create_argon2id() -> Argon2<'static> {
     Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default())
 }
 
+fn generate_otp_code() -> String {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    let code: u32 = rng.gen_range(100_000..=999_999);
+    code.to_string()
+}
+
+pub async fn initiate_registration(
+    ctx: AuthContext<'_>,
+    email: String,
+    password: String,
+    display_name: String,
+) -> Result<String, AppError> {
+    let normalized = redis_ephemeral::normalize_email(&email);
+    let existing = user_repo::find_user_by_email(ctx.db, &normalized).await?;
+    if existing.is_some() {
+        return Err(AppError::EmailAlreadyExists);
+    }
+
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = create_argon2id();
+    let password_hash = argon2
+        .hash_password(password.as_bytes(), &salt)
+        .map_err(|e| AppError::PasswordHash(e.to_string()))?
+        .to_string();
+
+    let code_str = generate_otp_code();
+
+
+    let pending = redis_ephemeral::PendingRegistration {
+        email: normalized.clone(),
+        display_name: display_name.clone(),
+        password_hash,
+        code: code_str.clone(),
+        attempts: 0,
+    };
+
+    redis_ephemeral::store_pending_registration(
+        ctx.redis,
+        &pending,
+        ctx.config.verification_code_expiry_secs,
+    )
+    .await?;
+
+    let config = ctx.config.clone();
+    let to_email = normalized.clone();
+    let to_name = display_name;
+    let otp_code = code_str;
+
+    tokio::spawn(async move {
+        if let Err(err) =
+            crate::services::email::send_registration_otp(&config, &to_email, &to_name, &otp_code)
+                .await
+        {
+            tracing::error!(to = %to_email, error = %err, "Failed background registration OTP delivery");
+        }
+    });
+
+    Ok(normalized)
+}
+
+pub async fn verify_registration_otp(
+    ctx: AuthContext<'_>,
+    email: String,
+    code: String,
+    user_agent: Option<String>,
+    ip_address: Option<String>,
+) -> Result<(UserProfile, TokenPair), AppError> {
+    let normalized = redis_ephemeral::normalize_email(&email);
+    let pending = redis_ephemeral::get_pending_registration(ctx.redis, &normalized)
+        .await?
+        .ok_or_else(|| {
+            AppError::InvalidToken(
+                "Verification code has expired or registration session not found".to_string(),
+            )
+        })?;
+
+    if pending.attempts >= 5 {
+        let _ = redis_ephemeral::remove_pending_registration(ctx.redis, &normalized).await;
+        return Err(AppError::TooManyRequests(
+            "Too many failed verification attempts. Please restart registration.".to_string(),
+        ));
+    }
+
+    if pending.code != code.trim() {
+        let attempts = redis_ephemeral::update_pending_registration_attempts(
+            ctx.redis,
+            &normalized,
+            pending,
+            ctx.config.verification_code_expiry_secs,
+        )
+        .await?;
+
+        if attempts >= 5 {
+            return Err(AppError::TooManyRequests(
+                "Too many failed verification attempts. Registration session invalidated."
+                    .to_string(),
+            ));
+        }
+
+        return Err(AppError::InvalidToken(
+            "Invalid verification code. Please check and try again.".to_string(),
+        ));
+    }
+
+    let _ = redis_ephemeral::remove_pending_registration(ctx.redis, &normalized).await;
+
+    if user_repo::find_user_by_email(ctx.db, &pending.email)
+        .await?
+        .is_some()
+    {
+        return Err(AppError::EmailAlreadyExists);
+    }
+
+    let mut new_user = User::new(
+        pending.email,
+        pending.display_name,
+        Some(pending.password_hash),
+    );
+    new_user.email_verified = true;
+
+    let user = user_repo::create_user(ctx.db, new_user).await?;
+
+    let _ = crate::repositories::authorization::assign_role_to_user(ctx.db, user.id, "user").await;
+    let (roles, permissions) =
+        crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
+
+    let session_id = Uuid::new_v4();
+    let tokens = generate_token_pair_with_roles_and_permissions(
+        user.id,
+        &user.email,
+        &user.display_name,
+        roles.into_iter().map(|r| r.to_string()).collect(),
+        permissions.into_iter().map(|p| p.to_string()).collect(),
+        session_id,
+        &ctx.config.jwt_secret,
+        ctx.config.jwt_access_expiry_secs,
+        ctx.config.jwt_refresh_expiry_secs,
+    )?;
+
+    session_service::create_session(
+        ctx.db,
+        ctx.redis,
+        user.id,
+        &tokens.refresh_token,
+        ctx.config.refresh_token_duration(),
+        user_agent.clone(),
+        ip_address.clone(),
+    )
+    .await?;
+
+    let _ = crate::services::audit::log_event(
+        ctx.db,
+        Some(user.id),
+        crate::models::AuditEvent::LoginSuccess,
+        ip_address.clone(),
+        user_agent.clone(),
+        serde_json::json!({ "email": user.email, "action": "register_otp_verified" }),
+    )
+    .await;
+
+    let _ = crate::services::audit::log_event(
+        ctx.db,
+        Some(user.id),
+        crate::models::AuditEvent::EmailVerified,
+        ip_address,
+        user_agent,
+        serde_json::json!({ "email": user.email, "method": "registration_otp" }),
+    )
+    .await;
+
+    Ok((UserProfile::from(user), tokens))
+}
+
+pub async fn resend_registration_otp(
+    ctx: AuthContext<'_>,
+    email: String,
+) -> Result<(), AppError> {
+    let normalized = redis_ephemeral::normalize_email(&email);
+    let mut pending = redis_ephemeral::get_pending_registration(ctx.redis, &normalized)
+        .await?
+        .ok_or_else(|| {
+            AppError::InvalidToken("No pending registration found for this email".to_string())
+        })?;
+
+    let code_str = generate_otp_code();
+
+    pending.code = code_str.clone();
+    pending.attempts = 0;
+
+
+    redis_ephemeral::store_pending_registration(
+        ctx.redis,
+        &pending,
+        ctx.config.verification_code_expiry_secs,
+    )
+    .await?;
+
+    let config = ctx.config.clone();
+    let to_email = normalized;
+    let to_name = pending.display_name;
+    let otp_code = code_str;
+
+    tokio::spawn(async move {
+        if let Err(err) =
+            crate::services::email::send_registration_otp(&config, &to_email, &to_name, &otp_code)
+                .await
+        {
+            tracing::error!(to = %to_email, error = %err, "Failed background registration OTP resend");
+        }
+    });
+
+    Ok(())
+}
+
 pub async fn register(
     ctx: AuthContext<'_>,
     email: String,
@@ -460,10 +675,8 @@ pub async fn generate_verification_code(
     user_id: Uuid,
     email: String,
 ) -> Result<String, AppError> {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    let code: u32 = rng.gen_range(100_000..=999_999);
-    let code_str = code.to_string();
+    let code_str = generate_otp_code();
+
 
     let data = redis_ephemeral::VerificationCodeData { user_id, email };
 

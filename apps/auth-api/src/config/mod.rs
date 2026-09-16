@@ -29,6 +29,12 @@ pub struct AppConfig {
     pub otel_exporter_otlp_endpoint: String,
     pub otel_service_name: String,
     pub otel_service_version: String,
+    pub smtp_host: Option<String>,
+    pub smtp_port: u16,
+    pub smtp_user: Option<String>,
+    pub smtp_pass: Option<String>,
+    pub smtp_from: String,
+    pub smtp_from_name: String,
 }
 
 impl AppConfig {
@@ -128,6 +134,25 @@ impl AppConfig {
         let otel_service_version = env::var("OTEL_SERVICE_VERSION")
             .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_string());
 
+        let smtp_host = env::var("SMTP_HOST").ok().filter(|s| !s.trim().is_empty());
+        let smtp_port = env::var("SMTP_PORT")
+            .ok()
+            .and_then(|p| p.parse::<u16>().ok())
+            .unwrap_or(587);
+        let smtp_user = env::var("SMTP_USER")
+            .or_else(|_| env::var("SMTP_USERNAME"))
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+        let smtp_pass = env::var("SMTP_PASS")
+            .or_else(|_| env::var("SMTP_PASSWORD"))
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+        let smtp_from = env::var("SMTP_FROM")
+            .or_else(|_| env::var("SMTP_FROM_EMAIL"))
+            .or_else(|_| env::var("SENDER_EMAIL"))
+            .unwrap_or_else(|_| "Dradix <support@dradix.dev>".to_string());
+        let smtp_from_name = env::var("SMTP_FROM_NAME").unwrap_or_else(|_| "Dradix".to_string());
+
         Ok(Self {
             host,
             port,
@@ -153,6 +178,12 @@ impl AppConfig {
             otel_exporter_otlp_endpoint,
             otel_service_name,
             otel_service_version,
+            smtp_host,
+            smtp_port,
+            smtp_user,
+            smtp_pass,
+            smtp_from,
+            smtp_from_name,
         })
     }
 

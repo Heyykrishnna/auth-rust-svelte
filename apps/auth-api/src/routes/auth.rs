@@ -16,6 +16,14 @@ pub fn routes() -> Router<AppState> {
             post(handlers::password_reset::reset_password),
         )
         .route("/verify-code", post(handlers::verify_email::verify_code))
+        .route(
+            "/register/verify",
+            post(handlers::register::verify_register_otp),
+        )
+        .route(
+            "/register/resend-otp",
+            post(handlers::register::resend_register_otp),
+        )
         .layer(sensitive_rate_limit_layer());
 
     let auth_routes = Router::new()

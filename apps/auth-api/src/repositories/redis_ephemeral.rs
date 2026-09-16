@@ -8,12 +8,23 @@ const LOGIN_ATTEMPT_PREFIX: &str = "login_attempt:";
 const VERIFY_CODE_PREFIX: &str = "verify_code:";
 const PASSWORD_RESET_PREFIX: &str = "password_reset:";
 const RATE_LIMIT_PREFIX: &str = "rate_limit:";
+const PENDING_REG_PREFIX: &str = "pending_reg:";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PendingRegistration {
+    pub email: String,
+    pub display_name: String,
+    pub password_hash: String,
+    pub code: String,
+    pub attempts: u32,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct VerificationCodeData {
     pub user_id: Uuid,
     pub email: String,
 }
+
 
 pub fn normalize_email(email: &str) -> String {
     email.trim().to_lowercase()
@@ -240,3 +251,90 @@ pub async fn check_and_increment_rate_limit(
 
     Ok(count <= max_requests as i64)
 }
+
+pub async fn store_pending_registration(
+    pool: &RedisPool,
+    registration: &PendingRegistration,
+    ttl_secs: u64,
+) -> Result<(), AppError> {
+    let mut conn = pool
+        .get()
+        .await
+        .map_err(|e| AppError::Redis(e.to_string()))?;
+
+    let key = format!("{}{}", PENDING_REG_PREFIX, normalize_email(&registration.email));
+    let value = serde_json::to_string(registration)
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let _: () = redis::cmd("SETEX")
+        .arg(&key)
+        .arg(ttl_secs)
+        .arg(&value)
+        .query_async(&mut conn)
+        .await
+        .map_err(|e| AppError::Redis(e.to_string()))?;
+
+    Ok(())
+}
+
+pub async fn get_pending_registration(
+    pool: &RedisPool,
+    email: &str,
+) -> Result<Option<PendingRegistration>, AppError> {
+    let mut conn = pool
+        .get()
+        .await
+        .map_err(|e| AppError::Redis(e.to_string()))?;
+
+    let key = format!("{}{}", PENDING_REG_PREFIX, normalize_email(email));
+    let val: Option<String> = redis::cmd("GET")
+        .arg(&key)
+        .query_async(&mut conn)
+        .await
+        .map_err(|e| AppError::Redis(e.to_string()))?;
+
+    match val {
+        Some(json_str) => {
+            let data = serde_json::from_str::<PendingRegistration>(&json_str)
+                .map_err(|e| AppError::Internal(e.to_string()))?;
+            Ok(Some(data))
+        }
+        None => Ok(None),
+    }
+}
+
+pub async fn remove_pending_registration(
+    pool: &RedisPool,
+    email: &str,
+) -> Result<(), AppError> {
+    let mut conn = pool
+        .get()
+        .await
+        .map_err(|e| AppError::Redis(e.to_string()))?;
+
+    let key = format!("{}{}", PENDING_REG_PREFIX, normalize_email(email));
+    let _: () = redis::cmd("DEL")
+        .arg(&key)
+        .query_async(&mut conn)
+        .await
+        .map_err(|e| AppError::Redis(e.to_string()))?;
+
+    Ok(())
+}
+
+pub async fn update_pending_registration_attempts(
+    pool: &RedisPool,
+    email: &str,
+    mut registration: PendingRegistration,
+    ttl_secs: u64,
+) -> Result<u32, AppError> {
+    registration.attempts += 1;
+    let attempts = registration.attempts;
+    if attempts >= 5 {
+        let _ = remove_pending_registration(pool, email).await;
+    } else {
+        store_pending_registration(pool, &registration, ttl_secs).await?;
+    }
+    Ok(attempts)
+}
+

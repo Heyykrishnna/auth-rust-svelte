@@ -205,7 +205,14 @@ fn test_cookie_helpers() {
         otel_exporter_otlp_endpoint: "http://localhost:4317".to_string(),
         otel_service_name: "auth-api".to_string(),
         otel_service_version: "0.1.0".to_string(),
+        smtp_host: Some("smtp.gmail.com".to_string()),
+        smtp_port: 587,
+        smtp_user: Some("test@gmail.com".to_string()),
+        smtp_pass: Some("testpass".to_string()),
+        smtp_from: "Dradix <support@dradix.dev>".to_string(),
+        smtp_from_name: "Dradix".to_string(),
     };
+
 
     let session_cookie = build_session_cookie(&config, "access_token_val".to_string());
     assert_eq!(session_cookie.name(), "session_token");
@@ -821,3 +828,64 @@ async fn test_authorization_middleware_pipeline() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
+
+#[test]
+fn test_pending_registration_serde() {
+    use auth_api::repositories::redis_ephemeral::PendingRegistration;
+
+    let pending = PendingRegistration {
+        email: "user@example.com".to_string(),
+        display_name: "Jane Doe".to_string(),
+        password_hash: "$argon2id$v=19$m=19456,t=2,p=1$test$test".to_string(),
+        code: "839201".to_string(),
+        attempts: 2,
+    };
+
+    let serialized = serde_json::to_string(&pending).unwrap();
+    let deserialized: PendingRegistration = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(pending, deserialized);
+    assert_eq!(deserialized.code.len(), 6);
+}
+
+#[test]
+fn test_smtp_configuration_parsing() {
+    use auth_api::config::AppConfig;
+
+    std::env::set_var("SMTP_HOST", "smtp.gmail.com");
+    std::env::set_var("SMTP_PORT", "587");
+    std::env::set_var("SMTP_USER", "khandelwalyatharth39@gmail.com");
+    std::env::set_var("SMTP_PASS", "xvpx ykrc acys khqa");
+    std::env::set_var("SMTP_FROM", "Dradix <support@dradix.dev>");
+    std::env::set_var("SMTP_FROM_NAME", "Dradix");
+    std::env::set_var("DATABASE_URL", "postgres://localhost/testdb");
+    std::env::set_var(
+        "JWT_SECRET",
+        "super_secret_test_key_that_is_at_least_32_characters_long",
+    );
+
+    let cfg = AppConfig::from_env().unwrap();
+    assert_eq!(cfg.smtp_host, Some("smtp.gmail.com".to_string()));
+    assert_eq!(cfg.smtp_port, 587);
+    assert_eq!(cfg.smtp_user, Some("khandelwalyatharth39@gmail.com".to_string()));
+    assert_eq!(cfg.smtp_pass, Some("xvpx ykrc acys khqa".to_string()));
+    assert_eq!(cfg.smtp_from, "Dradix <support@dradix.dev>");
+    assert_eq!(cfg.smtp_from_name, "Dradix");
+}
+
+#[tokio::test]
+async fn test_live_smtp_send() {
+    let _ = dotenvy::dotenv();
+    if let Ok(cfg) = auth_api::config::AppConfig::from_env() {
+        if cfg.smtp_host.is_some() {
+            let res = auth_api::services::email::send_registration_otp(
+                &cfg,
+                "khandelwalyatharth39@gmail.com",
+                "Yatharth",
+                "123456",
+            ).await;
+            println!("SMTP send result: {:?}", res);
+        }
+    }
+}
+
+

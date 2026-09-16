@@ -25,9 +25,10 @@ async fn main() -> Result<()> {
     let db = PgPoolOptions::new()
         .max_connections(config.db_max_connections)
         .min_connections(1)
-        .acquire_timeout(std::time::Duration::from_secs(5))
+        .acquire_timeout(std::time::Duration::from_secs(30))
         .connect(&config.database_url)
         .await?;
+
 
     sqlx::migrate!("./migrations").run(&db).await?;
     info!("Database migrations applied successfully");

@@ -9,7 +9,10 @@ import type {
 	MessageResponse,
 	OidcProvider,
 	RefreshRequest,
+	RegisterInitiateResponse,
 	RegisterRequest,
+	RegisterVerifyRequest,
+	ResendOtpRequest,
 	ResetPasswordRequest,
 	SessionItem,
 	UpdateProfileRequest,
@@ -21,8 +24,19 @@ export * from './types';
 export const authApi = {
 	register: (data: RegisterRequest, options?: RequestOptions) =>
 		options
-			? apiClient.post<AuthSession>('/api/auth/register', data, options)
-			: apiClient.post<AuthSession>('/api/auth/register', data),
+			? apiClient.post<RegisterInitiateResponse>('/api/auth/register', data, options)
+			: apiClient.post<RegisterInitiateResponse>('/api/auth/register', data),
+
+	verifyRegisterOtp: (data: RegisterVerifyRequest, options?: RequestOptions) =>
+		options
+			? apiClient.post<AuthSession>('/api/auth/register/verify', data, options)
+			: apiClient.post<AuthSession>('/api/auth/register/verify', data),
+
+	resendRegisterOtp: (data: ResendOtpRequest, options?: RequestOptions) =>
+		options
+			? apiClient.post<MessageResponse>('/api/auth/register/resend-otp', data, options)
+			: apiClient.post<MessageResponse>('/api/auth/register/resend-otp', data),
+
 
 	login: (data: LoginRequest, options?: RequestOptions) =>
 		options

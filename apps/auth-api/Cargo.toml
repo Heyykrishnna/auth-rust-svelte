@@ -49,6 +49,8 @@ urlencoding = "2.1"
 openidconnect = { version = "3", features = ["reqwest"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 oauth2 = "4"
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
