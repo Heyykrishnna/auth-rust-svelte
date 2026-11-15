@@ -19,28 +19,28 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ""
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-devredispassword}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-devredispassword} ping | grep PONG || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   auth-api:
     build:
-      context: apps/auth-api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.api
       target: runtime
     restart: unless-stopped
     env_file:
       - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-authuser}:${POSTGRES_PASSWORD:-authpassword}@postgres:5432/${POSTGRES_DB:-authdb}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-devredispassword}@redis:6379
       AUTH_API_HOST: 0.0.0.0
       AUTH_API_PORT: 8080
       RUST_LOG: ${RUST_LOG:-auth_api=debug,tower_http=info}
@@ -61,13 +61,15 @@ services:
 
   web:
     build:
-      context: apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.web
       target: runtime
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       PUBLIC_API_BASE_URL: http://localhost:8080
-      PUBLIC_APP_NAME: AuthApp
+      PUBLIC_APP_NAME: SecureAuthPlatform
       ORIGIN: http://localhost:3000
     ports:
       - "3000:3000"
@@ -126,9 +128,9 @@ services:
     image: grafana/grafana:11.1.0
     restart: unless-stopped
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "${GF_AUTH_ANONYMOUS_ENABLED:-false}"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
     volumes:
       - ./observability/grafana/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro

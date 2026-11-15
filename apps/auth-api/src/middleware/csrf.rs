@@ -2,23 +2,21 @@ use axum::extract::Request;
 use axum::http::{Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
+use rand_core::{OsRng, RngCore};
 use serde_json::json;
+use subtle::ConstantTimeEq;
 
 static CSRF_COOKIE: &str = "csrf_token";
 static CSRF_HEADER: &str = "x-csrf-token";
 
-static MUTATING_METHODS: &[Method] = &[
-    Method::POST,
-    Method::PUT,
-    Method::PATCH,
-    Method::DELETE,
-];
+static MUTATING_METHODS: &[Method] = &[Method::POST, Method::PUT, Method::PATCH, Method::DELETE];
 
 pub async fn csrf_protection_middleware(req: Request, next: Next) -> Response {
     if !MUTATING_METHODS.contains(req.method()) {
         return next.run(req).await;
     }
 
+    let has_cookie = has_session_cookie(req.headers());
     let uses_bearer = req
         .headers()
         .get(axum::http::header::AUTHORIZATION)
@@ -26,7 +24,7 @@ pub async fn csrf_protection_middleware(req: Request, next: Next) -> Response {
         .map(|v| v.starts_with("Bearer "))
         .unwrap_or(false);
 
-    if uses_bearer {
+    if uses_bearer && !has_cookie {
         return next.run(req).await;
     }
 
@@ -52,11 +50,26 @@ pub async fn csrf_protection_middleware(req: Request, next: Next) -> Response {
         .map(|s| s.to_string());
 
     match (cookie_token, header_token) {
-        (Some(cookie), Some(header)) if constant_time_eq(&cookie, &header) => {
-            next.run(req).await
-        }
+        (Some(cookie), Some(header)) if constant_time_eq(&cookie, &header) => next.run(req).await,
         _ => csrf_rejection(),
     }
+}
+
+fn has_session_cookie(headers: &axum::http::HeaderMap) -> bool {
+    headers
+        .get(axum::http::header::COOKIE)
+        .and_then(|h| h.to_str().ok())
+        .map(|cookie_str| {
+            cookie_str.split(';').any(|s| {
+                if let Some((name, _)) = s.trim().split_once('=') {
+                    let trimmed = name.trim();
+                    trimmed == "session_token" || trimmed == "access_token"
+                } else {
+                    false
+                }
+            })
+        })
+        .unwrap_or(false)
 }
 
 fn extract_csrf_cookie(headers: &axum::http::HeaderMap) -> Option<String> {
@@ -76,13 +89,12 @@ fn extract_csrf_cookie(headers: &axum::http::HeaderMap) -> Option<String> {
 }
 
 fn constant_time_eq(a: &str, b: &str) -> bool {
-    if a.len() != b.len() {
+    let a_bytes = a.as_bytes();
+    let b_bytes = b.as_bytes();
+    if a_bytes.len() != b_bytes.len() {
         return false;
     }
-    a.bytes()
-        .zip(b.bytes())
-        .fold(0u8, |acc, (x, y)| acc | (x ^ y))
-        == 0
+    a_bytes.ct_eq(b_bytes).into()
 }
 
 fn csrf_rejection() -> Response {
@@ -97,8 +109,7 @@ fn csrf_rejection() -> Response {
 }
 
 pub fn generate_csrf_token() -> String {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    let bytes: Vec<u8> = (0..32).map(|_| rng.gen::<u8>()).collect();
+    let mut bytes = [0u8; 32];
+    OsRng.fill_bytes(&mut bytes);
     hex::encode(bytes)
 }

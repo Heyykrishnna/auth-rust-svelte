@@ -75,6 +75,9 @@ pub fn clear_auth_cookies(jar: CookieJar, config: &AppConfig) -> CookieJar {
         .same_site(SameSite::Lax)
         .max_age(time::Duration::ZERO);
 
+    if config.cookie_secure {
+        clear_session = clear_session.secure(true);
+    }
     if let Some(ref domain) = config.cookie_domain {
         clear_session = clear_session.domain(domain.clone());
     }
@@ -85,6 +88,9 @@ pub fn clear_auth_cookies(jar: CookieJar, config: &AppConfig) -> CookieJar {
         .same_site(SameSite::Lax)
         .max_age(time::Duration::ZERO);
 
+    if config.cookie_secure {
+        clear_refresh = clear_refresh.secure(true);
+    }
     if let Some(ref domain) = config.cookie_domain {
         clear_refresh = clear_refresh.domain(domain.clone());
     }
@@ -95,6 +101,9 @@ pub fn clear_auth_cookies(jar: CookieJar, config: &AppConfig) -> CookieJar {
         .same_site(SameSite::Lax)
         .max_age(time::Duration::ZERO);
 
+    if config.cookie_secure {
+        clear_csrf = clear_csrf.secure(true);
+    }
     if let Some(ref domain) = config.cookie_domain {
         clear_csrf = clear_csrf.domain(domain.clone());
     }

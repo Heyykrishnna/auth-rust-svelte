@@ -10,8 +10,12 @@ export function hasPermission(user: AuthUser | null | undefined, permission: str
 	if (!user) return false;
 	if (isAdmin(user)) return true;
 	if (!user.permissions) return false;
-	const normalized = permission.toLowerCase();
-	return user.permissions.some((p) => p.toLowerCase() === normalized);
+	const dotVariant = permission.toLowerCase().replace(':', '.');
+	const colonVariant = permission.toLowerCase().replace('.', ':');
+	return user.permissions.some((p) => {
+		const norm = p.toLowerCase();
+		return norm === dotVariant || norm === colonVariant;
+	});
 }
 
 export function isAdmin(user: AuthUser | null | undefined): boolean {
@@ -35,7 +39,7 @@ export function canAccess(user: AuthUser | null | undefined, path: string): bool
 	}
 
 	if (normalizedPath.startsWith('/admin')) {
-		return isAdmin(user) || hasPermission(user, 'users:read');
+		return isAdmin(user) || hasPermission(user, 'users.read') || hasPermission(user, 'users:read');
 	}
 
 	return true;

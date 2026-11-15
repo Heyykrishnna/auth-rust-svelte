@@ -29,10 +29,11 @@ fn create_argon2id() -> Argon2<'static> {
 }
 
 fn generate_otp_code() -> String {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    let code: u32 = rng.gen_range(100_000..=999_999);
-    code.to_string()
+    use rand_core::{OsRng, RngCore};
+    let mut bytes = [0u8; 4];
+    OsRng.fill_bytes(&mut bytes);
+    let num = u32::from_be_bytes(bytes);
+    format!("{:06}", (num % 900_000) + 100_000)
 }
 
 pub async fn initiate_registration(
@@ -55,7 +56,6 @@ pub async fn initiate_registration(
         .to_string();
 
     let code_str = generate_otp_code();
-
 
     let pending = redis_ephemeral::PendingRegistration {
         email: normalized.clone(),
@@ -112,7 +112,16 @@ pub async fn verify_registration_otp(
         ));
     }
 
-    if pending.code != code.trim() {
+    use subtle::ConstantTimeEq;
+    let expected_bytes = pending.code.as_bytes();
+    let actual_bytes = code.trim().as_bytes();
+    let matches: bool = if expected_bytes.len() == actual_bytes.len() {
+        expected_bytes.ct_eq(actual_bytes).into()
+    } else {
+        false
+    };
+
+    if !matches {
         let attempts = redis_ephemeral::update_pending_registration_attempts(
             ctx.redis,
             &normalized,
@@ -176,6 +185,7 @@ pub async fn verify_registration_otp(
         ctx.config.refresh_token_duration(),
         user_agent.clone(),
         ip_address.clone(),
+        None,
     )
     .await?;
 
@@ -202,10 +212,7 @@ pub async fn verify_registration_otp(
     Ok((UserProfile::from(user), tokens))
 }
 
-pub async fn resend_registration_otp(
-    ctx: AuthContext<'_>,
-    email: String,
-) -> Result<(), AppError> {
+pub async fn resend_registration_otp(ctx: AuthContext<'_>, email: String) -> Result<(), AppError> {
     let normalized = redis_ephemeral::normalize_email(&email);
     let mut pending = redis_ephemeral::get_pending_registration(ctx.redis, &normalized)
         .await?
@@ -217,7 +224,6 @@ pub async fn resend_registration_otp(
 
     pending.code = code_str.clone();
     pending.attempts = 0;
-
 
     redis_ephemeral::store_pending_registration(
         ctx.redis,
@@ -287,6 +293,7 @@ pub async fn register(
         user.id,
         &tokens.refresh_token,
         ctx.config.refresh_token_duration(),
+        None,
         None,
         None,
     )
@@ -481,6 +488,7 @@ pub async fn login(
         ctx.config.refresh_token_duration(),
         user_agent.clone(),
         ip_address.clone(),
+        None,
     )
     .await?;
 
@@ -516,8 +524,16 @@ pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenP
     }
 
     let token_hash = hash_token(refresh_token);
+    let existing_record =
+        crate::repositories::refresh_tokens::find_by_token_hash(ctx.db, &token_hash)
+            .await
+            .ok()
+            .flatten();
+    let family_id = existing_record.map(|r| r.family_id).unwrap_or(session_id);
+
     if session.refresh_token_hash != token_hash {
         let _ = session_service::invalidate_session(ctx.db, ctx.redis, session_id).await;
+        let _ = crate::repositories::refresh_tokens::revoke_family(ctx.db, family_id).await;
         return Err(AppError::InvalidToken(
             "Refresh token reuse detected".to_string(),
         ));
@@ -553,28 +569,43 @@ pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenP
         ctx.config.refresh_token_duration(),
         session.user_agent,
         session.ip_address,
+        Some(family_id),
     )
     .await?;
 
     Ok(tokens)
 }
 
-pub async fn logout(ctx: AuthContext<'_>, access_token: &str) -> Result<(), AppError> {
-    let claims = validate_access_token(access_token, &ctx.config.jwt_secret)?;
+pub async fn logout(
+    ctx: AuthContext<'_>,
+    access_token: Option<&str>,
+    refresh_token: Option<&str>,
+) -> Result<(), AppError> {
+    if let Some(token) = access_token {
+        if let Ok(claims) = validate_access_token(token, &ctx.config.jwt_secret) {
+            let ttl_secs = (claims.exp - chrono::Utc::now().timestamp()).max(0) as u64;
+            let _ = session_repo::blacklist_token(ctx.redis, &claims.jti, ttl_secs).await;
 
-    let ttl_secs = (claims.exp - chrono::Utc::now().timestamp()).max(0) as u64;
-    session_repo::blacklist_token(ctx.redis, &claims.jti, ttl_secs).await?;
+            if let Ok(user_id) = Uuid::parse_str(&claims.sub) {
+                let _ = crate::services::audit::log_event(
+                    ctx.db,
+                    Some(user_id),
+                    crate::models::AuditEvent::Logout,
+                    None,
+                    None,
+                    serde_json::json!({ "jti": claims.jti }),
+                )
+                .await;
+            }
+        }
+    }
 
-    if let Ok(user_id) = Uuid::parse_str(&claims.sub) {
-        let _ = crate::services::audit::log_event(
-            ctx.db,
-            Some(user_id),
-            crate::models::AuditEvent::Logout,
-            None,
-            None,
-            serde_json::json!({ "jti": claims.jti }),
-        )
-        .await;
+    if let Some(token) = refresh_token {
+        if let Ok(claims) = validate_refresh_token(token, &ctx.config.jwt_secret) {
+            if let Ok(session_id) = Uuid::parse_str(&claims.session_id) {
+                let _ = session_service::invalidate_session(ctx.db, ctx.redis, session_id).await;
+            }
+        }
     }
 
     Ok(())
@@ -600,15 +631,15 @@ pub async fn verify_email(ctx: AuthContext<'_>, token: &str) -> Result<(), AppEr
     Ok(())
 }
 
-pub async fn request_password_reset(
-    ctx: AuthContext<'_>,
-    email: String,
-) -> Result<Option<String>, AppError> {
+pub async fn request_password_reset(ctx: AuthContext<'_>, email: String) -> Result<(), AppError> {
     let normalized = redis_ephemeral::normalize_email(&email);
     let user_opt = user_repo::find_user_by_email(ctx.db, &normalized).await?;
 
     if let Some(user) = user_opt {
-        let token = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
+        use rand_core::{OsRng, RngCore};
+        let mut token_bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut token_bytes);
+        let token = hex::encode(token_bytes);
 
         redis_ephemeral::store_password_reset_token(
             ctx.redis,
@@ -618,10 +649,26 @@ pub async fn request_password_reset(
         )
         .await?;
 
-        return Ok(Some(token));
+        let config = ctx.config.clone();
+        let to_email = normalized;
+        let to_name = user.display_name;
+        let reset_token = token;
+
+        tokio::spawn(async move {
+            if let Err(err) = crate::services::email::send_password_reset_email(
+                &config,
+                &to_email,
+                &to_name,
+                &reset_token,
+            )
+            .await
+            {
+                tracing::error!(to = %to_email, error = %err, "Failed background password reset email dispatch");
+            }
+        });
     }
 
-    Ok(None)
+    Ok(())
 }
 
 pub async fn reset_password(
@@ -676,7 +723,6 @@ pub async fn generate_verification_code(
     email: String,
 ) -> Result<String, AppError> {
     let code_str = generate_otp_code();
-
 
     let data = redis_ephemeral::VerificationCodeData { user_id, email };
 

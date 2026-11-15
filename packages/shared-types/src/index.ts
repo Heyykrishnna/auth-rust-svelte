@@ -138,7 +138,6 @@ export interface ApiResponse<T> {
 
 export interface MessageResponse {
   message: string;
-  reset_token?: string;
 }
 
 export interface HealthResponse {
@@ -160,6 +159,12 @@ export interface AuditLogEntry {
 export type Role = 'admin' | 'user' | 'moderator' | string;
 
 export type Permission =
+  | 'profile.read'
+  | 'profile.write'
+  | 'sessions.read'
+  | 'sessions.delete'
+  | 'users.read'
+  | 'users.delete'
   | 'user:read'
   | 'user:write'
   | 'user:delete'

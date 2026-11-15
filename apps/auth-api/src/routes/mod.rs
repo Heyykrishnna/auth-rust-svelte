@@ -15,7 +15,9 @@ use tower_http::request_id::{MakeRequestUuid, SetRequestIdLayer};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 
-use crate::middleware::{api_rate_limit_layer, csrf_protection_middleware, security_headers_middleware};
+use crate::middleware::{
+    api_rate_limit_layer, csrf_protection_middleware, security_headers_middleware,
+};
 use crate::AppState;
 
 pub fn build_router(state: AppState) -> Router {

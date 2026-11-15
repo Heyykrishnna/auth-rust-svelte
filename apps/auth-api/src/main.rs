@@ -29,7 +29,6 @@ async fn main() -> Result<()> {
         .connect(&config.database_url)
         .await?;
 
-
     sqlx::migrate!("./migrations").run(&db).await?;
     info!("Database migrations applied successfully");
 

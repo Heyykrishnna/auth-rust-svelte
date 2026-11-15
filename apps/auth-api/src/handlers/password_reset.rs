@@ -16,8 +16,6 @@ pub struct ForgotPasswordRequest {
 #[derive(Debug, Serialize)]
 pub struct ForgotPasswordResponse {
     pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reset_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -48,12 +46,11 @@ pub async fn forgot_password(
         redis: &state.redis,
     };
 
-    let token = authentication::request_password_reset(ctx, payload.email).await?;
+    authentication::request_password_reset(ctx, payload.email).await?;
 
     Ok(Json(ForgotPasswordResponse {
-        message: "If that email is registered, password reset instructions have been generated."
+        message: "If that email is registered, password reset instructions have been sent."
             .to_string(),
-        reset_token: token,
     }))
 }
 

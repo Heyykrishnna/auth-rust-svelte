@@ -38,6 +38,28 @@ export const handle: Handle = async ({ event, resolve }) => {
 				if (refreshRes.ok) {
 					const tokens = (await refreshRes.json()) as AuthTokens;
 					if (tokens.access_token) {
+						const isSecure =
+							process.env.COOKIE_SECURE === 'true' ||
+							process.env.NODE_ENV === 'production';
+
+						event.cookies.set('session_token', tokens.access_token, {
+							path: '/',
+							httpOnly: true,
+							sameSite: 'lax',
+							secure: isSecure,
+							maxAge: tokens.expires_in || 900
+						});
+
+						if (tokens.refresh_token) {
+							event.cookies.set('refresh_token', tokens.refresh_token, {
+								path: '/',
+								httpOnly: true,
+								sameSite: 'lax',
+								secure: isSecure,
+								maxAge: 604800
+							});
+						}
+
 						const retryUserRes = await event.fetch(`${API_INTERNAL_URL}/api/auth/me`, {
 							headers: {
 								Authorization: `Bearer ${tokens.access_token}`

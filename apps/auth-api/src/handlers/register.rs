@@ -64,8 +64,6 @@ pub async fn register(
     State(state): State<AppState>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<(StatusCode, Json<RegisterInitiateResponse>), AppError> {
-
-
     payload
         .validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;

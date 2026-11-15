@@ -106,6 +106,13 @@ pub async fn is_token_blacklisted(pool: &RedisPool, jti: &str) -> Result<bool, A
 }
 
 pub async fn create_pg_session(pool: &PgPool, session: &Session) -> Result<(), AppError> {
+    let sanitized_ip = session.ip_address.as_deref().and_then(|raw| {
+        raw.trim()
+            .parse::<std::net::IpAddr>()
+            .ok()
+            .map(|ip| ip.to_string())
+    });
+
     sqlx::query(
         r#"
         INSERT INTO sessions (id, user_id, refresh_token_hash, session_hash, user_agent, ip_address, created_at, expires_at, last_used_at, revoked_at)
@@ -117,7 +124,7 @@ pub async fn create_pg_session(pool: &PgPool, session: &Session) -> Result<(), A
     .bind(&session.refresh_token_hash)
     .bind(&session.session_hash)
     .bind(&session.user_agent)
-    .bind(&session.ip_address)
+    .bind(sanitized_ip)
     .bind(session.created_at)
     .bind(session.expires_at)
     .bind(session.last_used_at)

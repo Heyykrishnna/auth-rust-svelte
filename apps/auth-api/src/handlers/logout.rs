@@ -12,8 +12,9 @@ pub async fn logout(
     jar: CookieJar,
     headers: HeaderMap,
 ) -> Result<(CookieJar, StatusCode), AppError> {
-    let token = jar
+    let access_token = jar
         .get("session_token")
+        .or_else(|| jar.get("access_token"))
         .map(|c| c.value().to_string())
         .or_else(|| {
             headers
@@ -22,15 +23,15 @@ pub async fn logout(
                 .and_then(|val| val.strip_prefix("Bearer ").map(String::from))
         });
 
-    if let Some(token) = token {
-        let ctx = AuthContext {
-            config: &state.config,
-            db: &state.db,
-            redis: &state.redis,
-        };
+    let refresh_token = jar.get("refresh_token").map(|c| c.value().to_string());
 
-        let _ = authentication::logout(ctx, &token).await;
-    }
+    let ctx = AuthContext {
+        config: &state.config,
+        db: &state.db,
+        redis: &state.redis,
+    };
+
+    let _ = authentication::logout(ctx, access_token.as_deref(), refresh_token.as_deref()).await;
 
     let jar = clear_auth_cookies(jar, &state.config);
 

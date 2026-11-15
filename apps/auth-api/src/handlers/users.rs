@@ -62,8 +62,8 @@ pub async fn list_users(
     _user: AuthenticatedUser,
     axum::extract::Query(query): axum::extract::Query<PaginationQuery>,
 ) -> Result<Json<Vec<UserProfile>>, AppError> {
-    let limit = query.limit.unwrap_or(20);
-    let offset = query.offset.unwrap_or(0);
+    let limit = query.limit.unwrap_or(20).clamp(1, 100);
+    let offset = query.offset.unwrap_or(0).max(0);
     let users = user_repo::list_users(&state.db, limit, offset).await?;
     Ok(Json(users.into_iter().map(UserProfile::from).collect()))
 }

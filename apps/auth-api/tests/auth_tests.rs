@@ -213,7 +213,6 @@ fn test_cookie_helpers() {
         smtp_from_name: "Dradix".to_string(),
     };
 
-
     let session_cookie = build_session_cookie(&config, "access_token_val".to_string());
     assert_eq!(session_cookie.name(), "session_token");
     assert_eq!(session_cookie.value(), "access_token_val");
@@ -851,12 +850,12 @@ fn test_pending_registration_serde() {
 fn test_smtp_configuration_parsing() {
     use auth_api::config::AppConfig;
 
-    std::env::set_var("SMTP_HOST", "smtp.gmail.com");
+    std::env::set_var("SMTP_HOST", "smtp.example.com");
     std::env::set_var("SMTP_PORT", "587");
-    std::env::set_var("SMTP_USER", "khandelwalyatharth39@gmail.com");
-    std::env::set_var("SMTP_PASS", "xvpx ykrc acys khqa");
-    std::env::set_var("SMTP_FROM", "Dradix <support@dradix.dev>");
-    std::env::set_var("SMTP_FROM_NAME", "Dradix");
+    std::env::set_var("SMTP_USER", "test_smtp_user");
+    std::env::set_var("SMTP_PASS", "test_smtp_password");
+    std::env::set_var("SMTP_FROM", "SecureAuth <support@example.com>");
+    std::env::set_var("SMTP_FROM_NAME", "SecureAuth");
     std::env::set_var("DATABASE_URL", "postgres://localhost/testdb");
     std::env::set_var(
         "JWT_SECRET",
@@ -864,28 +863,55 @@ fn test_smtp_configuration_parsing() {
     );
 
     let cfg = AppConfig::from_env().unwrap();
-    assert_eq!(cfg.smtp_host, Some("smtp.gmail.com".to_string()));
+    assert_eq!(cfg.smtp_host, Some("smtp.example.com".to_string()));
     assert_eq!(cfg.smtp_port, 587);
-    assert_eq!(cfg.smtp_user, Some("khandelwalyatharth39@gmail.com".to_string()));
-    assert_eq!(cfg.smtp_pass, Some("xvpx ykrc acys khqa".to_string()));
-    assert_eq!(cfg.smtp_from, "Dradix <support@dradix.dev>");
-    assert_eq!(cfg.smtp_from_name, "Dradix");
+    assert_eq!(cfg.smtp_user, Some("test_smtp_user".to_string()));
+    assert_eq!(cfg.smtp_pass, Some("test_smtp_password".to_string()));
+    assert_eq!(cfg.smtp_from, "SecureAuth <support@example.com>");
+    assert_eq!(cfg.smtp_from_name, "SecureAuth");
 }
 
 #[tokio::test]
 async fn test_live_smtp_send() {
-    let _ = dotenvy::dotenv();
-    if let Ok(cfg) = auth_api::config::AppConfig::from_env() {
-        if cfg.smtp_host.is_some() {
-            let res = auth_api::services::email::send_registration_otp(
-                &cfg,
-                "khandelwalyatharth39@gmail.com",
-                "Yatharth",
-                "123456",
-            ).await;
-            println!("SMTP send result: {:?}", res);
-        }
-    }
+    let cfg = auth_api::config::AppConfig {
+        host: "0.0.0.0".to_string(),
+        port: 8080,
+        database_url: "postgres://localhost/testdb".to_string(),
+        db_max_connections: 5,
+        redis_url: "redis://127.0.0.1:6379".to_string(),
+        jwt_secret: "test_secret_that_is_long_enough_min_32_chars".to_string(),
+        jwt_access_expiry_secs: 900,
+        jwt_refresh_expiry_secs: 604800,
+        login_max_attempts: 5,
+        login_lockout_duration_secs: 900,
+        verification_code_expiry_secs: 900,
+        password_reset_expiry_secs: 900,
+        google_client_id: None,
+        google_client_secret: None,
+        google_redirect_uri: None,
+        github_client_id: None,
+        github_client_secret: None,
+        github_redirect_uri: None,
+        cors_origins: vec!["http://localhost:3000".to_string()],
+        cookie_secure: false,
+        cookie_domain: None,
+        otel_exporter_otlp_endpoint: "http://localhost:4317".to_string(),
+        otel_service_name: "auth-api".to_string(),
+        otel_service_version: "1.0.0".to_string(),
+        smtp_host: None,
+        smtp_port: 587,
+        smtp_user: None,
+        smtp_pass: None,
+        smtp_from: "SecureAuth <no-reply@example.com>".to_string(),
+        smtp_from_name: "SecureAuth".to_string(),
+    };
+
+    let res = auth_api::services::email::send_registration_otp(
+        &cfg,
+        "recipient@example.com",
+        "Recipient",
+        "123456",
+    )
+    .await;
+    assert!(res.is_ok());
 }
-
-

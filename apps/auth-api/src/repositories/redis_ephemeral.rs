@@ -25,7 +25,6 @@ pub struct VerificationCodeData {
     pub email: String,
 }
 
-
 pub fn normalize_email(email: &str) -> String {
     email.trim().to_lowercase()
 }
@@ -262,9 +261,13 @@ pub async fn store_pending_registration(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", PENDING_REG_PREFIX, normalize_email(&registration.email));
-    let value = serde_json::to_string(registration)
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let key = format!(
+        "{}{}",
+        PENDING_REG_PREFIX,
+        normalize_email(&registration.email)
+    );
+    let value =
+        serde_json::to_string(registration).map_err(|e| AppError::Internal(e.to_string()))?;
 
     let _: () = redis::cmd("SETEX")
         .arg(&key)
@@ -303,10 +306,7 @@ pub async fn get_pending_registration(
     }
 }
 
-pub async fn remove_pending_registration(
-    pool: &RedisPool,
-    email: &str,
-) -> Result<(), AppError> {
+pub async fn remove_pending_registration(pool: &RedisPool, email: &str) -> Result<(), AppError> {
     let mut conn = pool
         .get()
         .await
@@ -337,4 +337,3 @@ pub async fn update_pending_registration_attempts(
     }
     Ok(attempts)
 }
-

@@ -10,6 +10,7 @@ use crate::repositories::refresh_tokens as refresh_repo;
 use crate::repositories::sessions as session_repo;
 use crate::services::tokens::hash_token;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_session(
     db: &PgPool,
     redis: &RedisPool,
@@ -18,6 +19,7 @@ pub async fn create_session(
     duration: Duration,
     user_agent: Option<String>,
     ip_address: Option<String>,
+    family_id: Option<Uuid>,
 ) -> Result<Session, AppError> {
     let token_hash = hash_token(refresh_token);
     let expires_at = Utc::now()
@@ -34,11 +36,12 @@ pub async fn create_session(
     session_repo::store_redis_session(redis, &session).await?;
     let _ = session_repo::create_pg_session(db, &session).await;
 
+    let token_family = family_id.unwrap_or(session.id);
     let refresh_token_record = RefreshToken::new(
         user_id,
         Some(session.id),
         token_hash,
-        session.id,
+        token_family,
         expires_at,
     );
     let _ = refresh_repo::create_refresh_token(db, &refresh_token_record).await;
@@ -73,7 +76,6 @@ pub async fn invalidate_session(
 ) -> Result<(), AppError> {
     let _ = session_repo::delete_redis_session(redis, session_id).await;
     let _ = session_repo::revoke_pg_session(db, session_id).await;
-    let _ = session_repo::delete_pg_session(db, session_id).await;
     let _ = refresh_repo::revoke_family(db, session_id).await;
     Ok(())
 }
@@ -104,6 +106,5 @@ pub async fn list_user_sessions(
 
 pub async fn revoke_all_user_sessions(db: &PgPool, user_id: Uuid) -> Result<(), AppError> {
     let _ = refresh_repo::revoke_all_user_tokens(db, user_id).await;
-    let _ = session_repo::revoke_all_user_pg_sessions(db, user_id).await;
-    session_repo::delete_all_user_pg_sessions(db, user_id).await
+    session_repo::revoke_all_user_pg_sessions(db, user_id).await
 }

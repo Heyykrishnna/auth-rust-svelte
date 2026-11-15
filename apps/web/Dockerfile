@@ -3,19 +3,25 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
+COPY packages/shared-types ./packages/shared-types
+COPY apps/web/package.json ./apps/web/package.json
+
 RUN npm ci
 
-COPY . .
-RUN npm run build
+COPY apps/web ./apps/web
+RUN npm -w @secure-auth/shared-types run check
+RUN npm -w @secure-auth/web run build
 
 FROM node:22-alpine AS runtime
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
+COPY packages/shared-types ./packages/shared-types
+COPY apps/web/package.json ./apps/web/package.json
 RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=builder /app/build ./build
+COPY --from=builder /app/apps/web/build ./build
 
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 USER appuser
