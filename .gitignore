@@ -1,14 +1,6 @@
-# ==============================================================================
-# Dependencies & Package Managers
-# ==============================================================================
 node_modules/
 .pnp
 .pnp.js
-
-# ==============================================================================
-# Build & Compiled Outputs
-# ==============================================================================
-# Node / Frontend / SvelteKit / Vite
 dist/
 build/
 .svelte-kit/
@@ -20,15 +12,9 @@ build/
 *.tsbuildinfo
 .eslintcache
 *.timestamp-*.mjs
-
-# Rust / Cargo
 target/
 **/*.rs.bk
 *.pdb
-
-# ==============================================================================
-# Environment Variables & Secrets
-# ==============================================================================
 .env
 .env.local
 .env.*.local
@@ -41,21 +27,13 @@ target/
 secrets/
 vault-init.json
 vault-keys.json
-
-# Whitelist environment example templates
 !.env.example
-
-# Kubernetes secret manifests containing actual/real secret values
 infra/k8s/**/secrets-actual.yaml
 infra/k8s/**/*-secret-values.yaml
 infra/k8s/**/*-secrets-real.yaml
 infrastructure/kubernetes/**/secrets-actual.yaml
 infrastructure/kubernetes/**/*-secret-values.yaml
 infrastructure/kubernetes/**/*-secrets-real.yaml
-
-# ==============================================================================
-# Terraform & Helm
-# ==============================================================================
 **/.terraform/
 *.tfstate
 *.tfstate.*
@@ -67,27 +45,14 @@ crash.*.log
 *.tflint.hcl
 infrastructure/helm/*.tgz
 infrastructure/helm/charts/
-
-# ==============================================================================
-# Kubernetes & Cloud Tooling
-# ==============================================================================
 kubeconfig
 kubeconfig.yaml
 *.kubeconfig
-
-# ==============================================================================
-# IDEs, Editors & Tooling
-# ==============================================================================
-# VS Code
 .vscode/
 *.code-workspace
-
-# JetBrains / IntelliJ / WebStorm / RustRover
 .idea/
 *.iws
 *.iml
-
-# Vim / Emacs / Sublime / Cursor / Fleet
 *.swp
 *.swo
 *~
@@ -96,28 +61,15 @@ kubeconfig.yaml
 *.sublime-project
 *.sublime-workspace
 .history/
-
-# ==============================================================================
-# Operating System & File System Caches
-# ==============================================================================
-# macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
-
-# Windows
 Thumbs.db
 ehthumbs.db
 [Dd]esktop.ini
-
-# Linux
 *~
-
-# ==============================================================================
-# Logs & Diagnostic Dumps
-# ==============================================================================
 logs/
 *.log
 npm-debug.log*
@@ -125,23 +77,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-# ==============================================================================
-# Testing & Code Coverage
-# ==============================================================================
 coverage/
 .nyc_output/
-
-# ==============================================================================
-# Database / Local State
-# ==============================================================================
 sqlx-data.json
 dump.rdb
 *.rdb
-
-# ==============================================================================
-# Archives & Temporary Files
-# ==============================================================================
 *.tar
 *.tar.gz
 *.zip
@@ -149,11 +89,8 @@ dump.rdb
 *.tmp
 *.temp
 *.bak
-
-# ==============================================================================
-# Assistant / Agent Markdown Files
-# ==============================================================================
 SKILLS.md
 **/SKILLS.md
 AGENTS.md
 **/AGENTS.md
+phases.md
