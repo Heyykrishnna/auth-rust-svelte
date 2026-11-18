@@ -1,7 +1,7 @@
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, patch, post};
 use axum::Router;
 
-use crate::handlers::{client_auth, control_plane};
+use crate::handlers::{backend_sync, client_auth, control_plane, control_webhooks};
 use crate::middleware::{api_rate_limit_layer, auth_rate_limit_layer, sensitive_rate_limit_layer};
 use crate::AppState;
 
@@ -58,6 +58,34 @@ pub fn control_routes() -> Router<AppState> {
         .route(
             "/applications/:app_id/environments/:env_kind/domains/:domain_id",
             delete(control_plane::delete_domain),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/webhooks",
+            get(control_webhooks::list_webhooks).post(control_webhooks::create_webhook),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/webhooks/:endpoint_id",
+            patch(control_webhooks::update_webhook).delete(control_webhooks::delete_webhook),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/webhooks/:endpoint_id/rotate-secret",
+            post(control_webhooks::rotate_webhook_secret),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/webhooks/:endpoint_id/test",
+            post(control_webhooks::test_webhook),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/webhooks/:endpoint_id/deliveries",
+            get(control_webhooks::list_deliveries),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/webhooks/:endpoint_id/deliveries/:delivery_id/replay",
+            post(control_webhooks::replay_delivery),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/webhooks/:endpoint_id/replay",
+            post(control_webhooks::replay_range),
         )
         .layer(api_rate_limit_layer());
 
@@ -129,5 +157,36 @@ pub fn client_v1_routes() -> Router<AppState> {
 pub fn backend_v1_routes() -> Router<AppState> {
     Router::new()
         .route("/ping", get(control_plane::backend_ping))
+        .route("/users", get(backend_sync::list_users))
+        .route("/users/by-sub/:sub", get(backend_sync::get_user_by_sub))
+        .route(
+            "/users/:app_user_id",
+            get(backend_sync::get_user_by_app_user_id),
+        )
+        .route(
+            "/users/:app_user_id/metadata",
+            patch(backend_sync::update_user_metadata),
+        )
+        .route(
+            "/users/:app_user_id/suspend",
+            post(backend_sync::suspend_user),
+        )
+        .route(
+            "/users/:app_user_id/restore",
+            post(backend_sync::restore_user),
+        )
+        .route(
+            "/users/:app_user_id/sessions/revoke-all",
+            post(backend_sync::revoke_all_user_sessions),
+        )
+        .route(
+            "/sessions/:session_id",
+            get(backend_sync::get_session_status),
+        )
+        .route(
+            "/sessions/:session_id/revoke",
+            post(backend_sync::revoke_session),
+        )
+        .route("/events", get(backend_sync::list_events))
         .layer(api_rate_limit_layer())
 }
