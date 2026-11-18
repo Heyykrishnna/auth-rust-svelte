@@ -1,6 +1,6 @@
 # Phase 07: Developer Control Plane Dashboard & Operational Management
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phase 02 (Dashboard Shell), Phase 03 (Auth/Sessions), Phase 04 (OIDC/SSO), Phase 05 (Webhooks) completed
 - **Primary Targets:** `apps/web/src/routes/dashboard/*`, `apps/auth-api/src/routes/control*.rs`
 
@@ -76,10 +76,10 @@ Expand the initial Phase 02 Control Plane shell into a complete, self-service Sa
 
 ## Acceptance Criteria
 
-- [ ] Developers can fully configure authentication methods, social providers, OIDC/SSO policies, branding, API keys, domains, and webhooks purely through the Dashboard.
-- [ ] Developers can search environment users, edit metadata/roles, inspect and revoke active sessions, inspect failed webhook deliveries, and replay them with one click.
-- [ ] Workspace RBAC (`owner`, `admin`, `developer`, `viewer`) is enforced on every Control Plane backend endpoint and reflected accurately in the UI.
-- [ ] All loading, empty, validation, and API error states are handled cleanly with accessible UI semantics.
+- [x] Developers can fully configure authentication methods, social providers, OIDC/SSO policies, branding, API keys, domains, and webhooks purely through the Dashboard.
+- [x] Developers can search environment users, edit metadata/roles, inspect and revoke active sessions, inspect failed webhook deliveries, and replay them with one click.
+- [x] Workspace RBAC (`owner`, `admin`, `developer`, `viewer`) is enforced on every Control Plane backend endpoint and reflected accurately in the UI.
+- [x] All loading, empty, validation, and API error states are handled cleanly with accessible UI semantics.
 
 ---
 
