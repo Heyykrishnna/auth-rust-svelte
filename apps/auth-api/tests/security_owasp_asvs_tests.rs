@@ -633,6 +633,10 @@ mod live_phase10_key_compromise_drill {
             .await
             .unwrap();
         sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        sqlx::query("DELETE FROM signing_keys")
+            .execute(&pool)
+            .await
+            .expect("reset signing key fixtures");
 
         let mut cfg = test_config(false);
         cfg.database_url = db_url;

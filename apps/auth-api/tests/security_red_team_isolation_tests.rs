@@ -280,6 +280,10 @@ mod live_phase10_red_team_suite {
             .await
             .unwrap();
         sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        sqlx::query("DELETE FROM signing_keys")
+            .execute(&pool)
+            .await
+            .expect("reset signing key fixtures");
 
         let cfg = red_team_config(db_url);
         let suffix = Uuid::new_v4().to_string()[..8].to_string();

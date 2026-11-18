@@ -103,9 +103,13 @@ mod live_phase07_control_plane_suite {
             .run(&db)
             .await
             .expect("run migrations");
+        sqlx::query("DELETE FROM signing_keys")
+            .execute(&db)
+            .await
+            .expect("reset signing key fixtures");
         let redis_url =
-            std::env::var("TEST_REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".into());
-        let redis_cfg = RedisConfig::from_url(redis_url);
+            std::env::var("TEST_REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6399".into());
+        let redis_cfg = RedisConfig::from_url(redis_url.clone());
         let redis = redis_cfg
             .create_pool(Some(RedisRuntime::Tokio1))
             .expect("create redis pool");
@@ -114,7 +118,7 @@ mod live_phase07_control_plane_suite {
             port: 8080,
             database_url: db_url,
             db_max_connections: 4,
-            redis_url: "redis://127.0.0.1:6379".to_string(),
+            redis_url,
             jwt_secret: "phase07-test-jwt-secret-value-at-least-32-chars".to_string(),
             issuer_url: "http://localhost:8080".to_string(),
             signing_key_kek: "phase07-test-kek-secret-value-at-least-32-chars".to_string(),
@@ -144,11 +148,6 @@ mod live_phase07_control_plane_suite {
             smtp_from: "noreply@example.test".to_string(),
             smtp_from_name: "Auth Platform".to_string(),
         });
-        let active = auth_api::services::signing_keys::ensure_active_signing_key(&db, &config)
-            .await
-            .unwrap();
-        auth_api::services::signing_keys::decrypt_signing_key_pkcs8(&active, &config)
-            .expect("[DEBUG-ci] signing key fixture decrypts with suite KEK");
         let state = AppState {
             db: db.clone(),
             redis,
