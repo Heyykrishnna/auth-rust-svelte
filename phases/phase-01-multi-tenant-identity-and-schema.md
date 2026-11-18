@@ -1,6 +1,6 @@
 # Phase 01: Multi-Tenant Identity & Database Foundation
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phase 00 completed (ADRs finalized, transaction helpers in place)
 - **Primary Targets:** `apps/auth-api/migrations/`, `apps/auth-api/src/models/`, `apps/auth-api/src/repositories/`, `apps/auth-api/src/middleware/`, `apps/auth-api/tests/`
 
@@ -96,12 +96,12 @@ Create versioned, reversible SQL migrations introducing the full multi-tenant fo
 
 ## Acceptance Criteria
 
-- [ ] All tables in the expanded ER architecture exist in versioned SQL migrations with proper primary keys, composite foreign keys, check constraints, and indexes.
-- [ ] Two distinct environments (and two distinct applications) can both reference the same global `users` row via separate `application_users` rows while keeping their `app_sessions`, `roles`, `organizations`, and `audit_logs` completely isolated.
-- [ ] Attempting to attach an `app_session` or `organization_member` from Environment A to an `application_user` from Environment B fails at the database constraint level.
-- [ ] Concurrent pooled-connection RLS tests pass with zero cross-environment leakage.
-- [ ] All Redis key builders enforce explicit `idp:global:` or `env:{id}:` prefixes.
-- [ ] `cargo test`, `cargo clippy -- -D warnings`, and migration validation pass.
+- [x] All tables in the expanded ER architecture exist in versioned SQL migrations with proper primary keys, composite foreign keys, check constraints, and indexes.
+- [x] Two distinct environments (and two distinct applications) can both reference the same global `users` row via separate `application_users` rows while keeping their `app_sessions`, `roles`, `organizations`, and `audit_logs` completely isolated.
+- [x] Attempting to attach an `app_session` or `organization_member` from Environment A to an `application_user` from Environment B fails at the database constraint level.
+- [x] Concurrent pooled-connection RLS tests pass with zero cross-environment leakage.
+- [x] All Redis key builders enforce explicit `idp:global:` or `env:{id}:` prefixes.
+- [x] `cargo test`, `cargo clippy -- -D warnings`, and migration validation pass.
 
 ---
 
