@@ -61,6 +61,11 @@
 			view: 'settings',
 			label: 'Settings',
 			icon: 'M224 80h-40V64a8 8 0 0 0-16 0v48a8 8 0 0 0 16 0V96h40a8 8 0 0 0 0-16zm-80 8H32a8 8 0 0 0 0 16h112a8 8 0 0 0 0-16zm80 80h-88a8 8 0 0 0 0 16h88a8 8 0 0 0 0-16zm-112-24a8 8 0 0 0-8 8v16H32a8 8 0 0 0 0 16h72v16a8 8 0 0 0 16 0v-48a8 8 0 0 0-8-8z'
+		},
+		{
+			view: 'security',
+			label: 'Account Security',
+			icon: 'M208 40H48a16 16 0 0 0-16 16v56c0 68.66 43.15 111.41 92.42 126.78a12 12 0 0 0 7.16 0C180.85 223.41 224 180.66 224 112V56a16 16 0 0 0-16-16z'
 		}
 	] as const;
 	const titles: Record<WorkspaceView, string> = {
@@ -143,7 +148,7 @@
 					<a
 						href={workspaceHref(workspace.id, link.view)}
 						aria-current={view === link.view ? 'page' : undefined}
-						class="inline-flex min-w-0 items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-sm font-medium text-brand-text-secondary no-underline transition-colors hover:bg-brand-surface-raised hover:text-brand-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime aria-[current=page]:border-brand-border-hover aria-[current=page]:bg-brand-surface-alt aria-[current=page]:text-white sm:gap-2.5 sm:px-3"
+						class="inline-flex min-w-0 items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-sm font-medium text-brand-text-secondary no-underline transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-brand-surface-raised hover:text-brand-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime aria-[current=page]:border-brand-border-hover aria-[current=page]:bg-brand-surface-alt aria-[current=page]:text-white sm:gap-2.5 sm:px-3"
 					>
 						<svg
 							class="size-4 shrink-0"
@@ -234,51 +239,55 @@
 		<main
 			class="grid w-full gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-9 lg:px-8"
 		>
-			{#if view === 'security'}
-				<AccountSecurityPanel />
-			{:else if workspace && controlStore.developer}
-				{#key workspace.id}
-					{#if view === 'team'}
-						<WorkspaceTeam
-							{workspace}
-							currentDeveloperId={controlStore.developer.id}
-							{onWorkspaceUpdated}
-						/>
-					{:else if view === 'settings'}
-						<WorkspaceSettings {workspace} onUpdated={onWorkspaceUpdated} />
+			{#key view}
+				<div class="panel-transition grid w-full gap-5 sm:gap-6">
+					{#if view === 'security'}
+						<AccountSecurityPanel />
+					{:else if workspace && controlStore.developer}
+						{#key workspace.id}
+							{#if view === 'team'}
+								<WorkspaceTeam
+									{workspace}
+									currentDeveloperId={controlStore.developer.id}
+									{onWorkspaceUpdated}
+								/>
+							{:else if view === 'settings'}
+								<WorkspaceSettings {workspace} onUpdated={onWorkspaceUpdated} />
+							{:else}
+								<WorkspaceApplications
+									{workspace}
+									{apps}
+									loading={loadingApplications}
+									error={applicationsError}
+									{unavailableApp}
+									onRetry={onRetryApplications}
+									onCreate={onCreateApplication}
+								/>
+							{/if}
+						{/key}
 					{:else}
-						<WorkspaceApplications
-							{workspace}
-							{apps}
-							loading={loadingApplications}
-							error={applicationsError}
-							{unavailableApp}
-							onRetry={onRetryApplications}
-							onCreate={onCreateApplication}
-						/>
-					{/if}
-				{/key}
-			{:else}
-				<div
-					class="grid justify-items-start gap-3 task-surface p-6 sm:p-8"
-				>
-					<h1 class="font-heading text-2xl font-bold">
-						{missingWorkspace ? 'Workspace unavailable' : 'Create a workspace'}
-					</h1>
-					<p class="text-sm text-brand-text-secondary">
-						{missingWorkspace
-							? 'Select a workspace you have access to.'
-							: 'A workspace brings your applications and team together.'}
-					</p>
-					{#if missingWorkspace && controlStore.workspaces.length > 0}
-						<Button href="/control">
-							Go to my workspace
-						</Button>
-					{:else}
-						<Button onclick={onCreateWorkspace}>Create workspace</Button>
+						<div
+							class="grid justify-items-start gap-3 task-surface p-6 sm:p-8"
+						>
+							<h1 class="font-heading text-2xl font-bold">
+								{missingWorkspace ? 'Workspace unavailable' : 'Create a workspace'}
+							</h1>
+							<p class="text-sm text-brand-text-secondary">
+								{missingWorkspace
+									? 'Select a workspace you have access to.'
+									: 'A workspace brings your applications and team together.'}
+							</p>
+							{#if missingWorkspace && controlStore.workspaces.length > 0}
+								<Button href="/control">
+									Go to my workspace
+								</Button>
+							{:else}
+								<Button onclick={onCreateWorkspace}>Create workspace</Button>
+							{/if}
+						</div>
 					{/if}
 				</div>
-			{/if}
+			{/key}
 		</main>
 	</div>
 </div>

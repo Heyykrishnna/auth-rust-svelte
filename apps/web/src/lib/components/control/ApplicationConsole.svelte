@@ -16,6 +16,7 @@
 	import WebhooksPanel from '$lib/components/control/WebhooksPanel.svelte';
 	import KeysDomainsPanel from '$lib/components/control/KeysDomainsPanel.svelte';
 	import AuditLogsPanel from '$lib/components/control/AuditLogsPanel.svelte';
+	import AccountSecurityPanel from '$lib/components/control/AccountSecurityPanel.svelte';
 	import { controlApi } from '$lib/api/control';
 	import type {
 		ApplicationDomainDto,
@@ -43,7 +44,8 @@
 		| 'organizations'
 		| 'roles'
 		| 'webhooks'
-		| 'audit';
+		| 'audit'
+		| 'security';
 
 	let {
 		onCreateApplication,
@@ -81,7 +83,8 @@
 		organizations: 'Organizations',
 		roles: 'Roles & Permissions',
 		webhooks: 'Webhooks & Sync',
-		audit: 'Audit Logs'
+		audit: 'Audit Logs',
+		security: 'Account Security'
 	};
 
 	const requestedSection = $derived(page.url.searchParams.get('section'));
@@ -180,18 +183,18 @@
 <div
 	class="workspace-theme workspace-accent grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-brand-surface text-brand-text-primary min-[961px]:grid-cols-[15rem_minmax(0,1fr)]"
 >
-	{#if mobileSidebarOpen}
-		<button
-			type="button"
-			class="fixed inset-0 z-40 bg-black/60 min-[961px]:hidden"
-			aria-label="Dismiss navigation"
-			onclick={closeSidebar}
-		></button>
-	{/if}
+	<button
+		type="button"
+		class="fixed inset-0 z-40 bg-black/60 transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] min-[961px]:hidden {mobileSidebarOpen
+			? 'opacity-100 pointer-events-auto'
+			: 'opacity-0 pointer-events-none'}"
+		aria-label="Dismiss navigation"
+		onclick={closeSidebar}
+	></button>
 	<aside
-		class="fixed inset-y-0 left-0 z-50 w-66 flex-col gap-5 overflow-y-auto overscroll-contain border-r border-brand-border bg-brand-surface-card p-4 min-[961px]:sticky min-[961px]:top-0 min-[961px]:z-30 min-[961px]:flex min-[961px]:h-dvh min-[961px]:w-auto {mobileSidebarOpen
-			? 'flex'
-			: 'hidden'}"
+		class="fixed inset-y-0 left-0 z-50 flex w-66 flex-col gap-5 overflow-y-auto overscroll-contain border-r border-brand-border bg-brand-surface-card p-4 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] min-[961px]:sticky min-[961px]:top-0 min-[961px]:z-30 min-[961px]:h-dvh min-[961px]:w-auto min-[961px]:translate-x-0 {mobileSidebarOpen
+			? 'translate-x-0'
+			: '-translate-x-full'}"
 		aria-label="Control Plane navigation"
 	>
 		<div class="sidebar-brand">
@@ -452,23 +455,11 @@
 					</svg>
 					Audit Logs
 				</button>
-				<a
+				<button
+					type="button"
 					class="nav-item"
-					href={workspaceHref(controlStore.activeWorkspace?.id, 'team')}
-				>
-					<svg
-						class="size-4 shrink-0"
-						viewBox="0 0 256 256"
-						fill="currentColor"
-						aria-hidden="true"
-					>
-						<path d="M244.8 150.4a56 56 0 0 0-42.27-38.16 48 48 0 1 0-53.06 0A56 56 0 0 0 107.2 150.4a48 48 0 1 0-72.67 52.8 8 8 0 0 0 7.39 4.8h172.16a8 8 0 0 0 7.39-4.8 48 48 0 0 0 23.33-52.8zM128 72a32 32 0 1 1 32 32 32 32 0 0 1-32-32zm-64 72a32 32 0 1 1 32 32 32 32 0 0 1-32-32zm128 48H68a40 40 0 0 1 36.63-24.16 55.77 55.77 0 0 0 46.74 0A40 40 0 0 1 192 192zm0-16a32 32 0 1 1 32-32 32 32 0 0 1-32 32z" />
-					</svg>
-					Team &amp; Roles
-				</a>
-				<a
-					class="nav-item"
-					href={workspaceHref(controlStore.activeWorkspace?.id, 'security')}
+					class:active={activeSection === 'security'}
+					onclick={() => selectNav('security')}
 				>
 					<svg
 						class="size-4 shrink-0"
@@ -479,7 +470,7 @@
 						<path d="M208 40H48a16 16 0 0 0-16 16v56c0 68.66 43.15 111.41 92.42 126.78a12 12 0 0 0 7.16 0C180.85 223.41 224 180.66 224 112V56a16 16 0 0 0-16-16z" />
 					</svg>
 					Account Security
-				</a>
+				</button>
 			</div>
 		</nav>
 
@@ -585,80 +576,86 @@
 				</div>
 			{/if}
 
-			{#if !controlStore.activeApplication || !controlStore.activeEnvironment}
-				<SectionHeader
-					title={sectionTitles[activeSection]}
-					description="This application has no available environments."
-				/>
-			{:else if activeSection === 'overview'}
-				<OverviewPanel
-					{overview}
-					loading={loadingEnv}
-					appName={controlStore.activeApplication.application.name}
-					appSlug={controlStore.activeApplication.application.slug}
-					environmentKind={controlStore.selectedEnvKind}
-					onRefresh={loadActiveEnvironmentData}
-				/>
-			{:else if activeSection === 'analytics'}
-				<AnalyticsPanel
-					appId={controlStore.activeApplication.application.id}
-					envKind={controlStore.selectedEnvKind}
-					canMutate={allowMutate}
-					onNavigate={(target) => selectNav(target)}
-				/>
-			{:else if activeSection === 'auth'}
-				<AuthConfigPanel
-					appId={controlStore.activeApplication.application.id}
-					appName={controlStore.activeApplication.application.name}
-					envKind={controlStore.selectedEnvKind}
-					environment={controlStore.activeEnvironment}
-					{providers}
-					canEditPolicies={allowPolicyEdit}
-					canEditProviders={allowMutate}
-					onSaved={refreshWorkspaceApplications}
-				/>
-			{:else if activeSection === 'users'}
-				<UsersDirectoryPanel
-					appId={controlStore.activeApplication.application.id}
-					envKind={controlStore.selectedEnvKind}
-					canMutate={allowMutate}
-				/>
-			{:else if activeSection === 'organizations'}
-				<OrganizationsPanel
-					appId={controlStore.activeApplication.application.id}
-					envKind={controlStore.selectedEnvKind}
-					canMutate={allowMutate}
-				/>
-			{:else if activeSection === 'roles'}
-				<RolesPermissionsPanel
-					appId={controlStore.activeApplication.application.id}
-					envKind={controlStore.selectedEnvKind}
-					canMutate={allowMutate}
-				/>
-			{:else if activeSection === 'webhooks'}
-				<WebhooksPanel
-					appId={controlStore.activeApplication.application.id}
-					envKind={controlStore.selectedEnvKind}
-					canMutate={allowMutate}
-				/>
-			{:else if activeSection === 'keys'}
-				<KeysDomainsPanel
-					appId={controlStore.activeApplication.application.id}
-					appName={controlStore.activeApplication.application.name}
-					envKind={controlStore.selectedEnvKind}
-					{credentials}
-					{domains}
-					canMutate={allowMutate}
-					canDeleteApp={allowDeleteApp}
-					onReload={loadActiveEnvironmentData}
-					onAppDeleted={handleAppDeleted}
-				/>
-			{:else if activeSection === 'audit'}
-				<AuditLogsPanel
-					appId={controlStore.activeApplication.application.id}
-					envKind={controlStore.selectedEnvKind}
-				/>
-			{/if}
+			{#key activeSection}
+				<div class="panel-transition grid w-full min-w-0 grid-cols-1 gap-5 sm:gap-6">
+					{#if !controlStore.activeApplication || !controlStore.activeEnvironment}
+						<SectionHeader
+							title={sectionTitles[activeSection]}
+							description="This application has no available environments."
+						/>
+					{:else if activeSection === 'overview'}
+						<OverviewPanel
+							{overview}
+							loading={loadingEnv}
+							appName={controlStore.activeApplication.application.name}
+							appSlug={controlStore.activeApplication.application.slug}
+							environmentKind={controlStore.selectedEnvKind}
+							onRefresh={loadActiveEnvironmentData}
+						/>
+					{:else if activeSection === 'analytics'}
+						<AnalyticsPanel
+							appId={controlStore.activeApplication.application.id}
+							envKind={controlStore.selectedEnvKind}
+							canMutate={allowMutate}
+							onNavigate={(target) => selectNav(target)}
+						/>
+					{:else if activeSection === 'auth'}
+						<AuthConfigPanel
+							appId={controlStore.activeApplication.application.id}
+							appName={controlStore.activeApplication.application.name}
+							envKind={controlStore.selectedEnvKind}
+							environment={controlStore.activeEnvironment}
+							{providers}
+							canEditPolicies={allowPolicyEdit}
+							canEditProviders={allowMutate}
+							onSaved={refreshWorkspaceApplications}
+						/>
+					{:else if activeSection === 'users'}
+						<UsersDirectoryPanel
+							appId={controlStore.activeApplication.application.id}
+							envKind={controlStore.selectedEnvKind}
+							canMutate={allowMutate}
+						/>
+					{:else if activeSection === 'organizations'}
+						<OrganizationsPanel
+							appId={controlStore.activeApplication.application.id}
+							envKind={controlStore.selectedEnvKind}
+							canMutate={allowMutate}
+						/>
+					{:else if activeSection === 'roles'}
+						<RolesPermissionsPanel
+							appId={controlStore.activeApplication.application.id}
+							envKind={controlStore.selectedEnvKind}
+							canMutate={allowMutate}
+						/>
+					{:else if activeSection === 'webhooks'}
+						<WebhooksPanel
+							appId={controlStore.activeApplication.application.id}
+							envKind={controlStore.selectedEnvKind}
+							canMutate={allowMutate}
+						/>
+					{:else if activeSection === 'keys'}
+						<KeysDomainsPanel
+							appId={controlStore.activeApplication.application.id}
+							appName={controlStore.activeApplication.application.name}
+							envKind={controlStore.selectedEnvKind}
+							{credentials}
+							{domains}
+							canMutate={allowMutate}
+							canDeleteApp={allowDeleteApp}
+							onReload={loadActiveEnvironmentData}
+							onAppDeleted={handleAppDeleted}
+						/>
+					{:else if activeSection === 'audit'}
+						<AuditLogsPanel
+							appId={controlStore.activeApplication.application.id}
+							envKind={controlStore.selectedEnvKind}
+						/>
+					{:else if activeSection === 'security'}
+						<AccountSecurityPanel />
+					{/if}
+				</div>
+			{/key}
 		</main>
 	</div>
 </div>
@@ -698,6 +695,7 @@
 		padding: 0.34rem 0.4rem;
 		border-radius: 4px;
 		cursor: pointer;
+		transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.env-switch button.active-dev {
@@ -745,6 +743,7 @@
 		font-weight: 500;
 		text-align: left;
 		cursor: pointer;
+		transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.nav-item:hover {

@@ -42,9 +42,9 @@
 	);
 	const workspaceId = $derived(workspace?.id);
 	const view: WorkspaceView = $derived(
-		requestedView === 'team' || requestedSection === 'team'
+		requestedView === 'team' || (!requestedApp && requestedSection === 'team')
 			? 'team'
-			: requestedView === 'security' || requestedSection === 'security'
+			: requestedView === 'security' || (!requestedApp && requestedSection === 'security')
 				? 'security'
 				: requestedView === 'settings'
 					? 'settings'
