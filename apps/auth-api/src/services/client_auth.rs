@@ -1605,8 +1605,10 @@ pub async fn request_secondary_email_verification(
         ));
     }
 
-    if let Some(existing_verified) = global_identity::find_verified_email(db, &normalized).await? {
-        let _ = existing_verified;
+    if global_identity::find_verified_email(db, &normalized)
+        .await?
+        .is_some()
+    {
         return Ok((
             SecondaryEmailVerificationResponse {
                 status: "verification_sent".to_string(),

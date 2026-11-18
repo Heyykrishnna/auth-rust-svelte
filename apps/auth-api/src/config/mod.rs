@@ -292,16 +292,3 @@ impl Drop for AppConfig {
         self.smtp_pass.zeroize();
     }
 }
-
-impl Drop for AppConfig {
-    fn drop(&mut self) {
-        use zeroize::Zeroize;
-        self.database_url.zeroize();
-        self.redis_url.zeroize();
-        self.jwt_secret.zeroize();
-        self.signing_key_kek.zeroize();
-        self.google_client_secret.zeroize();
-        self.github_client_secret.zeroize();
-        self.smtp_pass.zeroize();
-    }
-}
