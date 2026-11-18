@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod control;
 pub mod health;
+pub mod oidc;
 pub mod sessions;
 pub mod users;
 
@@ -42,6 +43,11 @@ pub fn build_router(state: AppState) -> Router {
             "/.well-known/jwks.json",
             get(crate::handlers::client_auth::jwks_endpoint),
         )
+        .route(
+            "/.well-known/openid-configuration",
+            get(crate::handlers::oidc_provider::openid_configuration),
+        )
+        .nest("/oauth2", oidc::oidc_routes())
         .route(
             "/metrics",
             get(move || async move { metrics_handle.render() }),
