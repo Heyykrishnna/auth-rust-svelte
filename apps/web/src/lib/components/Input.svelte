@@ -33,15 +33,15 @@
 	let actualType = $derived(type === 'password' ? (showPassword ? 'text' : 'password') : type);
 </script>
 
-<div class="field">
+<div class="flex flex-col gap-0">
 	{#if label}
-		<label class="label" for={id}>
+		<label class="block text-xs font-medium text-brand-text-muted mb-1.5" for={id}>
 			{label}
-			{#if required}<span class="required" aria-hidden="true">*</span>{/if}
+			{#if required}<span class="text-rose-500 ml-1" aria-hidden="true">*</span>{/if}
 		</label>
 	{/if}
 
-	<div class="input-wrapper">
+	<div class="relative">
 		<input
 			{id}
 			type={actualType}
@@ -51,8 +51,7 @@
 			{autocomplete}
 			bind:value
 			oninput={() => onchange?.(value)}
-			class="input"
-			class:error={!!error}
+			class="w-full px-3.5 py-2.5 bg-brand-surface border rounded-md text-brand-text-primary font-sans text-sm outline-none transition-colors placeholder:text-brand-text-subtle disabled:opacity-50 disabled:cursor-not-allowed focus:border-brand-lime {type === 'password' ? 'pr-10' : ''} {error ? 'border-rose-500 focus:border-rose-500' : 'border-brand-border'}"
 			aria-invalid={!!error}
 			aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
 		/>
@@ -60,7 +59,7 @@
 		{#if type === 'password'}
 			<button
 				type="button"
-				class="password-toggle"
+				class="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-none text-brand-text-muted hover:text-brand-text-primary cursor-pointer inline-flex items-center justify-center p-1 transition-colors"
 				onclick={() => (showPassword = !showPassword)}
 				aria-label={showPassword ? 'Hide password' : 'Show password'}
 			>
@@ -81,47 +80,8 @@
 	</div>
 
 	{#if error}
-		<p id="{id}-error" class="error-text" role="alert">{error}</p>
+		<p id="{id}-error" class="text-xs text-rose-400 mt-1" role="alert">{error}</p>
 	{:else if hint}
-		<p id="{id}-hint" class="helper-text">{hint}</p>
+		<p id="{id}-hint" class="text-xs text-brand-text-subtle mt-1">{hint}</p>
 	{/if}
 </div>
-
-<style>
-	.field { display: flex; flex-direction: column; gap: 0; }
-
-	.required {
-		color: var(--color-error);
-		margin-left: 0.2rem;
-	}
-
-	.input-wrapper {
-		position: relative;
-	}
-
-	.password-toggle {
-		position: absolute;
-		right: 0.7rem;
-		top: 50%;
-		transform: translateY(-50%);
-		background: none;
-		border: none;
-		color: var(--color-text-muted);
-		cursor: pointer;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0.25rem;
-		transition: color 150ms ease;
-	}
-
-	.password-toggle:hover { color: var(--color-text); }
-
-	.input-wrapper .input {
-		width: 100%;
-	}
-
-	.input-wrapper:has(.password-toggle) .input {
-		padding-right: 2.5rem;
-	}
-</style>

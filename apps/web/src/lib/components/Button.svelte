@@ -23,41 +23,49 @@
 		children
 	}: Props = $props();
 
-	let sizeClass = $derived({
-		sm: 'btn-sm',
-		md: '',
-		lg: 'btn-lg'
-	}[size]);
+	const baseClasses =
+		'inline-flex items-center justify-center gap-2 rounded-md font-sans font-medium transition-colors select-none whitespace-nowrap border cursor-pointer no-underline disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-lime';
+
+	const variantClasses: Record<string, string> = {
+		primary:
+			'bg-brand-lime text-brand-lime-ink border-brand-lime hover:bg-brand-lime-hover hover:border-brand-lime-hover',
+		outline:
+			'bg-transparent border-brand-border-hover text-brand-text-primary hover:bg-brand-surface-raised hover:border-brand-border-strong',
+		ghost:
+			'bg-transparent border-transparent text-brand-text-muted hover:bg-brand-surface-raised hover:text-brand-text-primary',
+		danger:
+			'bg-brand-danger-soft text-brand-danger-text border-brand-danger-border hover:bg-rose-950/70 hover:border-brand-danger'
+	};
+
+	const sizeClasses: Record<string, string> = {
+		sm: 'px-3 py-1.5 text-xs',
+		md: 'px-4 py-2 text-sm',
+		lg: 'px-6 py-3 text-base'
+	};
+
+	const classes = $derived(
+		`${baseClasses} ${variantClasses[variant] ?? variantClasses.primary} ${sizeClasses[size] ?? sizeClasses.md} ${full ? 'w-full' : ''}`
+	);
 </script>
 
 {#if href}
-	<a
-		{href}
-		class="btn btn-{variant} {sizeClass} {full ? 'btn-full' : ''}"
-		class:loading
-	>
+	<a {href} class={classes}>
 		{#if loading}
-			<span class="spinner" aria-hidden="true"></span>
+			<span
+				class="w-4 h-4 border-2 border-current border-r-transparent rounded-full animate-spin"
+				aria-hidden="true"
+			></span>
 		{/if}
 		{@render children()}
 	</a>
 {:else}
-	<button
-		{type}
-		{disabled}
-		{onclick}
-		class="btn btn-{variant} {sizeClass} {full ? 'btn-full' : ''}"
-		class:loading
-		aria-busy={loading}
-	>
+	<button {type} {disabled} {onclick} class={classes} aria-busy={loading}>
 		{#if loading}
-			<span class="spinner" aria-hidden="true"></span>
+			<span
+				class="w-4 h-4 border-2 border-current border-r-transparent rounded-full animate-spin"
+				aria-hidden="true"
+			></span>
 		{/if}
 		{@render children()}
 	</button>
 {/if}
-
-<style>
-	.btn-sm { padding: 0.375rem 0.875rem; font-size: 0.8125rem; }
-	.btn-lg { padding: 0.875rem 2rem; font-size: 1rem; }
-</style>
