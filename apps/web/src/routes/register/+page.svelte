@@ -100,6 +100,7 @@
 
   async function handleVerifyOtp(e?: SubmitEvent) {
     if (e) e.preventDefault();
+    if (verifyLoading || resending) return;
     if (fullOtp.length !== 6) {
       errors.otp = "Enter all 6 verification digits";
       return;
@@ -124,7 +125,7 @@
   }
 
   async function handleResendOtp() {
-    if (resendCooldown > 0 || resending) return;
+    if (resendCooldown > 0 || resending || verifyLoading) return;
     resending = true;
     errors = {};
     try {

@@ -21,6 +21,16 @@ import type {
 
 export * from './types';
 
+async function postRegistrationOtp<T>(path: string, data: unknown, options?: RequestOptions) {
+	const { csrf_token } = await apiClient.get<{ csrf_token: string }>('/api/auth/csrf', {
+		customFetch: options?.customFetch
+	});
+	return apiClient.post<T>(path, data, {
+		...options,
+		headers: { ...options?.headers, 'x-csrf-token': csrf_token }
+	});
+}
+
 export const authApi = {
 	register: (data: RegisterRequest, options?: RequestOptions) =>
 		options
@@ -28,15 +38,10 @@ export const authApi = {
 			: apiClient.post<RegisterInitiateResponse>('/api/auth/register', data),
 
 	verifyRegisterOtp: (data: RegisterVerifyRequest, options?: RequestOptions) =>
-		options
-			? apiClient.post<AuthSession>('/api/auth/register/verify', data, options)
-			: apiClient.post<AuthSession>('/api/auth/register/verify', data),
+		postRegistrationOtp<AuthSession>('/api/auth/register/verify', data, options),
 
 	resendRegisterOtp: (data: ResendOtpRequest, options?: RequestOptions) =>
-		options
-			? apiClient.post<MessageResponse>('/api/auth/register/resend-otp', data, options)
-			: apiClient.post<MessageResponse>('/api/auth/register/resend-otp', data),
-
+		postRegistrationOtp<MessageResponse>('/api/auth/register/resend-otp', data, options),
 
 	login: (data: LoginRequest, options?: RequestOptions) =>
 		options

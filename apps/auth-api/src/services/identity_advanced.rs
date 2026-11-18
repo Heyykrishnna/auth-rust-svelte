@@ -143,6 +143,8 @@ pub async fn list_user_emails(
     Ok(rows.into_iter().map(Into::into).collect())
 }
 
+pub const SECONDARY_EMAIL_OTP_TTL_SECS: u64 = 600;
+
 pub async fn add_user_email(
     db: &PgPool,
     redis: &RedisPool,
@@ -172,7 +174,7 @@ pub async fn add_user_email(
         redis,
         &email_otp_redis_key(user_id, &clean_email),
         &otp,
-        600,
+        SECONDARY_EMAIL_OTP_TTL_SECS,
     )
     .await?;
 

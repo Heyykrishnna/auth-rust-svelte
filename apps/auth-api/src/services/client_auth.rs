@@ -308,6 +308,7 @@ pub async fn initiate_sign_up(
         &to_email,
         &clean_name,
         &otp_for_mail,
+        config.verification_code_expiry_secs,
     )
     .await?;
 
@@ -604,6 +605,7 @@ pub async fn resend_sign_up_otp(
         &pending.email,
         &pending.display_name,
         &mail_code,
+        config.verification_code_expiry_secs,
     )
     .await?;
 
@@ -1692,6 +1694,7 @@ pub async fn request_secondary_email_verification(
         &to_email,
         &user.display_name,
         &mail_code,
+        config.verification_code_expiry_secs,
     )
     .await?;
 

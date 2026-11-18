@@ -26,8 +26,8 @@ impl EmailBrand {
             .get("primary_color")
             .and_then(|v| v.as_str())
             .map(str::trim)
-            .filter(|s| s.starts_with('#') && (s.len() == 4 || s.len() == 7))
-            .unwrap_or("#8b5cf6")
+            .filter(|color| valid_hex_color(color))
+            .unwrap_or("#e6f18c")
             .to_string();
         let support_email = branding
             .get("support_email")
@@ -49,17 +49,16 @@ pub async fn send_branded_otp_email(
     to_email: &str,
     to_name: &str,
     otp: &str,
+    expires_in_secs: u64,
 ) -> Result<(), AppError> {
-    let host = match &config.smtp_host {
-        Some(h) if !h.trim().is_empty() => h.trim(),
-        _ => {
-            warn!(
-                to = to_email,
-                brand = %brand.app_name,
-                "SMTP host not configured; skipping branded OTP email dispatch"
-            );
-            return Ok(());
-        }
+    let Some(host) = config
+        .smtp_host
+        .as_deref()
+        .map(str::trim)
+        .filter(|host| !host.is_empty())
+    else {
+        warn!("SMTP host not configured; skipping verification email dispatch");
+        return Ok(());
     };
 
     let from_header = if config.smtp_from.contains('<') {
@@ -72,27 +71,7 @@ pub async fn send_branded_otp_email(
     } else {
         format!("{} <{}>", to_name.trim(), to_email)
     };
-    let support_line = brand
-        .support_email
-        .as_deref()
-        .map(|s| format!("\n\nNeed help? Contact {s}."))
-        .unwrap_or_default();
-    let subject = format!("{} - Your Verification Code", brand.app_name);
-    let text_body = format!(
-        "Hello {},\n\nYour {} verification code is: {}\n\nThis code will expire in 10 minutes.{}",
-        if to_name.trim().is_empty() {
-            "there"
-        } else {
-            to_name.trim()
-        },
-        brand.app_name,
-        otp,
-        support_line
-    );
-    let html_body = format!(
-        "<!DOCTYPE html><html><body style=\"font-family:sans-serif;background:#0a0a14;color:#f1f5f9;padding:32px;\"><div style=\"max-width:520px;margin:0 auto;background:#121226;border-radius:12px;padding:32px;text-align:center;\"><h2 style=\"color:{};margin-top:0;\">{}</h2><p>Use the verification code below:</p><div style=\"font-family:monospace;font-size:32px;font-weight:700;letter-spacing:6px;margin:20px 0;\">{}</div><p style=\"color:#94a3b8;font-size:13px;\">This code expires in 10 minutes.</p></div></body></html>",
-        brand.primary_color, brand.app_name, otp
-    );
+    let (text_body, html_body) = render_verification_email(brand, otp, expires_in_secs);
 
     send_smtp_message(
         config,
@@ -100,11 +79,91 @@ pub async fn send_branded_otp_email(
         from_header,
         to_header,
         to_email,
-        subject,
+        "Your email verification code".to_string(),
         text_body,
         html_body,
     )
     .await
+}
+
+fn valid_hex_color(color: &str) -> bool {
+    color.strip_prefix('#').is_some_and(|hex| {
+        matches!(hex.len(), 3 | 6) && hex.bytes().all(|digit| digit.is_ascii_hexdigit())
+    })
+}
+
+fn render_verification_email(
+    brand: &EmailBrand,
+    code: &str,
+    expires_in_secs: u64,
+) -> (String, String) {
+    let (amount, unit) = if expires_in_secs.is_multiple_of(60) {
+        (expires_in_secs / 60, "minute")
+    } else {
+        (expires_in_secs, "second")
+    };
+    let plural = if amount == 1 { "" } else { "s" };
+    let expiry = format!("This code expires in {amount} {unit}{plural}.");
+
+    let support = brand
+        .support_email
+        .as_deref()
+        .filter(|email| email.parse::<lettre::Address>().is_ok());
+    let support_text = support
+        .map(|email| format!("Need help? Contact {email}.\n\n"))
+        .unwrap_or_default();
+    let support_html = support.and_then(|email| email.rsplit_once('@').map(|(local, domain)| {
+        let address = escape_html(email);
+        let target = format!("{}@{}", urlencoding::encode(local), urlencoding::encode(domain));
+        format!(r#"<p style="margin: 12px 0 0; color: #a3a89a;">Need help? Contact <a href="mailto:{target}" style="color: #e6f18c;">{address}</a>.</p>"#)
+    })).unwrap_or_default();
+    let text = format!(
+        "{}\n\nVerify your email address\n\nEnter this code in the verification screen to continue: {code}\n\n{expiry}\n\nIf you didn’t request this code, you can ignore this email.\n\n{support_text}The {} team",
+        brand.app_name, brand.app_name
+    );
+
+    let name = escape_html(&brand.app_name);
+    let code = escape_html(code);
+    let accent = if valid_hex_color(&brand.primary_color) {
+        &brand.primary_color
+    } else {
+        "#e6f18c"
+    };
+    let html = format!(
+        r##"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Verify your email address</title>
+</head>
+<body style="margin: 0; padding: 0; background: #0c0d0b; color: #f5f6f0; font-family: Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#0c0d0b">
+    <tr><td align="center" style="padding: 36px 16px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#161814" style="max-width: 560px; border: 1px solid #373d31; border-top: 3px solid {accent}; border-radius: 16px;">
+        <tr><td style="padding: 36px 24px;">
+          <p style="margin: 0; color: #e6f18c; text-align: center; font-size: 34px; font-weight: 700; letter-spacing: -1px; overflow-wrap: anywhere;">{name}</p>
+          <h1 style="margin: 20px 0 0; color: #f5f6f0; text-align: center; font-size: 24px; line-height: 1.25;">Verify your email address</h1>
+          <p style="margin: 28px 0 20px; color: #a3a89a; font-size: 16px; line-height: 1.5;">Enter this code in the verification screen to continue.</p>
+          <p style="margin: 0 0 10px; color: #f5f6f0; font-size: 14px; font-weight: bold;">Your verification code</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#eef6bd" style="border-radius: 10px;">
+            <tr><td align="center" dir="ltr" style="padding: 16px 8px; color: #11130d; font-family: 'Courier New', monospace; font-size: 32px; font-weight: bold; line-height: 1.2; letter-spacing: 0.14em;">{code}</td></tr>
+          </table>
+          <p style="margin: 10px 0 0; color: #a3a89a; font-size: 14px; text-align: center;">{expiry}</p>
+          <div style="margin-top: 28px; border-top: 1px solid #373d31; padding-top: 18px; font-size: 14px; line-height: 1.5;">
+            <p style="margin: 0; color: #a3a89a;">If you didn’t request this code, you can ignore this email.</p>
+            {support_html}
+          </div>
+          <p style="margin: 28px 0 0; color: #e6f18c; text-align: center; font-weight: bold; overflow-wrap: anywhere;">The {name} team</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"##
+    );
+    (text, html)
 }
 
 fn escape_html(input: &str) -> String {
@@ -244,96 +303,18 @@ pub async fn send_registration_otp(
     to_name: &str,
     otp: &str,
 ) -> Result<(), AppError> {
-    let host = match &config.smtp_host {
-        Some(h) if !h.trim().is_empty() => h.trim(),
-        _ => {
-            warn!(
-                to = to_email,
-                "SMTP host not configured; skipping registration OTP email dispatch"
-            );
-            return Ok(());
-        }
+    let brand = EmailBrand {
+        app_name: "Signet".to_string(),
+        primary_color: "#e6f18c".to_string(),
+        support_email: None,
     };
-
-    let from_header = if config.smtp_from.contains('<') {
-        config.smtp_from.clone()
-    } else {
-        format!("{} <{}>", config.smtp_from_name, config.smtp_from)
-    };
-
-    let to_header = if to_name.trim().is_empty() {
-        to_email.to_string()
-    } else {
-        format!("{} <{}>", to_name.trim(), to_email)
-    };
-
-    let subject = "Your Verification Code".to_string();
-
-    let text_body = format!(
-        "Hello {},\n\nYour verification code is: {}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this code, you can safely ignore this email.",
-        if to_name.trim().is_empty() { "there" } else { to_name.trim() },
-        otp
-    );
-
-    let html_body = format!(
-        r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verification Code</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #0a0a14; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f1f5f9;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0a0a14; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width: 520px; background-color: #121226; border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);">
-          <tr>
-            <td style="padding: 32px 32px 24px 32px; text-align: center; background: linear-gradient(180deg, rgba(139, 92, 246, 0.12) 0%, transparent 100%);">
-              <div style="display: inline-block; font-size: 24px; font-weight: 700; color: #a78bfa; letter-spacing: -0.5px;">
-                SecureAuth
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 32px 32px 32px; text-align: center;">
-              <h1 style="margin: 0 0 12px 0; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
-                Verify your email address
-              </h1>
-              <p style="margin: 0 0 28px 0; font-size: 15px; line-height: 1.5; color: #94a3b8;">
-                Use the verification code below to complete your registration.
-              </p>
-              <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.35); border-radius: 12px; padding: 20px 24px; margin: 0 auto 28px auto; display: inline-block;">
-                <span style="font-family: monospace; font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #a78bfa;">
-                  {}
-                </span>
-              </div>
-              <p style="margin: 0 0 8px 0; font-size: 13px; color: #64748b;">
-                This code expires in <strong>10 minutes</strong>.
-              </p>
-              <p style="margin: 0; font-size: 13px; color: #64748b;">
-                If you did not request this verification code, please disregard this email.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>"#,
-        otp
-    );
-
-    send_smtp_message(
+    send_branded_otp_email(
         config,
-        host,
-        from_header,
-        to_header,
+        &brand,
         to_email,
-        subject,
-        text_body,
-        html_body,
+        to_name,
+        otp,
+        config.verification_code_expiry_secs,
     )
     .await
 }

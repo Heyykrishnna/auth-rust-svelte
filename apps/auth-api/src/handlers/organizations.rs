@@ -475,7 +475,15 @@ pub async fn client_add_email(
         identity_advanced::add_user_email(&state.db, &state.redis, user.user_id, &body.email)
             .await?;
     let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Signet");
-    email::send_branded_otp_email(&state.config, &brand, &view.email, &view.email, &otp).await?;
+    email::send_branded_otp_email(
+        &state.config,
+        &brand,
+        &view.email,
+        &view.email,
+        &otp,
+        identity_advanced::SECONDARY_EMAIL_OTP_TTL_SECS,
+    )
+    .await?;
     Ok((StatusCode::CREATED, Json(view)))
 }
 
