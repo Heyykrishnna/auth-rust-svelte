@@ -1,0 +1,78 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "DATABASE & REDIS HEALTH",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 1 },
+      "id": 2,
+      "title": "SQLx Active Connections",
+      "type": "stat",
+      "targets": [
+        { "expr": "max(db_pool_connections_active)", "legendFormat": "Active", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 1 },
+      "id": 3,
+      "title": "SQLx Idle Connections",
+      "type": "stat",
+      "targets": [
+        { "expr": "max(db_pool_connections_idle)", "legendFormat": "Idle", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 1 },
+      "id": 4,
+      "title": "Redis Errors (15m)",
+      "type": "stat",
+      "targets": [
+        { "expr": "increase(redis_errors_total[15m])", "legendFormat": "Errors", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "id": 5,
+      "title": "PostgreSQL Connection Pool Saturation",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "db_pool_connections_active", "legendFormat": "Active", "refId": "A" },
+        { "expr": "db_pool_connections_idle", "legendFormat": "Idle", "refId": "B" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "id": 6,
+      "title": "Redis Operation Latency p95 (s)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(redis_operation_latency_seconds_bucket[5m])))", "legendFormat": "{{operation}} p95", "refId": "A" }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["postgres", "redis", "data-plane", "phase-09"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Database & Redis Health",
+  "uid": "secure-auth-database-redis",
+  "version": 1
+}
+

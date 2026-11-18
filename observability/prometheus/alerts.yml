@@ -1,0 +1,132 @@
+groups:
+  - name: auth_platform_api_and_security
+    interval: 30s
+    rules:
+      - alert: HighHttp5xxBurnRate
+        expr: |
+          (
+            sum(rate(http_plane_requests_total{status_class="5xx"}[5m]))
+            /
+            clamp_min(sum(rate(http_plane_requests_total[5m])), 0.001)
+          ) > 0.02
+          and sum(rate(http_plane_requests_total[5m])) > 0.2
+        for: 3m
+        labels:
+          severity: critical
+          component: auth-api
+        annotations:
+          summary: "High 5xx error rate on auth-api"
+          description: "5xx error ratio exceeded 2% for 3 minutes ({{ $value | humanizePercentage }})."
+          runbook: "docs/observability-runbook.md#high-http-5xx-burn-rate"
+
+      - alert: RefreshTokenReuseDetected
+        expr: increase(refresh_token_reuse_detected_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Refresh token reuse anomaly detected"
+          description: "{{ $value }} refresh token replay/reuse events triggered family revocation in the last 5 minutes."
+          runbook: "docs/observability-runbook.md#refresh-token-reuse-detected"
+
+      - alert: AuthBruteForceLockoutSpike
+        expr: increase(auth_lockout_total[5m]) >= 10
+        for: 1m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Elevated authentication lockout rate"
+          description: "{{ $value }} brute-force lockouts occurred in the last 5 minutes."
+          runbook: "docs/observability-runbook.md#brute-force-lockout-spike"
+
+      - alert: SigningKeyNearingExpiry
+        expr: signing_key_min_expiry_seconds < 604800
+        for: 5m
+        labels:
+          severity: warning
+          component: keys
+        annotations:
+          summary: "Active ES256 signing key nears retirement"
+          description: "Earliest active signing key retires in less than 7 days ({{ $value }}s remaining)."
+          runbook: "docs/observability-runbook.md#signing-key-nearing-expiry"
+
+  - name: auth_platform_sync_and_webhooks
+    interval: 30s
+    rules:
+      - alert: OutboxBacklogAgeHigh
+        expr: outbox_oldest_age_seconds > 60
+        for: 2m
+        labels:
+          severity: critical
+          component: webhook-worker
+        annotations:
+          summary: "Transactional outbox lag exceeds 60 seconds"
+          description: "Oldest unprocessed outbox event is {{ $value }}s old."
+          runbook: "docs/observability-runbook.md#outbox-backlog-age-high"
+
+      - alert: OutboxPendingDepthHigh
+        expr: outbox_pending_depth > 500
+        for: 3m
+        labels:
+          severity: warning
+          component: webhook-worker
+        annotations:
+          summary: "Transactional outbox queue depth elevated"
+          description: "{{ $value }} pending outbox events awaiting webhook dispatch."
+          runbook: "docs/observability-runbook.md#outbox-backlog-age-high"
+
+      - alert: WebhookDeadLetterSurge
+        expr: increase(webhook_dead_letter_total[10m]) >= 5
+        for: 1m
+        labels:
+          severity: warning
+          component: webhook-worker
+        annotations:
+          summary: "Webhook dead-letter queue surge"
+          description: "{{ $value }} webhook deliveries moved to dead-letter in the last 10 minutes."
+          runbook: "docs/observability-runbook.md#webhook-dead-letter-surge"
+
+      - alert: WebhookSsrfBlockedSpike
+        expr: increase(webhook_ssrf_blocked_total[5m]) >= 3
+        for: 0m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Outbound webhook SSRF blocks triggered"
+          description: "{{ $value }} outbound webhook delivery attempts were blocked by SSRF protections."
+          runbook: "docs/observability-runbook.md#webhook-ssrf-blocked"
+
+  - name: auth_platform_data_plane
+    interval: 30s
+    rules:
+      - alert: PostgresPoolSaturation
+        expr: |
+          (
+            db_pool_connections_active
+            /
+            clamp_min(db_pool_connections_active + db_pool_connections_idle, 1)
+          ) > 0.85
+          and db_pool_connections_active >= 8
+        for: 3m
+        labels:
+          severity: critical
+          component: postgres
+        annotations:
+          summary: "PostgreSQL connection pool near exhaustion"
+          description: "Active SQLx pool utilization is {{ $value | humanizePercentage }}."
+          runbook: "docs/observability-runbook.md#postgres-pool-saturation"
+
+      - alert: RedisErrorsDetected
+        expr: increase(redis_errors_total[5m]) >= 5
+        for: 1m
+        labels:
+          severity: critical
+          component: redis
+        annotations:
+          summary: "Redis errors detected in auth-api"
+          description: "{{ $value }} Redis operation failures observed in the last 5 minutes."
+          runbook: "docs/observability-runbook.md#redis-unreachable"
+

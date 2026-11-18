@@ -1,0 +1,98 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "OIDC SSO & TOKEN LIFECYCLE",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 1 },
+      "id": 2,
+      "title": "Silent SSO Hit Ratio (%)",
+      "type": "stat",
+      "targets": [
+        { "expr": "100 * increase(oidc_sso_hit_total[15m]) / clamp_min(sum(increase(oidc_authorize_total[15m])), 1)", "legendFormat": "SSO Hit %", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 1 },
+      "id": 3,
+      "title": "Refresh Token Reuse Alerts (1h)",
+      "type": "stat",
+      "targets": [
+        { "expr": "increase(refresh_token_reuse_detected_total[1h])", "legendFormat": "Reuse Events", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 1 },
+      "id": 4,
+      "title": "JWKS Request Rate (req/s)",
+      "type": "stat",
+      "targets": [
+        { "expr": "rate(jwks_requests_total[5m])", "legendFormat": "JWKS req/s", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 1 },
+      "id": 5,
+      "title": "Signing Key Expiry Countdown (Days)",
+      "type": "stat",
+      "targets": [
+        { "expr": "signing_key_min_expiry_seconds / 86400", "legendFormat": "Days Remaining", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 6,
+      "title": "OIDC Authorize Policy Outcomes",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum by (policy_outcome) (rate(oidc_authorize_total[5m]))", "legendFormat": "{{policy_outcome}}", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 7,
+      "title": "OIDC Token Exchanges by Grant Type",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum by (grant_type, outcome) (rate(oidc_token_exchange_total[5m]))", "legendFormat": "{{grant_type}} ({{outcome}})", "refId": "A" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "id": 8,
+      "title": "Sessions Created vs Revoked",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(session_created_total[5m])", "legendFormat": "Created", "refId": "A" },
+        { "expr": "sum by (reason) (rate(session_revoked_total[5m]))", "legendFormat": "Revoked ({{reason}})", "refId": "B" }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["oidc", "tokens", "sso", "phase-09"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "OIDC & Token Lifecycle",
+  "uid": "secure-auth-oidc-tokens",
+  "version": 1
+}
+
