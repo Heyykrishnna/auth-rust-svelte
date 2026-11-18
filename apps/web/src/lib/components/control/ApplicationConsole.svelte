@@ -304,25 +304,12 @@
 					onclick={() => selectNav('overview')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<rect x="3" y="3" width="7" height="7" /><rect
-							x="14"
-							y="3"
-							width="7"
-							height="7"
-						/><rect x="3" y="14" width="7" height="7" /><rect
-							x="14"
-							y="14"
-							width="7"
-							height="7"
-						/>
+						<path d="M104 48H56a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm96 0h-48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm-96 96H56a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16v-48a16 16 0 0 0-16-16zm96 0h-48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16v-48a16 16 0 0 0-16-16z" />
 					</svg>
 					Overview
 				</button>
@@ -333,20 +320,12 @@
 					onclick={() => selectNav('analytics')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<line x1="18" y1="20" x2="18" y2="10" /><line
-							x1="12"
-							y1="20"
-							x2="12"
-							y2="4"
-						/><line x1="6" y1="20" x2="6" y2="14" />
+						<path d="M224 200h-8V40a16 16 0 0 0-16-16h-32a16 16 0 0 0-16 16v160h-16V88a16 16 0 0 0-16-16h-32a16 16 0 0 0-16 16v112H56V128a16 16 0 0 0-16-16H24a8 8 0 0 0 0 16h8v72H24a8 8 0 0 0 0 16h200a8 8 0 0 0 0-16z" />
 					</svg>
 					Analytics
 				</button>
@@ -357,17 +336,12 @@
 					onclick={() => selectNav('auth')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<rect x="3" y="11" width="18" height="11" rx="2" /><path
-							d="M7 11V7a5 5 0 0 1 10 0v4"
-						/>
+						<path d="M208 80h-32V56a48 48 0 0 0-96 0v24H48a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V96a16 16 0 0 0-16-16zm-80 84a12 12 0 1 1 12-12 12 12 0 0 1-12 12zm32-84H96V56a32 32 0 0 1 64 0z" />
 					</svg>
 					Auth &amp; SSO
 				</button>
@@ -378,17 +352,12 @@
 					onclick={() => selectNav('keys')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<circle cx="8" cy="15" r="4" /><path d="M10.85 12.15 19 4" /><path
-							d="m18 5 2 2"
-						/><path d="m15 8 2 2" />
+						<path d="M208 80a64 64 0 0 0-104.5 49.38l-65.15 65.15A16 16 0 0 0 33.72 206l16 16A16 16 0 0 0 61 226.34l19.31-19.31a4 4 0 0 0 0-5.66l-7.31-7.31a4 4 0 0 1 0-5.66l18.34-18.34a4 4 0 0 1 5.66 0l7.31 7.31a4 4 0 0 0 5.66 0l16.41-16.41A64 64 0 1 0 208 80zm-40 40a16 16 0 1 1 16-16 16 16 0 0 1-16 16z" />
 					</svg>
 					Keys &amp; Domains
 				</button>
@@ -403,21 +372,12 @@
 					onclick={() => selectNav('users')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle
-							cx="9"
-							cy="7"
-							r="4"
-						/><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path
-							d="M16 3.13a4 4 0 0 1 0 7.75"
-						/>
+						<path d="M168 112a40 40 0 1 0-40-40 40 40 0 0 0 40 40zm48 16h-11.8a55.8 55.8 0 0 1-72.4 0H120a48 48 0 0 0-48 48v8a8 8 0 0 0 8 8h176a8 8 0 0 0 8-8v-8a48 48 0 0 0-48-48zm-128-16a40 40 0 1 0-40-40 40 40 0 0 0 40 40zm24 64v-8a48 48 0 0 0-18.47-37.74 55.8 55.8 0 0 1-21.53 4.24H60a48 48 0 0 0-48 48v8a8 8 0 0 0 8 8h84a8 8 0 0 0 8-8z" />
 					</svg>
 					Users
 					{#if overview && overview.total_users > 0}
@@ -431,17 +391,12 @@
 					onclick={() => selectNav('organizations')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<path d="M3 21h18" /><path d="M5 21V7l8-4v18" /><path
-							d="M19 21V11l-6-4"
-						/><path d="M9 9v.01" /><path d="M9 13v.01" /><path d="M9 17v.01" />
+						<path d="M200 152h-24a16 16 0 0 0-16 16v8h-24v-40h16a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16h-48a16 16 0 0 0-16 16v56a16 16 0 0 0 16 16h16v40H96v-8a16 16 0 0 0-16-16H56a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16v-8h88v8a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16v-48a16 16 0 0 0-16-16zm-96-88h48v56h-48zm-48 144H56v-48h48zm144 0h-48v-48h48z" />
 					</svg>
 					Organizations
 				</button>
@@ -452,15 +407,12 @@
 					onclick={() => selectNav('webhooks')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+						<path d="M215.79 108.92A8 8 0 0 0 208 104h-64V24a8 8 0 0 0-13.66-5.66l-96 96A8 8 0 0 0 40 128h64v80a8 8 0 0 0 13.66 5.66l96-96a8 8 0 0 0 2.13-8.74z" />
 					</svg>
 					Webhooks &amp; Sync
 				</button>
@@ -475,17 +427,12 @@
 					onclick={() => selectNav('roles')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<rect x="3" y="4" width="18" height="16" rx="2" /><path
-							d="M7 9h10"
-						/><path d="M7 13h6" /><path d="M7 17h4" />
+						<path d="M208 40H48a16 16 0 0 0-16 16v56c0 68.66 43.15 111.41 92.42 126.78a12 12 0 0 0 7.16 0C180.85 223.41 224 180.66 224 112V56a16 16 0 0 0-16-16zm-36.69 77.66l-56 56a8 8 0 0 1-11.32 0l-24-24a8 8 0 0 1 11.32-11.32L110 156.69l50.34-50.35a8 8 0 0 1 11.32 11.32z" />
 					</svg>
 					Roles &amp; Permissions
 				</button>
@@ -496,22 +443,12 @@
 					onclick={() => selectNav('audit')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<path
-							d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-						/><polyline points="14 2 14 8 20 8" /><line
-							x1="16"
-							y1="13"
-							x2="8"
-							y2="13"
-						/><line x1="16" y1="17" x2="8" y2="17" />
+						<path d="M200 32h-36.26a47.92 47.92 0 0 0-71.48 0H56a16 16 0 0 0-16 16v160a16 16 0 0 0 16 16h144a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zm-72 0a32 32 0 0 1 32 32H96a32 32 0 0 1 32-32zm32 128H96a8 8 0 0 1 0-16h64a8 8 0 0 1 0 16zm0-32H96a8 8 0 0 1 0-16h64a8 8 0 0 1 0 16z" />
 					</svg>
 					Audit Logs
 				</button>
@@ -520,15 +457,12 @@
 					href={workspaceHref(controlStore.activeWorkspace?.id, 'team')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+						<path d="M244.8 150.4a56 56 0 0 0-42.27-38.16 48 48 0 1 0-53.06 0A56 56 0 0 0 107.2 150.4a48 48 0 1 0-72.67 52.8 8 8 0 0 0 7.39 4.8h172.16a8 8 0 0 0 7.39-4.8 48 48 0 0 0 23.33-52.8zM128 72a32 32 0 1 1 32 32 32 32 0 0 1-32-32zm-64 72a32 32 0 1 1 32 32 32 32 0 0 1-32-32zm128 48H68a40 40 0 0 1 36.63-24.16 55.77 55.77 0 0 0 46.74 0A40 40 0 0 1 192 192zm0-16a32 32 0 1 1 32-32 32 32 0 0 1-32 32z" />
 					</svg>
 					Team &amp; Roles
 				</a>
@@ -537,17 +471,12 @@
 					href={workspaceHref(controlStore.activeWorkspace?.id, 'security')}
 				>
 					<svg
-						width="15"
-						height="15"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.7"
+						class="size-4 shrink-0"
+						viewBox="0 0 256 256"
+						fill="currentColor"
 						aria-hidden="true"
 					>
-						<circle cx="12" cy="12" r="3" /><path
-							d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-						/>
+						<path d="M208 40H48a16 16 0 0 0-16 16v56c0 68.66 43.15 111.41 92.42 126.78a12 12 0 0 0 7.16 0C180.85 223.41 224 180.66 224 112V56a16 16 0 0 0-16-16z" />
 					</svg>
 					Account Security
 				</a>

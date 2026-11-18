@@ -69,7 +69,7 @@
       {/if}
     </div>
 
-    <div class="flex-1 flex flex-col justify-center max-w-lg w-full mx-auto my-6 lg:my-0">
+    <div class="flex-1 flex flex-col justify-center max-w-[440px] w-full mx-auto my-6 lg:my-0">
       {@render children()}
     </div>
   </section>

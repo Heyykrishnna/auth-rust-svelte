@@ -73,70 +73,66 @@
 
 	<form class="editorial-stack" onsubmit={handleSubmit}>
 		{#if mode === 'signup'}
-			<div class="editorial-grid-2">
-				<div class="editorial-field">
-					<label class="editorial-label" for="dev-display-name">Display Name</label>
-					<input
-						id="dev-display-name"
-						type="text"
-						class="editorial-input"
-						bind:value={displayName}
-						placeholder="Ada Lovelace"
-						required
-					/>
-				</div>
-
-				<div class="editorial-field">
-					<label class="editorial-label" for="dev-workspace-name">Workspace Name</label>
-					<input
-						id="dev-workspace-name"
-						type="text"
-						class="editorial-input"
-						bind:value={workspaceName}
-						placeholder="Acme Engineering"
-					/>
-				</div>
-			</div>
-		{/if}
-
-		<div class="editorial-grid-2">
 			<div class="editorial-field">
-				<label class="editorial-label" for="dev-email">Email</label>
+				<label class="editorial-label" for="dev-display-name">Display Name *</label>
 				<input
-					id="dev-email"
-					type="email"
+					id="dev-display-name"
+					type="text"
 					class="editorial-input"
-					bind:value={email}
-					placeholder="dev@company.com"
-					autocomplete="email"
+					bind:value={displayName}
+					placeholder="Ada Lovelace"
 					required
 				/>
 			</div>
 
 			<div class="editorial-field">
-				<label class="editorial-label" for="dev-password">Password</label>
-				<div class="editorial-input-wrap">
-					<input
-						id="dev-password"
-						type={showPassword ? 'text' : 'password'}
-						class="editorial-input"
-						bind:value={password}
-						placeholder="••••••••••"
-						autocomplete={mode === 'signin' ? 'current-password' : 'new-password'}
-						required
-					/>
-					<button
-						type="button"
-						class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-0 top-1/2 -translate-y-1/2"
-						onclick={() => (showPassword = !showPassword)}
-						aria-label={showPassword ? 'Hide password' : 'Show password'}
-					>
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-							<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-							<circle cx="12" cy="12" r="3" />
-						</svg>
-					</button>
-				</div>
+				<label class="editorial-label" for="dev-workspace-name">Workspace Name</label>
+				<input
+					id="dev-workspace-name"
+					type="text"
+					class="editorial-input"
+					bind:value={workspaceName}
+					placeholder="Acme Engineering"
+				/>
+			</div>
+		{/if}
+
+		<div class="editorial-field">
+			<label class="editorial-label" for="dev-email">Email address *</label>
+			<input
+				id="dev-email"
+				type="email"
+				class="editorial-input"
+				bind:value={email}
+				placeholder="e.g. dev@company.com"
+				autocomplete="email"
+				required
+			/>
+		</div>
+
+		<div class="editorial-field">
+			<label class="editorial-label" for="dev-password">Password *</label>
+			<div class="editorial-input-wrap">
+				<input
+					id="dev-password"
+					type={showPassword ? 'text' : 'password'}
+					class="editorial-input"
+					bind:value={password}
+					placeholder="••••••••••••"
+					autocomplete={mode === 'signin' ? 'current-password' : 'new-password'}
+					required
+				/>
+				<button
+					type="button"
+					class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-1.5 top-1/2 -translate-y-1/2"
+					onclick={() => (showPassword = !showPassword)}
+					aria-label={showPassword ? 'Hide password' : 'Show password'}
+				>
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+						<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+						<circle cx="12" cy="12" r="3" />
+					</svg>
+				</button>
 			</div>
 		</div>
 
@@ -149,19 +145,29 @@
 
 		<div class="editorial-actions-footer">
 			<button
-				type="button"
-				class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
-				onclick={() => {
-					mode = mode === 'signin' ? 'signup' : 'signin';
-					errorMessage = '';
-				}}
+				type="submit"
+				class="action-button w-full min-h-11 shrink-0 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer"
+				disabled={submitting}
 			>
-				{mode === 'signin' ? 'Need a workspace? Sign up' : 'Already registered? Sign in'}
+				{submitting ? '...' : mode === 'signin' ? 'Sign in' : 'Create workspace'}
 			</button>
 
-			<button type="submit" class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold" disabled={submitting}>
-				{submitting ? '...' : mode === 'signin' ? 'SIGN IN' : 'CREATE'}
-			</button>
+			<div class="text-center text-sm text-zinc-400">
+				<button
+					type="button"
+					class="text-white hover:underline font-medium bg-transparent border-0 p-0 cursor-pointer text-sm"
+					onclick={() => {
+						mode = mode === 'signin' ? 'signup' : 'signin';
+						errorMessage = '';
+					}}
+				>
+					{mode === 'signin' ? 'Need a developer workspace? Sign up' : 'Already registered? Sign in'}
+				</button>
+			</div>
+
+			<p class="text-xs text-zinc-500 text-center m-0">
+				By continuing, you agree to our Terms of Service and Privacy Policy.
+			</p>
 		</div>
 	</form>
 </AuthSplitShell>

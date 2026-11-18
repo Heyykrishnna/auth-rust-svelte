@@ -160,7 +160,7 @@
   topActionHref="/login"
 >
   {#if step === "form"}
-    <h1 class="editorial-title">Create Account</h1>
+    <h1 class="editorial-title">Create your account</h1>
     <p class="editorial-subtitle">
       Register a central identity with email verification.
     </p>
@@ -170,44 +170,42 @@
     {/if}
 
     <form class="editorial-stack" onsubmit={handleInitiateRegister} novalidate>
-      <div class="editorial-grid-2">
-        <div class="editorial-field">
-          <label class="editorial-label" for="reg-name">Full Name</label>
-          <input
-            id="reg-name"
-            type="text"
-            class="editorial-input"
-            class:has-error={Boolean(errors.displayName)}
-            bind:value={displayName}
-            placeholder="Jane Doe"
-            autocomplete="name"
-            required
-          />
-          {#if errors.displayName}
-            <span class="editorial-field-error" role="alert"
-              >{errors.displayName}</span
-            >
-          {/if}
-        </div>
+      <div class="editorial-field">
+        <label class="editorial-label" for="reg-name">Full name *</label>
+        <input
+          id="reg-name"
+          type="text"
+          class="editorial-input"
+          class:has-error={Boolean(errors.displayName)}
+          bind:value={displayName}
+          placeholder="Andrew Thomas"
+          autocomplete="name"
+          required
+        />
+        {#if errors.displayName}
+          <span class="editorial-field-error" role="alert"
+            >{errors.displayName}</span
+          >
+        {/if}
+      </div>
 
-        <div class="editorial-field">
-          <label class="editorial-label" for="reg-email">Email</label>
-          <input
-            id="reg-email"
-            type="email"
-            class="editorial-input"
-            class:has-error={Boolean(errors.email)}
-            bind:value={email}
-            placeholder="name@company.com"
-            autocomplete="email"
-            required
-          />
-          {#if errors.email}
-            <span class="editorial-field-error" role="alert"
-              >{errors.email}</span
-            >
-          {/if}
-        </div>
+      <div class="editorial-field">
+        <label class="editorial-label" for="reg-email">Email address *</label>
+        <input
+          id="reg-email"
+          type="email"
+          class="editorial-input"
+          class:has-error={Boolean(errors.email)}
+          bind:value={email}
+          placeholder="e.g. andrew@example.com"
+          autocomplete="email"
+          required
+        />
+        {#if errors.email}
+          <span class="editorial-field-error" role="alert"
+            >{errors.email}</span
+          >
+        {/if}
       </div>
 
       <div class="editorial-grid-2">
@@ -220,13 +218,13 @@
               class="editorial-input"
               class:has-error={Boolean(errors.password)}
               bind:value={password}
-              placeholder="Min 8 chars, A-Z, 0-9"
+              placeholder="••••••••••••"
               autocomplete="new-password"
               required
             />
             <button
               type="button"
-              class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-0 top-1/2 -translate-y-1/2"
+              class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-1.5 top-1/2 -translate-y-1/2"
               onclick={() => (showPassword = !showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
@@ -253,18 +251,20 @@
 
         <div class="editorial-field">
           <label class="editorial-label" for="reg-confirm"
-            >Confirm Password</label
+            >Confirm password</label
           >
-          <input
-            id="reg-confirm"
-            type={showPassword ? "text" : "password"}
-            class="editorial-input"
-            class:has-error={Boolean(errors.confirmPassword)}
-            bind:value={confirmPassword}
-            placeholder="Repeat password"
-            autocomplete="new-password"
-            required
-          />
+          <div class="editorial-input-wrap">
+            <input
+              id="reg-confirm"
+              type={showPassword ? "text" : "password"}
+              class="editorial-input"
+              class:has-error={Boolean(errors.confirmPassword)}
+              bind:value={confirmPassword}
+              placeholder="••••••••••••"
+              autocomplete="new-password"
+              required
+            />
+          </div>
           {#if errors.confirmPassword}
             <span class="editorial-field-error" role="alert"
               >{errors.confirmPassword}</span
@@ -273,13 +273,26 @@
         </div>
       </div>
 
+      <p class="text-xs text-zinc-500 m-0 -mt-1">
+        Password must be at least 8 characters, including a number and a special character.
+      </p>
+
       <div class="editorial-actions-footer">
-        <span class="editorial-quiet-link"
-          >6-digit email OTP verification required</span
+        <button
+          type="submit"
+          class="action-button w-full min-h-11 shrink-0 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer"
+          disabled={loading}
         >
-        <button type="submit" class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold" disabled={loading}>
-          {loading ? "..." : "CONTINUE"}
+          {loading ? "..." : "Create account"}
         </button>
+
+        <div class="text-center text-sm text-zinc-400">
+          Already have an account? <a href="/login" class="text-white hover:underline font-medium">Sign In</a>
+        </div>
+
+        <p class="text-xs text-zinc-500 text-center m-0">
+          By creating an account, you agree to our Terms of Service and Privacy Policy.
+        </p>
       </div>
     </form>
   {:else}

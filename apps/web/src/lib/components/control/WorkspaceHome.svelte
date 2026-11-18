@@ -50,14 +50,18 @@
 		{
 			view: 'applications',
 			label: 'Applications',
-			icon: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'
+			icon: 'M104 48H56a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm96 0h-48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm-96 96H56a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16v-48a16 16 0 0 0-16-16zm96 0h-48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h48a16 16 0 0 0 16-16v-48a16 16 0 0 0-16-16z'
 		},
 		{
 			view: 'team',
 			label: 'Team',
-			icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7-7.87a4 4 0 0 1 0 7.75'
+			icon: 'M168 112a40 40 0 1 0-40-40 40 40 0 0 0 40 40zm48 16h-11.8a55.8 55.8 0 0 1-72.4 0H120a48 48 0 0 0-48 48v8a8 8 0 0 0 8 8h176a8 8 0 0 0 8-8v-8a48 48 0 0 0-48-48zm-128-16a40 40 0 1 0-40-40 40 40 0 0 0 40 40zm24 64v-8a48 48 0 0 0-18.47-37.74 55.8 55.8 0 0 1-21.53 4.24H60a48 48 0 0 0-48 48v8a8 8 0 0 0 8 8h84a8 8 0 0 0 8-8z'
 		},
-		{ view: 'settings', label: 'Settings', icon: 'M4 7h16M4 17h16M9 4v6m6 4v6' }
+		{
+			view: 'settings',
+			label: 'Settings',
+			icon: 'M224 80h-40V64a8 8 0 0 0-16 0v48a8 8 0 0 0 16 0V96h40a8 8 0 0 0 0-16zm-80 8H32a8 8 0 0 0 0 16h112a8 8 0 0 0 0-16zm80 80h-88a8 8 0 0 0 0 16h88a8 8 0 0 0 0-16zm-112-24a8 8 0 0 0-8 8v16H32a8 8 0 0 0 0 16h72v16a8 8 0 0 0 16 0v-48a8 8 0 0 0-8-8z'
+		}
 	] as const;
 	const titles: Record<WorkspaceView, string> = {
 		applications: 'Applications',
@@ -75,22 +79,16 @@
 	class="workspace-theme workspace-accent grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-brand-surface text-brand-text-primary lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]"
 >
 	<aside
-		class="flex min-w-0 flex-col gap-4 border-b border-brand-border bg-brand-surface-card px-4 pt-4 lg:sticky lg:top-0 lg:h-dvh lg:gap-6 lg:border-r lg:border-b-0 lg:p-5"
+		class="flex min-w-0 flex-col gap-5 border-b border-brand-border bg-brand-surface-card p-4 lg:sticky lg:top-0 lg:h-dvh lg:border-r lg:border-b-0"
 	>
-		<div class="flex min-w-0 flex-wrap items-center justify-between gap-3">
+		<div class="flex min-w-0 items-center justify-between gap-3 px-[0.35rem]">
 			<a
 				href={workspaceHref(workspace?.id)}
-				class="inline-flex items-center gap-2.5 rounded-md text-brand-text-primary no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime"
+				class="inline-flex items-center gap-[0.55rem] rounded text-white font-semibold text-[0.95rem] no-underline focus-visible:outline-2 focus-visible:outline-brand-lime"
 				aria-label="Signet workspace applications"
 			>
-				<span
-					class="grid size-8 place-items-center rounded-md bg-brand-lime text-brand-lime-ink"
-				>
-					<SignetMark size={18} />
-				</span>
-				<span class="font-heading text-lg font-extrabold tracking-tight">
-					Signet
-				</span>
+				<SignetMark size={20} class="text-white shrink-0" />
+				<span>Signet</span>
 			</a>
 			{#if controlStore.developer}
 				<div class="lg:hidden">
@@ -145,16 +143,12 @@
 					<a
 						href={workspaceHref(workspace.id, link.view)}
 						aria-current={view === link.view ? 'page' : undefined}
-						class="inline-flex min-w-0 items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-sm font-medium text-brand-text-secondary no-underline transition-colors hover:bg-brand-surface-raised hover:text-brand-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime aria-[current=page]:border-brand-success-border aria-[current=page]:bg-brand-success-soft aria-[current=page]:text-brand-lime sm:gap-2.5 sm:px-3"
+						class="inline-flex min-w-0 items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-sm font-medium text-brand-text-secondary no-underline transition-colors hover:bg-brand-surface-raised hover:text-brand-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime aria-[current=page]:border-brand-border-hover aria-[current=page]:bg-brand-surface-alt aria-[current=page]:text-white sm:gap-2.5 sm:px-3"
 					>
 						<svg
 							class="size-4 shrink-0"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.6"
-							stroke-linecap="round"
-							stroke-linejoin="round"
+							viewBox="0 0 256 256"
+							fill="currentColor"
 							aria-hidden="true"
 						>
 							<path d={link.icon} />

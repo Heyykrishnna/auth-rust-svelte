@@ -93,53 +93,51 @@
       <div class="editorial-alert" role="alert">{errorMessage}</div>
     {/if}
 
-    <form onsubmit={handleLogin}>
-      <div class="editorial-grid-2">
-        <div class="editorial-field">
-          <label class="editorial-label" for="portal-email">Email</label>
-          <input
-            id="portal-email"
-            type="email"
-            class="editorial-input"
-            bind:value={email}
-            required
-            autocomplete="email"
-            placeholder="name@company.com"
-          />
-        </div>
+    <form class="editorial-stack" onsubmit={handleLogin}>
+      <div class="editorial-field">
+        <label class="editorial-label" for="portal-email">Email address *</label>
+        <input
+          id="portal-email"
+          type="email"
+          class="editorial-input"
+          bind:value={email}
+          required
+          autocomplete="email"
+          placeholder="e.g. name@company.com"
+        />
+      </div>
 
-        <div class="editorial-field">
-          <label class="editorial-label" for="portal-password">Password</label>
-          <div class="editorial-input-wrap">
-            <input
-              id="portal-password"
-              type={showPassword ? "text" : "password"}
-              class="editorial-input"
-              bind:value={password}
-              required
-              autocomplete="current-password"
-              placeholder="••••••••••"
-            />
-            <button
-              type="button"
-              class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-0 top-1/2 -translate-y-1/2"
-              onclick={() => (showPassword = !showPassword)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+      <div class="editorial-field">
+        <label class="editorial-label" for="portal-password">Password *</label>
+        <div class="editorial-input-wrap">
+          <input
+            id="portal-password"
+            type={showPassword ? "text" : "password"}
+            class="editorial-input"
+            bind:value={password}
+            required
+            autocomplete="current-password"
+            placeholder="••••••••••••"
+          />
+          <button
+            type="button"
+            class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-1.5 top-1/2 -translate-y-1/2"
+            onclick={() => (showPassword = !showPassword)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                aria-hidden="true"
-              >
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </button>
-          </div>
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -155,20 +153,21 @@
       </div>
 
       <div class="editorial-actions-footer">
-        <a
-          href={`/portal/sign-up?tx=${encodeURIComponent(txContext.tx_id)}`}
-          class="editorial-quiet-link"
-        >
-          Create an account
-        </a>
-
         <button
           type="submit"
-          class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
+          class="action-button w-full min-h-11 shrink-0 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer"
           disabled={submitting}
         >
-          {submitting ? "..." : "SIGN IN"}
+          {submitting ? "..." : "Sign in"}
         </button>
+
+        <div class="text-center text-sm text-zinc-400">
+          Don't have an account? <a href={`/portal/sign-up?tx=${encodeURIComponent(txContext.tx_id)}`} class="text-white hover:underline font-medium">Create one</a>
+        </div>
+
+        <p class="text-xs text-zinc-500 text-center m-0">
+          By signing in, you agree to our Terms of Service and Privacy Policy.
+        </p>
       </div>
     </form>
   {/if}

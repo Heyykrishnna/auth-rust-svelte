@@ -142,35 +142,34 @@
 
     {#if step === "form"}
       <form class="editorial-stack" onsubmit={handleSignUp}>
-        <div class="editorial-grid-2">
-          <div class="editorial-field">
-            <label class="editorial-label" for="ps-name">Display Name</label>
-            <input
-              id="ps-name"
-              type="text"
-              class="editorial-input"
-              bind:value={displayName}
-              required
-              placeholder="Alice Carter"
-            />
-          </div>
-          <div class="editorial-field">
-            <label class="editorial-label" for="ps-email">Email</label>
-            <input
-              id="ps-email"
-              type="email"
-              class="editorial-input"
-              bind:value={email}
-              required
-              autocomplete="email"
-              placeholder="alice@company.com"
-            />
-          </div>
+        <div class="editorial-field">
+          <label class="editorial-label" for="ps-name">Full name *</label>
+          <input
+            id="ps-name"
+            type="text"
+            class="editorial-input"
+            bind:value={displayName}
+            required
+            placeholder="Alice Carter"
+          />
+        </div>
+
+        <div class="editorial-field">
+          <label class="editorial-label" for="ps-email">Email address *</label>
+          <input
+            id="ps-email"
+            type="email"
+            class="editorial-input"
+            bind:value={email}
+            required
+            autocomplete="email"
+            placeholder="e.g. alice@company.com"
+          />
         </div>
 
         <div class="editorial-field">
           <label class="editorial-label" for="ps-password"
-            >Password (minimum 8 characters)</label
+            >Password *</label
           >
           <input
             id="ps-password"
@@ -180,24 +179,30 @@
             required
             minlength="8"
             autocomplete="new-password"
-            placeholder="••••••••••"
+            placeholder="••••••••••••"
           />
         </div>
 
+        <p class="text-xs text-zinc-500 m-0 -mt-1">
+          Password must be at least 8 characters, including a number and a special character.
+        </p>
+
         <div class="editorial-actions-footer">
-          <a
-            href={`/portal/login?tx=${encodeURIComponent(txContext.tx_id)}`}
-            class="editorial-quiet-link"
-          >
-            Already have an account?
-          </a>
           <button
             type="submit"
-            class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
+            class="action-button w-full min-h-11 shrink-0 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer"
             disabled={submitting}
           >
-            {submitting ? "..." : "CONTINUE"}
+            {submitting ? "..." : "Create account"}
           </button>
+
+          <div class="text-center text-sm text-zinc-400">
+            Already have an account? <a href={`/portal/login?tx=${encodeURIComponent(txContext.tx_id)}`} class="text-white hover:underline font-medium">Sign In</a>
+          </div>
+
+          <p class="text-xs text-zinc-500 text-center m-0">
+            By creating an account, you agree to our Terms of Service and Privacy Policy.
+          </p>
         </div>
       </form>
     {:else}

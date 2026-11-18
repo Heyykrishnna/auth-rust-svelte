@@ -81,99 +81,104 @@
     <div class="editorial-alert" role="alert">{errors.form}</div>
   {/if}
 
-  <form onsubmit={handleLogin} novalidate>
-    <div class="editorial-grid-2">
-      <div class="editorial-field">
-        <label class="editorial-label" for="login-email">Email</label>
-        <div class="editorial-input-wrap">
-          <input
-            id="login-email"
-            type="email"
-            class="editorial-input"
-            class:has-error={Boolean(errors.email)}
-            bind:value={email}
-            placeholder="name@company.com"
-            autocomplete="email"
-            required
-          />
-        </div>
-        {#if errors.email}
-          <span class="editorial-field-error" role="alert">{errors.email}</span>
-        {/if}
+  <form class="editorial-stack" onsubmit={handleLogin} novalidate>
+    <div class="editorial-field">
+      <label class="editorial-label" for="login-email">Email address *</label>
+      <div class="editorial-input-wrap">
+        <input
+          id="login-email"
+          type="email"
+          class="editorial-input"
+          class:has-error={Boolean(errors.email)}
+          bind:value={email}
+          placeholder="e.g. andrew@example.com"
+          autocomplete="email"
+          required
+        />
       </div>
+      {#if errors.email}
+        <span class="editorial-field-error" role="alert">{errors.email}</span>
+      {/if}
+    </div>
 
-      <div class="editorial-field">
-        <label class="editorial-label" for="login-password">Password</label>
-        <div class="editorial-input-wrap">
-          <input
-            id="login-password"
-            type={showPassword ? "text" : "password"}
-            class="editorial-input"
-            class:has-error={Boolean(errors.password)}
-            bind:value={password}
-            placeholder="••••••••••"
-            autocomplete="current-password"
-            required
-          />
-          <button
-            type="button"
-            class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-0 top-1/2 -translate-y-1/2"
-            onclick={() => (showPassword = !showPassword)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-          >
-            {#if showPassword}
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                aria-hidden="true"
-              >
-                <path
-                  d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.11 1 12c.74-1.76 1.94-3.36 3.47-4.66"
-                />
-                <path
-                  d="M9.9 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.89 11 8a11.05 11.05 0 0 1-2.16 3.19"
-                />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
-            {:else}
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.6"
-                aria-hidden="true"
-              >
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            {/if}
-          </button>
-        </div>
-        {#if errors.password}
-          <span class="editorial-field-error" role="alert"
-            >{errors.password}</span
-          >
-        {/if}
+    <div class="editorial-field">
+      <label class="editorial-label" for="login-password">Password *</label>
+      <div class="editorial-input-wrap">
+        <input
+          id="login-password"
+          type={showPassword ? "text" : "password"}
+          class="editorial-input"
+          class:has-error={Boolean(errors.password)}
+          bind:value={password}
+          placeholder="••••••••••••"
+          autocomplete="current-password"
+          required
+        />
+        <button
+          type="button"
+          class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-1.5 top-1/2 -translate-y-1/2"
+          onclick={() => (showPassword = !showPassword)}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+        >
+          {#if showPassword}
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <path
+                d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.11 1 12c.74-1.76 1.94-3.36 3.47-4.66"
+              />
+              <path
+                d="M9.9 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.89 11 8a11.05 11.05 0 0 1-2.16 3.19"
+              />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          {:else}
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          {/if}
+        </button>
       </div>
+      {#if errors.password}
+        <span class="editorial-field-error" role="alert"
+          >{errors.password}</span
+        >
+      {/if}
     </div>
 
     <div class="editorial-meta-row">
       <SelectionRow label="Remember me" bind:checked={rememberMe} />
-      <a href="/control/login" class="editorial-quiet-link">Developer Console</a
-      >
+      <a href="/control/login" class="editorial-quiet-link">Developer Console</a>
     </div>
 
     <div class="editorial-actions-footer">
-      <div class="editorial-oauth-group">
+      <button
+        type="submit"
+        class="action-button w-full min-h-11 shrink-0 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold cursor-pointer"
+        disabled={loading}
+      >
+        {loading ? "..." : "Sign in"}
+      </button>
+
+      <div class="editorial-oauth-group w-full flex items-center gap-2">
         <button
           type="button"
-          class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
+          class="action-button flex-1 inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold"
           onclick={() => loginWithOidc("google")}
         >
           <svg
@@ -191,7 +196,7 @@
         </button>
         <button
           type="button"
-          class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
+          class="action-button flex-1 inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold"
           onclick={() => loginWithOidc("github")}
         >
           <svg
@@ -209,9 +214,13 @@
         </button>
       </div>
 
-      <button type="submit" class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold" disabled={loading}>
-        {loading ? "..." : "SIGN IN"}
-      </button>
+      <div class="text-center text-sm text-zinc-400">
+        Don't have an account? <a href="/register" class="text-white hover:underline font-medium">Sign Up</a>
+      </div>
+
+      <p class="text-xs text-zinc-500 text-center m-0">
+        By signing in, you agree to our Terms of Service and Privacy Policy.
+      </p>
     </div>
   </form>
 </AuthSplitShell>
