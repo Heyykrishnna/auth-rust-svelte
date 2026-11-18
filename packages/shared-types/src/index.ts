@@ -12,18 +12,7 @@ export interface AuthUser {
   permissions?: string[];
 }
 
-export interface UserProfile {
-  id: string;
-  email: string;
-  display_name: string;
-  avatar_url: string | null;
-  email_verified: boolean;
-  status: UserStatus;
-  created_at: string;
-  roles?: string[];
-  permissions?: string[];
-}
-
+export type UserProfile = AuthUser;
 
 export interface SessionItem {
   id: string;
@@ -92,7 +81,6 @@ export interface ResendOtpRequest {
   email: string;
 }
 
-
 export interface LoginRequest {
   email: string;
   password: string;
@@ -131,9 +119,21 @@ export interface OidcProvider {
   authorization_url: string;
 }
 
+export interface ApiErrorBody {
+  code: string;
+  message: string;
+  request_id?: string;
+  details?: Record<string, unknown> | null;
+}
+
+export interface ApiErrorEnvelope {
+  error: ApiErrorBody;
+  status: number;
+}
+
 export interface ApiResponse<T> {
   data?: T;
-  error?: string;
+  error?: string | ApiErrorBody;
 }
 
 export interface MessageResponse {
@@ -156,6 +156,45 @@ export interface AuditLogEntry {
   metadata?: Record<string, unknown>;
 }
 
+export type DomainEventType =
+  | 'user.created'
+  | 'user.updated'
+  | 'user.deleted'
+  | 'user.suspended'
+  | 'user.email_verified'
+  | 'membership.created'
+  | 'membership.updated'
+  | 'membership.revoked'
+  | 'session.created'
+  | 'session.revoked'
+  | 'role.assigned'
+  | 'role.revoked'
+  | 'organization.created'
+  | 'organization.updated'
+  | 'organization.deleted'
+  | 'organization.member_added'
+  | 'organization.member_updated'
+  | 'organization.member_removed';
+
+export type AggregateType =
+  | 'user'
+  | 'application_user'
+  | 'app_session'
+  | 'organization'
+  | 'organization_member';
+
+export interface DomainEventEnvelope<T = Record<string, unknown>> {
+  spec_version: '1.0';
+  event_id: string;
+  event_type: DomainEventType;
+  environment_id?: string;
+  occurred_at: string;
+  aggregate_type: AggregateType;
+  aggregate_id: string;
+  aggregate_version: number;
+  data: T;
+}
+
 export type Role = 'admin' | 'user' | 'moderator' | string;
 
 export type Permission =
@@ -165,12 +204,6 @@ export type Permission =
   | 'sessions.delete'
   | 'users.read'
   | 'users.delete'
-  | 'user:read'
-  | 'user:write'
-  | 'user:delete'
-  | 'session:read'
-  | 'session:delete'
-  | 'admin:access'
   | string;
 
 export interface UserRole {
