@@ -39,18 +39,18 @@
 </script>
 
 <svelte:head>
-	<title>Dashboard — AuthPlatform</title>
+	<title>Dashboard — Signet</title>
 	<meta name="description" content="View your account overview, security status, and platform metrics." />
 </svelte:head>
 
-<div class="dashboard-container container">
-	<div class="welcome-banner">
-		<div class="welcome-content">
-			<div class="user-avatar-large">
+<div class="max-w-7xl mx-auto px-6 py-8 pb-16">
+	<div class="flex flex-wrap items-center justify-between gap-8 p-8 rounded-xl bg-brand-surface-card border border-brand-border mb-8">
+		<div class="flex items-center gap-6">
+			<div class="w-16 h-16 rounded-full bg-brand-lime text-brand-lime-ink flex items-center justify-center font-heading font-bold text-2xl shrink-0 select-none">
 				{getUserInitials(authStore.user)}
 			</div>
-			<div class="welcome-text">
-				<div class="welcome-badges">
+			<div class="flex flex-col">
+				<div class="flex items-center gap-2 mb-2">
 					{#if authStore.isAdmin}
 						<Badge variant="purple" dot>Administrator</Badge>
 					{:else}
@@ -62,16 +62,16 @@
 						<Badge variant="warning">Email Unverified</Badge>
 					{/if}
 				</div>
-				<h1 class="welcome-title">
+				<h1 class="m-0 mb-1.5 text-2xl sm:text-3xl font-bold font-heading text-brand-text-primary tracking-tight">
 					Welcome, {formatUserDisplayName(authStore.user)}
 				</h1>
-				<p class="welcome-sub">
+				<p class="m-0 text-brand-text-secondary text-sm max-w-xl leading-relaxed">
 					Connected to Rust Axum Auth API. Your session is protected by cryptographic tokens & HttpOnly cookies.
 				</p>
 			</div>
 		</div>
 
-		<div class="welcome-actions">
+		<div class="flex items-center gap-3">
 			<Button variant="outline" href="/settings">
 				Manage Settings
 			</Button>
@@ -83,28 +83,28 @@
 		</div>
 	</div>
 
-	<div class="stats-grid">
+	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
 		<Card variant="glass">
-			<div class="stat-card-inner">
-				<div class="stat-icon-wrapper">
-					<span class="stat-icon">SEC</span>
+			<div class="flex items-start gap-4">
+				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+					<span class="text-xs font-mono font-bold text-brand-lime">SEC</span>
 				</div>
-				<div class="stat-details">
-					<span class="stat-title">Security State</span>
-					<span class="stat-value text-success">Protected</span>
-					<span class="stat-caption">Argon2id + SameSite Cookies</span>
+				<div class="flex flex-col gap-1">
+					<span class="text-xs uppercase tracking-wider text-brand-text-muted font-semibold">Security State</span>
+					<span class="text-xl font-bold text-emerald-400">Protected</span>
+					<span class="text-xs text-brand-text-subtle">Argon2id + SameSite Cookies</span>
 				</div>
 			</div>
 		</Card>
 
 		<Card variant="glass">
-			<div class="stat-card-inner">
-				<div class="stat-icon-wrapper">
-					<span class="stat-icon">SES</span>
+			<div class="flex items-start gap-4">
+				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+					<span class="text-xs font-mono font-bold text-brand-lime">SES</span>
 				</div>
-				<div class="stat-details">
-					<span class="stat-title">Active Devices</span>
-					<span class="stat-value">
+				<div class="flex flex-col gap-1">
+					<span class="text-xs uppercase tracking-wider text-brand-text-muted font-semibold">Active Devices</span>
+					<span class="text-xl font-bold text-brand-text-primary">
 						{#if loadingSessions}
 							...
 						{:else if activeSessionCount !== null}
@@ -113,391 +113,110 @@
 							1 Device
 						{/if}
 					</span>
-					<span class="stat-caption">
-						<a href="/settings" class="inline-link">Manage sessions →</a>
+					<span class="text-xs text-brand-text-subtle">
+						<a href="/settings" class="text-brand-lime hover:underline">Manage sessions →</a>
 					</span>
 				</div>
 			</div>
 		</Card>
 
 		<Card variant="glass">
-			<div class="stat-card-inner">
-				<div class="stat-icon-wrapper">
-					<span class="stat-icon">RBAC</span>
+			<div class="flex items-start gap-4">
+				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+					<span class="text-xs font-mono font-bold text-brand-lime">RBAC</span>
 				</div>
-				<div class="stat-details">
-					<span class="stat-title">Assigned Roles</span>
-					<span class="stat-value">
+				<div class="flex flex-col gap-1">
+					<span class="text-xs uppercase tracking-wider text-brand-text-muted font-semibold">Assigned Roles</span>
+					<span class="text-xl font-bold text-brand-text-primary">
 						{authStore.roles.length > 0 ? authStore.roles.join(', ') : 'user'}
 					</span>
-					<span class="stat-caption">Role-Based Access Control</span>
+					<span class="text-xs text-brand-text-subtle">Role-Based Access Control</span>
 				</div>
 			</div>
 		</Card>
 
 		<Card variant="glass">
-			<div class="stat-card-inner">
-				<div class="stat-icon-wrapper">
-					<span class="stat-icon">DATE</span>
+			<div class="flex items-start gap-4">
+				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+					<span class="text-xs font-mono font-bold text-brand-lime">DATE</span>
 				</div>
-				<div class="stat-details">
-					<span class="stat-title">Member Since</span>
-					<span class="stat-value font-mono">
+				<div class="flex flex-col gap-1">
+					<span class="text-xs uppercase tracking-wider text-brand-text-muted font-semibold">Member Since</span>
+					<span class="text-xl font-bold font-mono text-brand-text-primary">
 						{formatDate(authStore.user?.created_at)}
 					</span>
-					<span class="stat-caption">Status: {authStore.user?.status || 'active'}</span>
+					<span class="text-xs text-brand-text-subtle">Status: {authStore.user?.status || 'active'}</span>
 				</div>
 			</div>
 		</Card>
 	</div>
 
-	<div class="dashboard-sections">
-		<Card title="Identity & Permissions" subtitle="Details resolved directly from backend Rust API tokens">
-			<div class="info-table">
-				<div class="info-row">
-					<span class="info-label">User Identifier (UUID)</span>
-					<span class="info-value font-mono">{authStore.user?.id || '—'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">Primary Email</span>
-					<span class="info-value">{authStore.user?.email || '—'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">Display Name</span>
-					<span class="info-value">{authStore.user?.display_name || '—'}</span>
-				</div>
-				<div class="info-row">
-					<span class="info-label">Effective Permissions</span>
-					<div class="permissions-pill-group">
-						{#if authStore.permissions.length > 0}
-							{#each authStore.permissions as perm}
-								<Badge variant="neutral" size="sm">{perm}</Badge>
-							{/each}
-						{:else}
-							<span class="info-subtle">Inherited based on role</span>
-						{/if}
+	<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+		<div class="lg:col-span-7">
+			<Card title="Identity & Permissions" subtitle="Details resolved directly from backend Rust API tokens">
+				<div class="flex flex-col gap-3">
+					<div class="flex items-center justify-between py-2 border-b border-white/5">
+						<span class="text-sm text-brand-text-secondary">User Identifier (UUID)</span>
+						<span class="text-sm font-mono font-medium text-brand-text-primary">{authStore.user?.id || '—'}</span>
+					</div>
+					<div class="flex items-center justify-between py-2 border-b border-white/5">
+						<span class="text-sm text-brand-text-secondary">Primary Email</span>
+						<span class="text-sm font-medium text-brand-text-primary">{authStore.user?.email || '—'}</span>
+					</div>
+					<div class="flex items-center justify-between py-2 border-b border-white/5">
+						<span class="text-sm text-brand-text-secondary">Display Name</span>
+						<span class="text-sm font-medium text-brand-text-primary">{authStore.user?.display_name || '—'}</span>
+					</div>
+					<div class="flex items-center justify-between py-2">
+						<span class="text-sm text-brand-text-secondary">Effective Permissions</span>
+						<div class="flex flex-wrap gap-1.5 justify-end">
+							{#if authStore.permissions.length > 0}
+								{#each authStore.permissions as perm}
+									<Badge variant="neutral" size="sm">{perm}</Badge>
+								{/each}
+							{:else}
+								<span class="text-xs text-brand-text-subtle">Inherited based on role</span>
+							{/if}
+						</div>
 					</div>
 				</div>
-			</div>
-			{#snippet footer()}
-				<span class="footer-note">Need to update your credentials?</span>
-				<Button variant="ghost" size="sm" href="/settings">
-					Edit Profile in Settings →
-				</Button>
-			{/snippet}
-		</Card>
+				{#snippet footer()}
+					<span class="text-xs text-brand-text-muted">Need to update your credentials?</span>
+					<Button variant="ghost" size="sm" href="/settings">
+						Edit Profile in Settings →
+					</Button>
+				{/snippet}
+			</Card>
+		</div>
 
-		<Card title="Frontend Architecture" subtitle="Clean architectural boundaries">
-			<div class="architecture-box">
-				<div class="arch-step">
-					<div class="arch-badge">Frontend</div>
-					<p>SvelteKit 5 Runes App (`src/routes`, `src/lib/api`, `src/lib/auth`, `hooks.server.ts`)</p>
-				</div>
-				<div class="arch-arrow">↓ REST HTTP (JSON + HttpOnly Cookies)</div>
-				<div class="arch-step highlight">
-					<div class="arch-badge">Rust Auth API</div>
-					<p>Axum Microservice (Business logic, token issuance, session validation, RBAC)</p>
-				</div>
-				<div class="arch-arrow">↓ Internal Isolated Backing Services</div>
-				<div class="arch-backends">
-					<div class="backend-item">
-						<span class="backend-icon">PG</span>
-						<span>PostgreSQL (Persistence)</span>
+		<div class="lg:col-span-5">
+			<Card title="Frontend Architecture" subtitle="Clean architectural boundaries">
+				<div class="flex flex-col items-center gap-3 p-5 bg-black/30 rounded-xl border border-white/5">
+					<div class="w-full p-3 rounded-lg bg-white/[0.03] border border-white/5 flex items-center gap-3">
+						<div class="text-xs font-bold uppercase px-2 py-0.5 rounded bg-white/10 text-white whitespace-nowrap">Frontend</div>
+						<p class="m-0 text-xs text-zinc-300">SvelteKit 5 Runes App (`src/routes`, `src/lib/api`, `src/lib/auth`, `hooks.server.ts`)</p>
 					</div>
-					<div class="backend-item">
-						<span class="backend-icon">RD</span>
-						<span>Redis (Session Store &amp; Cache)</span>
+					<div class="text-xs font-semibold text-brand-lime">↓ REST HTTP (JSON + HttpOnly Cookies)</div>
+					<div class="w-full p-3 rounded-lg bg-brand-lime/10 border border-brand-lime/30 flex items-center gap-3">
+						<div class="text-xs font-bold uppercase px-2 py-0.5 rounded bg-brand-lime text-brand-lime-ink whitespace-nowrap font-heading">Rust Auth API</div>
+						<p class="m-0 text-xs text-zinc-200">Axum Microservice (Business logic, token issuance, session validation, RBAC)</p>
+					</div>
+					<div class="text-xs font-semibold text-brand-lime">↓ Internal Isolated Backing Services</div>
+					<div class="flex gap-3 w-full">
+						<div class="flex-1 flex items-center gap-2 p-2.5 rounded-md bg-white/[0.02] border border-white/5 text-xs text-brand-text-secondary">
+							<span class="font-mono font-bold text-brand-lime">PG</span>
+							<span>PostgreSQL (Persistence)</span>
+						</div>
+						<div class="flex-1 flex items-center gap-2 p-2.5 rounded-md bg-white/[0.02] border border-white/5 text-xs text-brand-text-secondary">
+							<span class="font-mono font-bold text-brand-lime">RD</span>
+							<span>Redis (Session Store & Cache)</span>
+						</div>
 					</div>
 				</div>
-			</div>
-				<p class="arch-explainer">
+				<p class="mt-4 text-xs text-brand-text-secondary leading-relaxed m-0">
 					Your Svelte frontend never touches PostgreSQL or Redis directly. It strictly consumes standard endpoints exposed by the Rust API layer.
 				</p>
-		</Card>
+			</Card>
+		</div>
 	</div>
 </div>
-
-<style>
-	.container {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 2rem 1.5rem 4rem;
-	}
-
-	.welcome-banner {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 2rem;
-		padding: 2.5rem;
-		border-radius: 12px;
-		background-color: #15171b;
-		border: 1px solid #23262e;
-		margin-bottom: 2rem;
-		flex-wrap: wrap;
-	}
-
-	.welcome-content {
-		display: flex;
-		align-items: center;
-		gap: 1.75rem;
-	}
-
-	.user-avatar-large {
-		width: 64px;
-		height: 64px;
-		border-radius: 50%;
-		background-color: #ffffff;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-weight: 700;
-		font-size: 1.5rem;
-		color: #0b0c0e;
-		flex-shrink: 0;
-	}
-
-	.welcome-badges {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.welcome-title {
-		margin: 0 0 0.4rem;
-		font-size: 1.85rem;
-		font-weight: 700;
-		color: #ffffff;
-		letter-spacing: -0.02em;
-	}
-
-	.welcome-sub {
-		margin: 0;
-		color: #94a3b8;
-		font-size: 0.95rem;
-		max-width: 600px;
-		line-height: 1.5;
-	}
-
-	.welcome-actions {
-		display: flex;
-		gap: 0.75rem;
-		align-items: center;
-	}
-
-	.stats-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-		gap: 1.25rem;
-		margin-bottom: 2rem;
-	}
-
-	.stat-card-inner {
-		display: flex;
-		align-items: flex-start;
-		gap: 1.25rem;
-	}
-
-	.stat-icon-wrapper {
-		width: 48px;
-		height: 48px;
-		border-radius: 12px;
-		background: rgba(255, 255, 255, 0.05);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-
-	.stat-icon {
-		font-size: 1.4rem;
-	}
-
-	.stat-details {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-	}
-
-	.stat-title {
-		font-size: 0.8rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: #94a3b8;
-		font-weight: 600;
-	}
-
-	.stat-value {
-		font-size: 1.35rem;
-		font-weight: 700;
-		color: #f8fafc;
-	}
-
-	.text-success {
-		color: #4ade80;
-	}
-
-	.stat-caption {
-		font-size: 0.775rem;
-		color: #64748b;
-	}
-
-	.inline-link {
-		color: #818cf8;
-		text-decoration: none;
-	}
-
-	.inline-link:hover {
-		text-decoration: underline;
-	}
-
-	.dashboard-sections {
-		display: grid;
-		grid-template-columns: 1.2fr 1fr;
-		gap: 1.5rem;
-	}
-
-	.info-table {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.info-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding-bottom: 0.75rem;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-	}
-
-	.info-row:last-child {
-		border-bottom: none;
-		padding-bottom: 0;
-	}
-
-	.info-label {
-		color: #94a3b8;
-		font-size: 0.875rem;
-	}
-
-	.info-value {
-		color: #f1f5f9;
-		font-weight: 500;
-		font-size: 0.92rem;
-	}
-
-	.font-mono {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.85rem;
-	}
-
-	.permissions-pill-group {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.35rem;
-		justify-content: flex-end;
-	}
-
-	.info-subtle {
-		font-size: 0.825rem;
-		color: #64748b;
-	}
-
-	.footer-note {
-		color: #94a3b8;
-		font-size: 0.85rem;
-	}
-
-	.architecture-box {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 1.25rem;
-		background: rgba(0, 0, 0, 0.2);
-		border-radius: 12px;
-		border: 1px solid rgba(255, 255, 255, 0.05);
-	}
-
-	.arch-step {
-		width: 100%;
-		padding: 0.75rem 1rem;
-		border-radius: 8px;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid rgba(255, 255, 255, 0.06);
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.arch-step.highlight {
-		background: rgba(99, 102, 241, 0.1);
-		border-color: rgba(99, 102, 241, 0.3);
-	}
-
-	.arch-badge {
-		font-size: 0.75rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		padding: 0.2rem 0.5rem;
-		border-radius: 4px;
-		background: rgba(255, 255, 255, 0.1);
-		color: #ffffff;
-		white-space: nowrap;
-	}
-
-	.arch-step.highlight .arch-badge {
-		background: #6366f1;
-	}
-
-	.arch-step p {
-		margin: 0;
-		font-size: 0.825rem;
-		color: #cbd5e1;
-	}
-
-	.arch-arrow {
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: #818cf8;
-	}
-
-	.arch-backends {
-		display: flex;
-		gap: 1rem;
-		width: 100%;
-	}
-
-	.backend-item {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.6rem 0.75rem;
-		border-radius: 6px;
-		background: rgba(255, 255, 255, 0.02);
-		border: 1px solid rgba(255, 255, 255, 0.05);
-		font-size: 0.8rem;
-		color: #94a3b8;
-	}
-
-	.arch-explainer {
-		margin: 1rem 0 0;
-		font-size: 0.85rem;
-		color: #94a3b8;
-		line-height: 1.5;
-	}
-
-	@media (max-width: 900px) {
-		.dashboard-sections {
-			grid-template-columns: 1fr;
-		}
-
-		.welcome-banner {
-			flex-direction: column;
-			align-items: flex-start;
-		}
-	}
-</style>

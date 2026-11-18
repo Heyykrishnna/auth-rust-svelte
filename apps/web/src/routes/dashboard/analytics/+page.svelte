@@ -1,28 +1,16 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+  import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
 
-	onMount(() => {
-		goto('/control?section=analytics', { replaceState: true });
-	});
+  onMount(() => {
+    goto("/control?section=analytics", { replaceState: true });
+  });
 </script>
 
 <svelte:head>
-	<title>Analytics — Secure Auth Control Plane</title>
+  <title>Analytics — Signet Control Plane</title>
 </svelte:head>
 
-<div class="redirect-shell">
-	<p>Opening environment analytics...</p>
+<div class="min-h-[60vh] flex items-center justify-center text-brand-text-secondary text-sm">
+  <p class="m-0">Opening environment analytics...</p>
 </div>
-
-<style>
-	.redirect-shell {
-		min-height: 60vh;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--text-secondary);
-		font-size: 0.9rem;
-	}
-</style>
-
