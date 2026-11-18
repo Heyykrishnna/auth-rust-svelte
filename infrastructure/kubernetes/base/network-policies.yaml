@@ -50,7 +50,9 @@ spec:
               app.kubernetes.io/name: observability
       ports:
         - protocol: TCP
-          port: 8080
+          port: 9090
+        - protocol: TCP
+          port: 9091
   egress:
     - to:
         - namespaceSelector:

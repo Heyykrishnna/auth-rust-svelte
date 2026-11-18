@@ -15,6 +15,7 @@ pub mod identity_advanced;
 pub mod metrics;
 pub mod oidc_provider;
 pub mod organizations;
+pub mod otp;
 pub mod password_hasher;
 pub mod sessions;
 pub mod signing_keys;

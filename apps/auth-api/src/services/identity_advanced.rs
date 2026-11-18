@@ -155,24 +155,6 @@ pub async fn add_user_email(
         return Err(AppError::Validation("Invalid email address".to_string()));
     }
 
-    let (claimed,): (bool,) = sqlx::query_as(
-        r#"
-        SELECT EXISTS (
-            SELECT 1 FROM user_emails
-            WHERE LOWER(email) = $1 AND verified_at IS NOT NULL
-        )
-        "#,
-    )
-    .bind(&clean_email)
-    .fetch_one(db)
-    .await?;
-
-    if claimed {
-        return Err(AppError::Validation(
-            "Email address is already verified on an account".to_string(),
-        ));
-    }
-
     let row = sqlx::query_as::<_, UserEmailRow>(
         r#"
         INSERT INTO user_emails (user_id, email, verified_at, is_primary)
@@ -187,11 +169,7 @@ pub async fn add_user_email(
     .await?;
 
     let otp = generate_email_otp_code();
-    if let Ok(mut conn) = redis.get().await {
-        let _: Result<(), _> = conn
-            .set_ex(email_otp_redis_key(user_id, &clean_email), &otp, 600)
-            .await;
-    }
+    crate::services::otp::store(redis, &email_otp_redis_key(user_id, &clean_email), &otp, 600).await?;
 
     Ok((row.into(), otp))
 }
@@ -206,24 +184,8 @@ pub async fn verify_user_email(
 ) -> Result<UserEmailView, AppError> {
     let clean_email = raw_email.trim().to_lowercase();
     let key = email_otp_redis_key(user_id, &clean_email);
-    let mut conn = redis
-        .get()
-        .await
-        .map_err(|_| AppError::Internal("Verification store unavailable".to_string()))?;
-    let stored: Option<String> = conn
-        .get(&key)
-        .await
-        .map_err(|_| AppError::Internal("Failed to read verification code".to_string()))?;
-
-    match stored {
-        Some(expected) if expected == code.trim() => {
-            let _: Result<(), _> = conn.del(&key).await;
-        }
-        _ => {
-            return Err(AppError::Validation(
-                "Invalid or expired email verification code".to_string(),
-            ));
-        }
+    if !crate::services::otp::consume(redis, &key, code).await? {
+        return Err(AppError::Validation("Invalid or expired email verification code".to_string()));
     }
 
     let mut tx = begin_tx(db).await?;

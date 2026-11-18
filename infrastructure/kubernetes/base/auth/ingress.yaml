@@ -30,7 +30,6 @@ metadata:
 
     nginx.ingress.kubernetes.io/configuration-snippet: |
       add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-      add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none';" always;
       add_header X-Frame-Options "DENY" always;
       add_header X-Content-Type-Options "nosniff" always;
       add_header Referrer-Policy "strict-origin-when-cross-origin" always;
@@ -65,6 +64,34 @@ spec:
                   name: http
           - path: /health
             pathType: Exact
+            backend:
+              service:
+                name: auth-api
+                port:
+                  name: http
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-api
+                port:
+                  name: http
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-api
+                port:
+                  name: http
+          - path: /.well-known
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-api
+                port:
+                  name: http
+          - path: /api
+            pathType: Prefix
             backend:
               service:
                 name: auth-api

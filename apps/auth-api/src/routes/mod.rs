@@ -28,15 +28,13 @@ static PROMETHEUS_PAIR: OnceLock<(PrometheusMetricLayer<'static>, PrometheusHand
     OnceLock::new();
 
 pub fn build_router(state: AppState) -> Router {
-    let (prometheus_layer, metrics_handle) = PROMETHEUS_PAIR
+    let (prometheus_layer, _) = PROMETHEUS_PAIR
         .get_or_init(|| {
             let pair = PrometheusMetricLayer::pair();
             platform_metrics::init_metrics_descriptors();
             pair
         })
         .clone();
-
-    let metrics_db = state.db.clone();
 
     let authenticated_api = Router::new()
         .nest("/users", users::routes())
@@ -56,17 +54,6 @@ pub fn build_router(state: AppState) -> Router {
             get(crate::handlers::oidc_provider::openid_configuration),
         )
         .nest("/oauth2", oidc::oidc_routes())
-        .route(
-            "/metrics",
-            get(move || {
-                let handle = metrics_handle.clone();
-                let db = metrics_db.clone();
-                async move {
-                    platform_metrics::refresh_infrastructure_gauges(&db).await;
-                    handle.render()
-                }
-            }),
-        )
         .nest("/auth", auth::routes())
         .nest("/api/auth", auth::routes())
         .nest("/v1/control", control::control_routes())
@@ -89,4 +76,20 @@ pub fn build_router(state: AppState) -> Router {
         .layer(prometheus_layer)
         .layer(axum::Extension(state.clone()))
         .with_state(state)
+}
+
+pub fn metrics_router(state: AppState) -> Router {
+    let (_, handle) = PROMETHEUS_PAIR.get_or_init(|| {
+        let pair = PrometheusMetricLayer::pair();
+        platform_metrics::init_metrics_descriptors();
+        pair
+    }).clone();
+    Router::new().route("/metrics", get(move || {
+        let db = state.db.clone();
+        let handle = handle.clone();
+        async move {
+            platform_metrics::refresh_infrastructure_gauges(&db).await;
+            handle.render()
+        }
+    }))
 }

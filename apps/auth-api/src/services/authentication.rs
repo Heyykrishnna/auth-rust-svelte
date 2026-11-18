@@ -53,7 +53,7 @@ pub async fn initiate_registration(
         email: normalized.clone(),
         display_name: display_name.clone(),
         password_hash,
-        code: code_str.clone(),
+        code: hash_token(&code_str),
         attempts: 0,
     };
 
@@ -100,7 +100,8 @@ pub async fn verify_registration_otp(
 
     use subtle::ConstantTimeEq;
     let expected_bytes = pending.code.as_bytes();
-    let actual_bytes = code.trim().as_bytes();
+    let actual_hash = hash_token(code.trim());
+    let actual_bytes = actual_hash.as_bytes();
     let matches: bool = if expected_bytes.len() == actual_bytes.len() {
         expected_bytes.ct_eq(actual_bytes).into()
     } else {
@@ -211,7 +212,7 @@ pub async fn resend_registration_otp(ctx: AuthContext<'_>, email: String) -> Res
 
     let code_str = generate_otp_code();
 
-    pending.code = code_str.clone();
+    pending.code = hash_token(&code_str);
     pending.attempts = 0;
 
     redis_ephemeral::store_pending_registration(

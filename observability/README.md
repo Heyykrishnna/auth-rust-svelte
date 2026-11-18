@@ -22,7 +22,7 @@ This directory defines the configuration for the complete telemetry and observab
 ## Components
 
 1. **Prometheus (`prometheus/`)**:
-   - `prometheus-local.yaml`: Scrapes `auth-api:8080/metrics` and `otel-collector:8889` every 15s.
+   - `prometheus-local.yaml`: Scrapes `auth-api:9090/metrics` and `otel-collector:8889` every 15s.
 2. **Grafana (`grafana/`)**:
    - `grafana-datasources.yaml`: Auto-provisions Prometheus, Loki, and Tempo data sources with trace-to-log correlation.
    - `grafana-dashboards.yaml`: Auto-loads pre-configured dashboards.
