@@ -22,7 +22,7 @@
     "test:security": "node --test vendor/picomatch/test/*.test.cjs"
   },
   "devDependencies": {
-    "typescript": "~6.0.3",
+    "typescript": "~7.0.2",
     "picomatch": "file:vendor/picomatch"
   },
   "overrides": {
