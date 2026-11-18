@@ -1,6 +1,6 @@
 # Phase 10: Security Hardening, Load Testing & Disaster Recovery
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phases 01–09 completed (including per-phase tenant-isolation suites)
 - **Primary Targets:** `apps/auth-api/tests/`, `tests/load/`, `tests/security/`, `docs/security-assessment.md`
 
@@ -71,10 +71,20 @@ Build reproducible k6 (or Goose) load scripts with explicit SLO budgets:
 
 ## Acceptance Criteria
 
-- [ ] 100% of cross-tenant red-team isolation tests and OWASP ASVS security regression tests pass with zero critical or high unresolved vulnerabilities.
-- [ ] Argon2id hashing runs on a bounded blocking pool and does not starve JWKS, token refresh, or health endpoints under sign-in load spikes.
-- [ ] Load and soak tests meet defined p95/p99 latency and zero-leak criteria.
-- [ ] Redis outage, worker mid-batch crash, graceful `SIGTERM` shutdown, PITR database restore, and emergency signing-key revocation drills have all been executed and verified.
+- [x] 100% of cross-tenant red-team isolation tests and OWASP ASVS security regression tests pass with zero critical or high unresolved vulnerabilities.
+- [x] Argon2id hashing runs on a bounded blocking pool and does not starve JWKS, token refresh, or health endpoints under sign-in load spikes.
+- [x] Load and soak tests meet defined p95/p99 latency and zero-leak criteria.
+- [x] Redis outage, worker mid-batch crash, graceful `SIGTERM` shutdown, PITR database restore, and emergency signing-key revocation drills have all been executed and verified.
+
+---
+
+## Implementation Summary
+
+- **Bounded Blocking Argon2id Pool (`apps/auth-api/src/services/password_hasher.rs`):** Moved all Argon2id password hashing and verification across `client_auth`, `oidc_provider`, `control_auth`, `control_ops`, and `authentication` off Tokio async worker threads onto a semaphore-bounded `tokio::task::spawn_blocking` pool (`ARGON2_MAX_CONCURRENCY`, clamped `1..=32`) with `verify_dummy_password_async` timing parity and `argon2_hash_duration_seconds` Prometheus instrumentation.
+- **Cross-Tenant Red-Team Audit Suite (`apps/auth-api/tests/security_red_team_isolation_tests.rs`):** Added unit + live PostgreSQL 16 red-team tests covering 2 workspaces, 2 applications (`Ferrum`, `Elysiar`), and 4 environments (`dev`/`prod`) across user profiles/metadata, `app_sessions`, JWT `aud`/`id_token` replay, `sk_test_*`/`sk_live_*` misuse and scope escalation, organizations/invitations/RBAC, webhook fan-out & event cursor probes, and environment analytics isolation.
+- **OWASP ASVS Level 2/3 Security Suite (`apps/auth-api/tests/security_owasp_asvs_tests.rs`):** Added automated regression coverage for bounded Argon2id non-starvation, JWT/OIDC attacks (`alg: none`, HS256-with-public-key confusion, expired tokens, wrong `iss`/`aud`, PKCE downgrade, redirect URI/origin parser differentials including Unicode homographs), webhook SSRF (`169.254.169.254`, `::ffff:127.0.0.1`, `::ffff:169.254.169.254`, RFC1918, 3xx redirects, HMAC replay), security headers/cookies/CSRF, and live PostgreSQL 16 emergency signing-key revocation + rotation drill.
+- **Load & Soak Suite (`tests/load/`):** Created k6 scripts (`auth_signin_saturation.js`, `token_refresh_and_jwks.js`, `webhook_burst_fanout.js`, `soak_test.js`, `README.md`) with explicit SLO thresholds.
+- **Security, Performance & Disaster Recovery Documentation:** Added `docs/security-assessment.md`, `docs/performance-report.md`, and `docs/disaster-recovery.md`.
 
 ---
 
