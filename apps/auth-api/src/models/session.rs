@@ -20,7 +20,8 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new(
+    pub fn with_id(
+        id: Uuid,
         user_id: Uuid,
         refresh_token_hash: String,
         expires_at: DateTime<Utc>,
@@ -29,7 +30,7 @@ impl Session {
     ) -> Self {
         let now = Utc::now();
         Self {
-            id: Uuid::new_v4(),
+            id,
             user_id,
             session_hash: refresh_token_hash.clone(),
             refresh_token_hash,
@@ -40,6 +41,23 @@ impl Session {
             last_used_at: now,
             revoked_at: None,
         }
+    }
+
+    pub fn new(
+        user_id: Uuid,
+        refresh_token_hash: String,
+        expires_at: DateTime<Utc>,
+        user_agent: Option<String>,
+        ip_address: Option<String>,
+    ) -> Self {
+        Self::with_id(
+            Uuid::new_v4(),
+            user_id,
+            refresh_token_hash,
+            expires_at,
+            user_agent,
+            ip_address,
+        )
     }
 
     pub fn is_expired(&self) -> bool {

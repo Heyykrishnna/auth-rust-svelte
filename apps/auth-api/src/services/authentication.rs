@@ -8,7 +8,9 @@ use uuid::Uuid;
 use crate::config::AppConfig;
 use crate::errors::AppError;
 use crate::models::{TokenPair, User, UserProfile};
+use crate::repositories::db::{begin_tx, commit_tx};
 use crate::repositories::redis_ephemeral;
+use crate::repositories::refresh_tokens as refresh_repo;
 use crate::repositories::sessions as session_repo;
 use crate::repositories::users as user_repo;
 use crate::services::sessions as session_service;
@@ -158,9 +160,11 @@ pub async fn verify_registration_otp(
     );
     new_user.email_verified = true;
 
-    let user = user_repo::create_user(ctx.db, new_user).await?;
+    let mut tx = begin_tx(ctx.db).await?;
+    let user = user_repo::create_user(&mut *tx, new_user).await?;
+    crate::repositories::authorization::assign_role_to_user(&mut *tx, user.id, "user").await?;
+    commit_tx(tx).await?;
 
-    let _ = crate::repositories::authorization::assign_role_to_user(ctx.db, user.id, "user").await;
     let (roles, permissions) =
         crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
@@ -177,9 +181,10 @@ pub async fn verify_registration_otp(
         ctx.config.jwt_refresh_expiry_secs,
     )?;
 
-    session_service::create_session(
+    session_service::create_session_with_id(
         ctx.db,
         ctx.redis,
+        session_id,
         user.id,
         &tokens.refresh_token,
         ctx.config.refresh_token_duration(),
@@ -268,9 +273,11 @@ pub async fn register(
         .to_string();
 
     let user = User::new(email, display_name, Some(password_hash));
-    let user = user_repo::create_user(ctx.db, user).await?;
+    let mut tx = begin_tx(ctx.db).await?;
+    let user = user_repo::create_user(&mut *tx, user).await?;
+    crate::repositories::authorization::assign_role_to_user(&mut *tx, user.id, "user").await?;
+    commit_tx(tx).await?;
 
-    let _ = crate::repositories::authorization::assign_role_to_user(ctx.db, user.id, "user").await;
     let (roles, permissions) =
         crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
@@ -287,9 +294,10 @@ pub async fn register(
         ctx.config.jwt_refresh_expiry_secs,
     )?;
 
-    session_service::create_session(
+    session_service::create_session_with_id(
         ctx.db,
         ctx.redis,
+        session_id,
         user.id,
         &tokens.refresh_token,
         ctx.config.refresh_token_duration(),
@@ -480,9 +488,10 @@ pub async fn login(
         ctx.config.jwt_refresh_expiry_secs,
     )?;
 
-    session_service::create_session(
+    session_service::create_session_with_id(
         ctx.db,
         ctx.redis,
+        session_id,
         user.id,
         &tokens.refresh_token,
         ctx.config.refresh_token_duration(),
@@ -524,16 +533,23 @@ pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenP
     }
 
     let token_hash = hash_token(refresh_token);
-    let existing_record =
-        crate::repositories::refresh_tokens::find_by_token_hash(ctx.db, &token_hash)
-            .await
-            .ok()
-            .flatten();
-    let family_id = existing_record.map(|r| r.family_id).unwrap_or(session_id);
+    let existing_record = refresh_repo::find_by_token_hash(ctx.db, &token_hash).await?;
+    let family_id = existing_record
+        .as_ref()
+        .map(|r| r.family_id)
+        .unwrap_or(session_id);
 
-    if session.refresh_token_hash != token_hash {
-        let _ = session_service::invalidate_session(ctx.db, ctx.redis, session_id).await;
-        let _ = crate::repositories::refresh_tokens::revoke_family(ctx.db, family_id).await;
+    let token_already_revoked = existing_record
+        .as_ref()
+        .map(|r| r.is_revoked())
+        .unwrap_or(false);
+
+    if session.refresh_token_hash != token_hash || token_already_revoked {
+        let mut tx = begin_tx(ctx.db).await?;
+        session_repo::revoke_pg_session(&mut *tx, session_id).await?;
+        refresh_repo::revoke_family(&mut *tx, family_id).await?;
+        commit_tx(tx).await?;
+        let _ = session_repo::delete_redis_session(ctx.redis, session_id).await;
         return Err(AppError::InvalidToken(
             "Refresh token reuse detected".to_string(),
         ));
@@ -559,11 +575,14 @@ pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenP
         ctx.config.jwt_refresh_expiry_secs,
     )?;
 
-    let _ = session_service::invalidate_session(ctx.db, ctx.redis, session_id).await;
-
-    session_service::create_session(
-        ctx.db,
-        ctx.redis,
+    let mut tx = begin_tx(ctx.db).await?;
+    session_repo::revoke_pg_session(&mut *tx, session_id).await?;
+    if let Some(ref record) = existing_record {
+        refresh_repo::revoke_token(&mut *tx, record.id).await?;
+    }
+    let new_session = session_service::create_session_in_tx(
+        &mut tx,
+        new_session_id,
         user.id,
         &tokens.refresh_token,
         ctx.config.refresh_token_duration(),
@@ -572,6 +591,10 @@ pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenP
         Some(family_id),
     )
     .await?;
+    commit_tx(tx).await?;
+
+    let _ = session_repo::delete_redis_session(ctx.redis, session_id).await;
+    session_repo::store_redis_session(ctx.redis, &new_session).await?;
 
     Ok(tokens)
 }
