@@ -1,7 +1,11 @@
 pub mod audit;
 pub mod authentication;
 pub mod authorization;
+pub mod control_auth;
+pub mod control_plane;
 pub mod cookies;
+pub mod credentials;
+pub mod domains;
 pub mod email;
 pub mod sessions;
 pub mod tokens;
