@@ -17,6 +17,10 @@ pub struct AuthenticatedClientUser {
     pub app_user_id: AppUserId,
     pub session_id: AppSessionId,
     pub active_organization_id: Option<OrganizationId>,
+    pub org_slug: Option<String>,
+    pub org_role: Option<String>,
+    pub org_permissions: HashSet<String>,
+    pub authorized_party: String,
     pub jti: String,
     pub version: i64,
     pub roles: HashSet<String>,
@@ -30,6 +34,10 @@ impl AuthenticatedClientUser {
 
     pub fn has_permission(&self, permission: &str) -> bool {
         self.permissions.contains(permission)
+    }
+
+    pub fn has_org_permission(&self, org_id: OrganizationId, permission: &str) -> bool {
+        self.active_organization_id == Some(org_id) && self.org_permissions.contains(permission)
     }
 
     pub fn require_permission(&self, permission: &str) -> Result<(), AppError> {
@@ -138,6 +146,10 @@ impl FromRequestParts<AppState> for AuthenticatedClientUser {
             app_user_id,
             session_id,
             active_organization_id,
+            org_slug: claims.org_slug,
+            org_role: claims.org_role,
+            org_permissions: claims.org_permissions.into_iter().collect(),
+            authorized_party: claims.azp,
             jti: claims.jti,
             version: claims.ver,
             roles: claims.roles.into_iter().collect(),

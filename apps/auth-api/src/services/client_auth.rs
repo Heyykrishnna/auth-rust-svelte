@@ -982,9 +982,22 @@ pub async fn refresh_tokens(
     )
     .await?;
 
+    let org_ctx = match session.active_organization_id {
+        Some(active_org_id) => {
+            tenant_rbac::resolve_organization_context_in_tx(
+                &mut tx,
+                environment_id,
+                membership.id,
+                active_org_id,
+            )
+            .await?
+        }
+        None => None,
+    };
+
     commit_tx(tx).await?;
 
-    let (access_token, _) = issue_tenant_access_token(
+    let (access_token, _) = crate::services::tokens::issue_tenant_access_token_with_org(
         db,
         config,
         IssueAccessTokenInput {
@@ -994,7 +1007,7 @@ pub async fn refresh_tokens(
             authorized_party,
             app_user_id: membership.id,
             session_id: app_session_id,
-            active_organization_id: session.active_organization_id,
+            active_organization_id: org_ctx.as_ref().and_then(|c| c.org_id),
             roles,
             permissions,
             amr: vec!["pwd".to_string()],
@@ -1002,6 +1015,7 @@ pub async fn refresh_tokens(
             version: membership.version,
             ttl_secs: env.access_token_ttl_secs as i64,
         },
+        org_ctx,
     )
     .await?;
 
