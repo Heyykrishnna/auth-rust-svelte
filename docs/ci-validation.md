@@ -55,4 +55,6 @@ SvelteKit currently prints a deprecation notice for the preserved `$lib` and oth
 
 The [Picomatch advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) lists no patched version as of this validation. The complete Node audit remains blocking, so automatic production promotion stays blocked. No audit thresholds or scanner failures were weakened to produce green checks. See [security.md](security.md) for the advisory and fixture-exclusion policy.
 
+The README also has a pre-existing link to a missing `LICENSE` file. No legal license text was invented or changed as part of the workflow repair.
+
 Changes are local and uncommitted. No new GitHub workflow run, registry publication, manifest push, or cluster rollout has been verified. GHCR access, main-branch bot-write policy, real production domains/secrets, and Argo CD cluster health require the configured repository and deployment environment; see [deployment.md](deployment.md).
