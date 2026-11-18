@@ -38,6 +38,47 @@
 }
 
 @layer base {
+  .workspace-theme {
+    color-scheme: dark;
+    --color-brand-lime: #e8e8e8;
+    --color-brand-lime-hover: #fafafa;
+    --color-brand-lime-soft: #dedede;
+    --color-brand-lime-ink: #141414;
+    --color-brand-surface: #101010;
+    --color-brand-surface-card: #181818;
+    --color-brand-surface-raised: #222222;
+    --color-brand-surface-input: #141414;
+    --color-brand-surface-alt: #2c2c2c;
+    --color-brand-border: #2a2a2a;
+    --color-brand-border-hover: #383838;
+    --color-brand-border-strong: #555555;
+    --color-brand-border-focus: #444444;
+    --color-brand-text-primary: #f2f2f2;
+    --color-brand-text-secondary: #acacac;
+    --color-brand-text-muted: #909090;
+    --color-brand-text-subtle: #828282;
+    --color-brand-success: #cecece;
+    --color-brand-success-soft: #242424;
+    --color-brand-success-border: #444444;
+    --color-brand-success-text: #e5e5e5;
+    --color-brand-warning: #a5a5a5;
+    --color-brand-warning-soft: #222222;
+    --color-brand-warning-border: #515151;
+    --color-brand-warning-text: #dfdfdf;
+    --color-brand-danger: #dedede;
+    --color-brand-danger-soft: #262626;
+    --color-brand-danger-border: #595959;
+    --color-brand-danger-text: #f2f2f2;
+    --color-bg: var(--color-brand-surface);
+    --color-border-hover: var(--color-brand-border-hover);
+    --color-border-strong: var(--color-brand-border-strong);
+    --color-primary: var(--color-brand-lime);
+    --color-text: var(--color-brand-text-primary);
+    --color-text-muted: var(--color-brand-text-secondary);
+  }
+}
+
+@layer base {
   :root {
     --color-bg: #0c0d0b;
     --color-bg-sidebar: #111310;

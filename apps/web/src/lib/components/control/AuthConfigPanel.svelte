@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SectionHeader from './SectionHeader.svelte';
+	import Dropdown from '$lib/components/Dropdown.svelte';
 	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -171,16 +173,12 @@
 	}
 </script>
 
-<section class="panel-stack" aria-label="Authentication and OIDC configuration">
-	<div class="section-header">
-		<div>
-			<h1 class="page-title">Authentication &amp; SSO</h1>
-			<p class="page-subtitle">Configure sign-in methods, password rules, social OAuth, OIDC policies, and Hosted Portal branding.</p>
-		</div>
+<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Authentication and OIDC configuration">
+	<SectionHeader title="Authentication &amp; SSO" description="Configure sign-in methods, password rules, social OAuth, OIDC policies, and Hosted Portal branding.">
 		{#if !canEditPolicies}
 			<Badge variant="warning" size="sm">Admin role required for policy changes</Badge>
 		{/if}
-	</div>
+	</SectionHeader>
 
 	<form class="two-col" onsubmit={saveAuthAndBranding}>
 		<div class="surface-box">
@@ -213,14 +211,20 @@
 			</div>
 
 			<div class="grid-3">
-				<label class="field">
+				<div class="field">
 					<span>Enrollment Policy</span>
-					<select bind:value={enrollmentPolicy} disabled={!canEditPolicies}>
-						<option value="consent_required">Consent Required</option>
-						<option value="auto_join">Auto Join</option>
-						<option value="invite_only">Invite Only</option>
-					</select>
-				</label>
+					<Dropdown
+						label="Enrollment policy"
+						bind:value={enrollmentPolicy}
+						disabled={!canEditPolicies}
+						class="w-full"
+						options={[
+							{ value: 'consent_required', label: 'Consent required' },
+							{ value: 'auto_join', label: 'Auto join' },
+							{ value: 'invite_only', label: 'Invite only' }
+						]}
+						/>
+				</div>
 
 				<label class="field">
 					<span>Access Token TTL (s)</span>
@@ -393,54 +397,50 @@
 </section>
 
 <style>
-	.panel-stack { display: flex; flex-direction: column; gap: 1.5rem; }
-	.section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-	.page-title { font-size: 1.75rem; font-weight: 600; color: #ffffff; margin: 0; }
-	.page-subtitle { font-size: 0.85rem; color: #71717a; margin: 0.25rem 0 0; }
 	.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-	.surface-box { background-color: #15171b; border: 1px solid #23262e; border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1.1rem; }
+	.surface-box { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1.1rem; }
 	.box-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-	.box-title { font-size: 0.98rem; font-weight: 600; color: #f4f4f5; margin: 0; }
-	.box-sub { font-size: 0.78rem; color: #71717a; margin: 0.2rem 0 0; }
-	.toggle-list { display: flex; flex-direction: column; border-top: 1px solid #23262e; }
-	.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid #23262e; cursor: pointer; }
+	.box-title { font-size: 0.98rem; font-weight: 600; color: var(--color-brand-text-primary); margin: 0; }
+	.box-sub { font-size: 0.78rem; color: var(--color-brand-text-secondary); margin: 0.2rem 0 0; }
+	.toggle-list { display: flex; flex-direction: column; border-top: 1px solid var(--color-brand-border); }
+	.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--color-brand-border); cursor: pointer; }
 	.toggle-row div { display: flex; flex-direction: column; gap: 0.15rem; }
-	.toggle-row strong { font-size: 0.85rem; color: #f4f4f5; font-weight: 500; }
-	.toggle-row span { font-size: 0.76rem; color: #71717a; }
+	.toggle-row strong { font-size: 0.85rem; color: var(--color-brand-text-primary); font-weight: 500; }
+	.toggle-row span { font-size: 0.76rem; color: var(--color-brand-text-secondary); }
 	.toggle-row input { accent-color: #ffffff; width: 16px; height: 16px; }
 	.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
 	.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; align-items: end; }
 	.field { display: flex; flex-direction: column; gap: 0.35rem; }
-	.field span { font-size: 0.74rem; color: #a1a1aa; font-weight: 500; }
-	.field input, .field select { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 6px; padding: 0.55rem 0.75rem; color: #f4f4f5; font-size: 0.84rem; outline: none; }
-	.field input:focus, .field select:focus { border-color: #ffffff; }
-	.check-inline { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #d4d4d8; cursor: pointer; padding-bottom: 0.35rem; }
+	.field span { font-size: 0.74rem; color: var(--color-brand-text-secondary); font-weight: 500; }
+	.field input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.84rem; outline: none; }
+	.field input:focus { border-color: #ffffff; }
+	.check-inline { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #d4d4d4; cursor: pointer; padding-bottom: 0.35rem; }
 	.check-inline input { accent-color: #ffffff; width: 15px; height: 15px; }
 	.form-actions { display: flex; justify-content: flex-end; }
-	.seg-tabs { display: inline-flex; background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 6px; padding: 2px; }
-	.seg-tabs button { background: transparent; border: none; color: #a1a1aa; font-size: 0.74rem; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; }
-	.seg-tabs button.active { background-color: #ffffff; color: #0b0c0e; }
+	.seg-tabs { display: inline-flex; background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 2px; }
+	.seg-tabs button { background: transparent; border: none; color: var(--color-brand-text-secondary); font-size: 0.74rem; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; }
+	.seg-tabs button.active { background-color: #ffffff; color: var(--color-brand-surface); }
 	.preview-frame { margin-top: 0.25rem; }
 	.preview-heading { font-size: 1.35rem; font-weight: 400; color: #ffffff; margin-bottom: 1rem; }
 	.preview-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
-	.preview-line { border-bottom: 1px solid #2e2e34; padding-bottom: 0.4rem; display: flex; flex-direction: column; gap: 0.2rem; }
-	.preview-line span { font-size: 0.65rem; color: #71717a; }
-	.preview-line strong { font-size: 0.75rem; color: #e4e4e7; font-weight: 400; }
-	.preview-consent-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; font-size: 0.78rem; color: #d4d4d8; }
-	.preview-consent-list div { padding: 0.45rem 0; border-bottom: 1px solid #23262e; }
+	.preview-line { border-bottom: 1px solid #2e2e2e; padding-bottom: 0.4rem; display: flex; flex-direction: column; gap: 0.2rem; }
+	.preview-line span { font-size: 0.65rem; color: var(--color-brand-text-secondary); }
+	.preview-line strong { font-size: 0.75rem; color: var(--color-brand-text-primary); font-weight: 400; }
+	.preview-consent-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; font-size: 0.78rem; color: #d4d4d4; }
+	.preview-consent-list div { padding: 0.45rem 0; border-bottom: 1px solid var(--color-brand-border); }
 	.preview-cta-row { display: flex; align-items: center; justify-content: space-between; }
-	.preview-meta { font-size: 0.72rem; color: #71717a; }
+	.preview-meta { font-size: 0.72rem; color: var(--color-brand-text-secondary); }
 	.preview-circle { width: 58px; height: 58px; border-radius: 9999px; background-color: #ffffff; color: #000000; font-size: 0.62rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0.06em; }
 	.providers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-	.provider-card { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 10px; padding: 1.1rem; display: flex; flex-direction: column; gap: 0.85rem; }
+	.provider-card { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 10px; padding: 1.1rem; display: flex; flex-direction: column; gap: 0.85rem; }
 	.provider-head { display: flex; align-items: center; justify-content: space-between; }
 	.provider-head div { display: flex; align-items: center; gap: 0.55rem; }
-	.switch-label { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: #a1a1aa; cursor: pointer; }
+	.switch-label { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--color-brand-text-secondary); cursor: pointer; }
 	.switch-label input { accent-color: #ffffff; }
-	.callback-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.55rem; padding: 0.45rem 0.6rem; background-color: #15171b; border: 1px solid #23262e; border-radius: 6px; }
-	.cb-label { font-size: 0.7rem; color: #71717a; }
-	.callback-row code { font-size: 0.72rem; color: #d4d4d8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.copy-btn { background: transparent; border: 1px solid #2e333d; color: #d4d4d8; font-size: 0.7rem; padding: 0.2rem 0.45rem; border-radius: 4px; cursor: pointer; }
+	.callback-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.55rem; padding: 0.45rem 0.6rem; background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 6px; }
+	.cb-label { font-size: 0.7rem; color: var(--color-brand-text-secondary); }
+	.callback-row code { font-size: 0.72rem; color: #d4d4d4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.copy-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; font-size: 0.7rem; padding: 0.2rem 0.45rem; border-radius: 4px; cursor: pointer; }
 	@media (max-width: 1080px) {
 		.two-col, .providers-grid, .grid-3, .grid-2 { grid-template-columns: 1fr; }
 	}

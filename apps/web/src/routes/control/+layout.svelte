@@ -62,6 +62,7 @@
 	{@render children()}
 {/if}
 
+<div class="workspace-theme">
 <Modal
 	open={controlStore.revealedSecret !== null}
 	title={controlStore.revealedSecret?.title ?? 'One-Time Secret Key'}
@@ -106,3 +107,4 @@
 		</div>
 	{/if}
 </Modal>
+</div>

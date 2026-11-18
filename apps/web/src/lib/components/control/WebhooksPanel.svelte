@@ -1,4 +1,5 @@
 <script lang="ts">
+	import SectionHeader from './SectionHeader.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
@@ -209,13 +210,8 @@
 	}
 </script>
 
-<section class="panel-stack" aria-label="Webhooks and sync operations">
-	<div class="section-header">
-		<div>
-			<h1 class="page-title">Webhooks &amp; Sync</h1>
-			<p class="page-subtitle">Manage signed webhook endpoints, rotate HMAC secrets, inspect delivery attempts, and replay dead-letter queues.</p>
-		</div>
-	</div>
+<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Webhooks and sync operations">
+	<SectionHeader title="Webhooks &amp; Sync" description="Manage signed webhook endpoints, rotate HMAC secrets, inspect delivery attempts, and replay dead-letter queues." />
 
 	<div class="surface-box">
 		<h2 class="box-title">Register Webhook Endpoint</h2>
@@ -422,51 +418,47 @@
 </section>
 
 <style>
-	.panel-stack { display: flex; flex-direction: column; gap: 1.5rem; }
-	.section-header { display: flex; align-items: flex-end; justify-content: space-between; }
-	.page-title { font-size: 1.75rem; font-weight: 600; color: #ffffff; margin: 0; }
-	.page-subtitle { font-size: 0.85rem; color: #71717a; margin: 0.25rem 0 0; }
-	.surface-box { background-color: #15171b; border: 1px solid #23262e; border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
+	.surface-box { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
 	.box-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-	.box-title { font-size: 0.98rem; font-weight: 600; color: #f4f4f5; margin: 0; }
-	.box-sub { font-size: 0.78rem; color: #71717a; margin: 0.2rem 0 0; }
+	.box-title { font-size: 0.98rem; font-weight: 600; color: var(--color-brand-text-primary); margin: 0; }
+	.box-sub { font-size: 0.78rem; color: var(--color-brand-text-secondary); margin: 0.2rem 0 0; }
 	.create-form { display: flex; flex-direction: column; gap: 0.9rem; }
 	.grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0.85rem; }
 	.field { display: flex; flex-direction: column; gap: 0.3rem; }
-	.field span { font-size: 0.74rem; color: #a1a1aa; }
-	.field input { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 6px; padding: 0.55rem 0.75rem; color: #f4f4f5; font-size: 0.84rem; outline: none; }
+	.field span { font-size: 0.74rem; color: var(--color-brand-text-secondary); }
+	.field input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.84rem; outline: none; }
 	.events-selector { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-	.event-chip { background-color: #0b0c0e; border: 1px solid #23262e; color: #a1a1aa; font-family: var(--font-mono); font-size: 0.72rem; padding: 0.28rem 0.55rem; border-radius: 6px; cursor: pointer; }
-	.event-chip.selected { background-color: #ffffff; color: #0b0c0e; border-color: #ffffff; font-weight: 600; }
+	.event-chip { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); color: var(--color-brand-text-secondary); font-family: var(--font-mono); font-size: 0.72rem; padding: 0.28rem 0.55rem; border-radius: 6px; cursor: pointer; }
+	.event-chip.selected { background-color: #ffffff; color: var(--color-brand-surface); border-color: #ffffff; font-weight: 600; }
 	.form-actions { display: flex; justify-content: flex-end; }
 	.endpoint-list { display: flex; flex-direction: column; gap: 0.75rem; }
-	.endpoint-card { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+	.endpoint-card { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
 	.endpoint-card.selected { border-color: #ffffff; }
 	.ep-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 	.ep-select { background: transparent; border: none; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 0.2rem; padding: 0; }
 	.ep-select code { color: #ffffff; font-size: 0.84rem; }
-	.ep-select span { color: #71717a; font-size: 0.76rem; }
+	.ep-select span { color: var(--color-brand-text-secondary); font-size: 0.76rem; }
 	.ep-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 	.ep-events { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-	.mini-tag { font-family: var(--font-mono); font-size: 0.68rem; color: #a1a1aa; background-color: #15171b; border: 1px solid #23262e; padding: 0.15rem 0.45rem; border-radius: 4px; }
+	.mini-tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--color-brand-text-secondary); background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); padding: 0.15rem 0.45rem; border-radius: 4px; }
 	.ep-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-	.filter-pills { display: inline-flex; gap: 0.25rem; background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 6px; padding: 2px; }
-	.filter-pills button { background: transparent; border: none; color: #a1a1aa; font-size: 0.74rem; padding: 0.28rem 0.55rem; border-radius: 4px; cursor: pointer; text-transform: capitalize; }
-	.filter-pills button.active { background-color: #23262e; color: #ffffff; }
-	.replay-bar { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; padding: 0.85rem; background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 8px; }
-	.table-wrap { overflow-x: auto; border: 1px solid #23262e; border-radius: 8px; }
+	.filter-pills { display: inline-flex; gap: 0.25rem; background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 2px; }
+	.filter-pills button { background: transparent; border: none; color: var(--color-brand-text-secondary); font-size: 0.74rem; padding: 0.28rem 0.55rem; border-radius: 4px; cursor: pointer; text-transform: capitalize; }
+	.filter-pills button.active { background-color: var(--color-brand-border); color: #ffffff; }
+	.replay-bar { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; padding: 0.85rem; background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 8px; }
+	.table-wrap { overflow-x: auto; border: 1px solid var(--color-brand-border); border-radius: 8px; }
 	.data-table { width: 100%; border-collapse: collapse; text-align: left; }
-	.data-table th { font-size: 0.72rem; color: #71717a; padding: 0.7rem 0.9rem; border-bottom: 1px solid #23262e; background-color: #0b0c0e; }
-	.data-table td { padding: 0.75rem 0.9rem; border-bottom: 1px solid #1f2228; font-size: 0.82rem; color: #d4d4d8; }
+	.data-table th { font-size: 0.72rem; color: var(--color-brand-text-secondary); padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--color-brand-border); background-color: var(--color-brand-surface); }
+	.data-table td { padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--color-brand-border); font-size: 0.82rem; color: #d4d4d4; }
 	.mono { font-family: var(--font-mono); font-size: 0.76rem; }
-	.muted { color: #71717a; font-size: 0.8rem; }
+	.muted { color: var(--color-brand-text-secondary); font-size: 0.8rem; }
 	.row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
-	.inspect-btn { background: transparent; border: 1px solid #2e333d; color: #d4d4d8; border-radius: 4px; padding: 0.22rem 0.5rem; font-size: 0.72rem; cursor: pointer; }
+	.inspect-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; border-radius: 4px; padding: 0.22rem 0.5rem; font-size: 0.72rem; cursor: pointer; }
 	.inspect-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-	.inspect-row td { background-color: #0b0c0e; }
+	.inspect-row td { background-color: var(--color-brand-surface); }
 	.inspect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-	.inspect-label { display: block; font-size: 0.7rem; color: #71717a; margin-bottom: 0.35rem; text-transform: uppercase; }
-	.inspect-grid pre { margin: 0; font-size: 0.74rem; color: #d4d4d8; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto; }
+	.inspect-label { display: block; font-size: 0.7rem; color: var(--color-brand-text-secondary); margin-bottom: 0.35rem; text-transform: uppercase; }
+	.inspect-grid pre { margin: 0; font-size: 0.74rem; color: #d4d4d4; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto; }
 	@media (max-width: 900px) {
 		.grid-2, .inspect-grid { grid-template-columns: 1fr; }
 	}

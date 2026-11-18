@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Badge from '$lib/components/Badge.svelte';
+	import SectionHeader from './SectionHeader.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
@@ -114,13 +114,9 @@
 	}
 </script>
 
-<section class="panel-stack" aria-label="Environment analytics">
-	<div class="panel-header">
-		<div>
-			<h1>Analytics</h1>
-			<p>Environment-isolated usage, authentication trends, provider mix, and webhook reliability.</p>
-		</div>
-		<div class="header-actions">
+<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Environment analytics">
+	<SectionHeader title="Analytics" description="Environment-isolated usage, authentication trends, provider mix, and webhook reliability.">
+		<div class="flex min-w-0 flex-wrap items-center gap-2">
 			<div class="window-picker" role="group" aria-label="Date range">
 				{#each windows as item (item.id)}
 					<button
@@ -136,7 +132,7 @@
 				{refreshing ? 'Refreshing...' : 'Refresh'}
 			</Button>
 		</div>
-	</div>
+	</SectionHeader>
 
 	{#if loading && !report}
 		<div class="empty-box">Loading environment analytics...</div>
@@ -197,8 +193,8 @@
 
 				<div class="svg-wrap">
 					<svg viewBox="0 0 600 180" class="bar-chart" role="img" aria-label="Authentication activity chart">
-						<line x1="0" y1="160" x2="600" y2="160" stroke="#23262e" stroke-width="1" />
-						<line x1="0" y1="80" x2="600" y2="80" stroke="#1b1e25" stroke-width="1" />
+						<line x1="0" y1="160" x2="600" y2="160" stroke="#262626" stroke-width="1" />
+						<line x1="0" y1="80" x2="600" y2="80" stroke="#1e1e1e" stroke-width="1" />
 						{#each report.series as point, idx (point.bucket_start)}
 							{@const slot = 600 / Math.max(1, report.series.length)}
 							{@const barW = Math.max(4, slot - 4)}
@@ -214,7 +210,7 @@
 									y={160 - okH - failH}
 									width={barW}
 									height={Math.max(0, failH)}
-									fill="#ef4444"
+									fill="#686868"
 								/>
 								<rect
 									x={idx * slot + 2}
@@ -257,8 +253,8 @@
 
 				<div class="svg-wrap">
 					<svg viewBox="0 0 600 180" class="bar-chart" role="img" aria-label="API request volume chart">
-						<line x1="0" y1="160" x2="600" y2="160" stroke="#23262e" stroke-width="1" />
-						<line x1="0" y1="80" x2="600" y2="80" stroke="#1b1e25" stroke-width="1" />
+						<line x1="0" y1="160" x2="600" y2="160" stroke="#262626" stroke-width="1" />
+						<line x1="0" y1="80" x2="600" y2="80" stroke="#1e1e1e" stroke-width="1" />
 						{#each report.series as point, idx (point.bucket_start)}
 							{@const slot = 600 / Math.max(1, report.series.length)}
 							{@const barW = Math.max(4, slot - 4)}
@@ -269,14 +265,14 @@
 								y={160 - clientH - backendH}
 								width={barW}
 								height={Math.max(0, backendH)}
-								fill="#6b7280"
+								fill="#727272"
 							/>
 							<rect
 								x={idx * slot + 2}
 								y={160 - clientH}
 								width={barW}
 								height={Math.max(1, clientH)}
-								fill="#e5e7eb"
+								fill="#e7e7e7"
 							/>
 						{/each}
 					</svg>
@@ -326,11 +322,9 @@
 						<p>Top failure events and anomaly indicators</p>
 					</div>
 					{#if report.summary.refresh_reuse_detected > 0}
-						<Badge variant="danger" size="sm">
+						<p class="text-sm font-medium text-brand-danger-text" role="status">
 							{report.summary.refresh_reuse_detected} token reuse alerts
-						</Badge>
-					{:else}
-						<Badge variant="success" size="sm">0 token reuse alerts</Badge>
+						</p>
 					{/if}
 				</div>
 
@@ -352,43 +346,10 @@
 </section>
 
 <style>
-	.panel-stack {
-		display: flex;
-		flex-direction: column;
-		gap: 1.25rem;
-	}
-
-	.panel-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 1rem;
-		flex-wrap: wrap;
-	}
-
-	.panel-header h1 {
-		margin: 0;
-		font-size: 1.35rem;
-		font-weight: 600;
-		color: var(--text-primary);
-	}
-
-	.panel-header p {
-		margin: 0.25rem 0 0;
-		font-size: 0.875rem;
-		color: var(--text-secondary);
-	}
-
-	.header-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
 	.window-picker {
 		display: inline-flex;
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		padding: 2px;
 	}
@@ -396,7 +357,7 @@
 	.window-picker button {
 		background: transparent;
 		border: none;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 		padding: 0.3rem 0.65rem;
 		font-size: 0.78rem;
 		border-radius: 4px;
@@ -404,17 +365,17 @@
 	}
 
 	.window-picker button.active {
-		background: var(--bg-elevated);
-		color: var(--text-primary);
+		background: var(--color-brand-surface-raised);
+		color: var(--color-brand-text-primary);
 	}
 
 	.empty-box {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		padding: 2rem;
 		text-align: center;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 	}
 
 	.kpi-grid {
@@ -424,8 +385,8 @@
 	}
 
 	.kpi-card {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		padding: 1rem;
 		display: flex;
@@ -434,23 +395,23 @@
 	}
 
 	.kpi-card.highlight {
-		background: #f3f4f6;
-		border-color: #d1d5db;
-		color: #0b0c0e;
+		background: #f4f4f4;
+		border-color: #d5d5d5;
+		color: var(--color-brand-surface);
 	}
 
 	.kpi-card.highlight .kpi-label,
 	.kpi-card.highlight .kpi-sub {
-		color: #4b5563;
+		color: #545454;
 	}
 
 	.kpi-card.highlight .kpi-value {
-		color: #0b0c0e;
+		color: var(--color-brand-surface);
 	}
 
 	.kpi-label {
 		font-size: 0.75rem;
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 	}
@@ -458,13 +419,13 @@
 	.kpi-value {
 		font-size: 1.55rem;
 		font-weight: 600;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 		line-height: 1.15;
 	}
 
 	.kpi-sub {
 		font-size: 0.76rem;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 	}
 
 	.charts-grid,
@@ -482,8 +443,8 @@
 	}
 
 	.chart-card {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		padding: 1.1rem;
 		display: flex;
@@ -501,20 +462,20 @@
 	.chart-head h2 {
 		margin: 0;
 		font-size: 0.96rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 
 	.chart-head p {
 		margin: 0.2rem 0 0;
 		font-size: 0.78rem;
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 	}
 
 	.legend {
 		display: flex;
 		gap: 0.75rem;
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 	}
 
 	.legend span {
@@ -535,11 +496,11 @@
 	}
 
 	.swatch-fail {
-		background: #ef4444;
+		background: #686868;
 	}
 
 	.swatch-muted {
-		background: #6b7280;
+		background: #727272;
 	}
 
 	.svg-wrap {
@@ -558,9 +519,9 @@
 		gap: 1rem;
 		flex-wrap: wrap;
 		font-size: 0.78rem;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 		padding-top: 0.35rem;
-		border-top: 1px solid var(--border-subtle);
+		border-top: 1px solid var(--color-brand-border);
 	}
 
 	.drilldown-row {
@@ -568,7 +529,7 @@
 		gap: 0.5rem;
 		flex-wrap: wrap;
 		padding-top: 0.35rem;
-		border-top: 1px solid var(--border-subtle);
+		border-top: 1px solid var(--color-brand-border);
 	}
 
 	.provider-list,
@@ -588,17 +549,17 @@
 		display: flex;
 		justify-content: space-between;
 		font-size: 0.82rem;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 	}
 
 	.provider-meta strong {
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 
 	.bar-track {
 		height: 7px;
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 4px;
 		overflow: hidden;
 	}
@@ -613,14 +574,14 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.5rem 0.65rem;
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		font-size: 0.82rem;
 	}
 
 	.muted {
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 		font-size: 0.8rem;
 		margin: 0;
 	}

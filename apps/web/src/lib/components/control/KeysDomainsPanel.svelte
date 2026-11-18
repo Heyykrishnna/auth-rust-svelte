@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SectionHeader from './SectionHeader.svelte';
+	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
@@ -191,13 +193,8 @@
 	}
 </script>
 
-<section class="panel-stack" aria-label="API keys and domains">
-	<div class="section-header">
-		<div>
-			<h1 class="page-title">API Keys &amp; Domains</h1>
-			<p class="page-subtitle">Manage environment credentials, allowed CORS origins, and OIDC redirect URIs.</p>
-		</div>
-	</div>
+<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="API keys and domains">
+	<SectionHeader title="API Keys &amp; Domains" description="Manage environment credentials, allowed CORS origins, and OIDC redirect URIs." />
 
 	<div class="surface-box">
 		<div class="box-header">
@@ -207,12 +204,17 @@
 			</div>
 		</div>
 
-		<form class="inline-form" onsubmit={handleCreateCredential}>
-			<select bind:value={credType} disabled={!canMutate} aria-label="Credential type">
-				<option value="secret">Secret Key (sk_*)</option>
-				<option value="publishable">Publishable Key (pk_*)</option>
-			</select>
-			<input type="text" bind:value={credName} placeholder="Key label (e.g. Backend Sync Worker)" disabled={!canMutate} required />
+		<form class="flex min-w-0 flex-wrap items-center gap-2 [&>button]:h-9 [&>input]:h-9 [&>input]:max-w-full" onsubmit={handleCreateCredential}>
+			<Dropdown
+				label="Credential type"
+				bind:value={credType}
+				disabled={!canMutate}
+				options={[
+					{ value: 'secret', label: 'Secret key (sk_*)' },
+					{ value: 'publishable', label: 'Publishable key (pk_*)' }
+				]}
+				/>
+			<input class="control-input" type="text" bind:value={credName} placeholder="Key label (e.g. Backend Sync Worker)" disabled={!canMutate} required />
 			<Button type="submit" variant="primary" size="sm" loading={creatingCred} disabled={!canMutate || creatingCred}>
 				Create Key
 			</Button>
@@ -335,39 +337,35 @@
 </section>
 
 <style>
-	.panel-stack { display: flex; flex-direction: column; gap: 1.5rem; }
-	.page-title { font-size: 1.75rem; font-weight: 600; color: #ffffff; margin: 0; }
-	.page-subtitle { font-size: 0.85rem; color: #71717a; margin: 0.25rem 0 0; }
-	.surface-box { background-color: #15171b; border: 1px solid #23262e; border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
-	.box-title { font-size: 0.98rem; font-weight: 600; color: #f4f4f5; margin: 0; }
-	.box-sub { font-size: 0.78rem; color: #71717a; margin: 0.2rem 0 0; }
-	.inline-form { display: flex; gap: 0.65rem; flex-wrap: wrap; }
-	.inline-form select, .inline-form input { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 6px; padding: 0.5rem 0.75rem; color: #f4f4f5; font-size: 0.84rem; outline: none; }
-	.inline-form input { flex: 1; min-width: 200px; }
-	.table-wrap { overflow-x: auto; border: 1px solid #23262e; border-radius: 8px; }
+	.surface-box { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
+	.box-title { font-size: 0.98rem; font-weight: 600; color: var(--color-brand-text-primary); margin: 0; }
+	.box-sub { font-size: 0.78rem; color: var(--color-brand-text-secondary); margin: 0.2rem 0 0; }
+	.control-input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.5rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.84rem; outline: none; }
+	.control-input { flex: 1; min-width: 200px; }
+	.table-wrap { overflow-x: auto; border: 1px solid var(--color-brand-border); border-radius: 8px; }
 	.data-table { width: 100%; border-collapse: collapse; text-align: left; }
-	.data-table th { font-size: 0.72rem; color: #71717a; padding: 0.7rem 0.9rem; border-bottom: 1px solid #23262e; background-color: #0b0c0e; }
-	.data-table td { padding: 0.75rem 0.9rem; border-bottom: 1px solid #1f2228; font-size: 0.82rem; color: #d4d4d8; }
+	.data-table th { font-size: 0.72rem; color: var(--color-brand-text-secondary); padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--color-brand-border); background-color: var(--color-brand-surface); }
+	.data-table td { padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--color-brand-border); font-size: 0.82rem; color: #d4d4d4; }
 	.mono { font-family: var(--font-mono); font-size: 0.76rem; }
 	.row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
-	.mini-btn { background: transparent; border: 1px solid #2e333d; color: #d4d4d8; border-radius: 4px; padding: 0.22rem 0.5rem; font-size: 0.72rem; cursor: pointer; margin-left: 0.35rem; }
-	.mini-btn-danger { border-color: #572327; color: #f87171; }
+	.mini-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; border-radius: 4px; padding: 0.22rem 0.5rem; font-size: 0.72rem; cursor: pointer; margin-left: 0.35rem; }
+	.mini-btn-danger { border-color: #2e2e2e; color: #8e8e8e; }
 	.mini-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 	.domain-form { display: flex; flex-direction: column; gap: 0.85rem; }
 	.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
 	.field { display: flex; flex-direction: column; gap: 0.3rem; }
-	.field span { font-size: 0.74rem; color: #a1a1aa; }
-	.field input, .field textarea { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 6px; padding: 0.55rem 0.7rem; color: #f4f4f5; font-size: 0.8rem; font-family: var(--font-mono); outline: none; }
+	.field span { font-size: 0.74rem; color: var(--color-brand-text-secondary); }
+	.field input, .field textarea { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.55rem 0.7rem; color: var(--color-brand-text-primary); font-size: 0.8rem; font-family: var(--font-mono); outline: none; }
 	.form-actions { display: flex; justify-content: flex-end; }
 	.domain-list { display: flex; flex-direction: column; gap: 0.65rem; }
-	.domain-card { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 8px; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; }
+	.domain-card { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 8px; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; }
 	.domain-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 	.domain-head { display: flex; align-items: center; gap: 0.6rem; }
 	.domain-head code { color: #ffffff; font-size: 0.86rem; }
-	.domain-meta { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; color: #71717a; }
-	.danger-box { background-color: #1c1213; border: 1px solid #572327; border-radius: 10px; padding: 1.1rem 1.35rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-	.danger-box strong { color: #fca5a5; font-size: 0.9rem; }
-	.danger-box p { margin: 0.2rem 0 0; font-size: 0.78rem; color: #a1a1aa; }
+	.domain-meta { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; color: var(--color-brand-text-secondary); }
+	.danger-box { background-color: #141414; border: 1px solid #2e2e2e; border-radius: 10px; padding: 1.1rem 1.35rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+	.danger-box strong { color: #b7b7b7; font-size: 0.9rem; }
+	.danger-box p { margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--color-brand-text-secondary); }
 	@media (max-width: 960px) {
 		.grid-3 { grid-template-columns: 1fr; }
 	}

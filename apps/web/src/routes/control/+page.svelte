@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import Dropdown from '$lib/components/Dropdown.svelte';
+  import { onMount, tick } from "svelte";
   import { goto } from "$app/navigation";
-  import Badge from "$lib/components/Badge.svelte";
   import Button from "$lib/components/Button.svelte";
   import Modal from "$lib/components/Modal.svelte";
   import SignetMark from "$lib/components/SignetMark.svelte";
   import { addToast } from "$lib/components/Toast.svelte";
+  import SectionHeader from "$lib/components/control/SectionHeader.svelte";
   import OverviewPanel from "$lib/components/control/OverviewPanel.svelte";
   import AnalyticsPanel from "$lib/components/control/AnalyticsPanel.svelte";
   import AuthConfigPanel from "$lib/components/control/AuthConfigPanel.svelte";
@@ -55,6 +56,8 @@
 
   let activeSection = $state<SectionId>("overview");
   let mobileSidebarOpen = $state(false);
+  let mobileMenuButton: HTMLButtonElement;
+  let mobileCloseButton: HTMLButtonElement;
 
   let overview = $state<EnvironmentOverviewDto | null>(null);
   let providers = $state<OAuthProviderConfigDto[]>([]);
@@ -144,12 +147,12 @@
     await loadActiveEnvironmentData();
   }
 
-  async function handleWorkspaceChange(e: Event) {
-    const wsId = (e.currentTarget as HTMLSelectElement).value;
+  async function handleWorkspaceChange(wsId: string) {
     selectWorkspace(wsId);
+    setApplications([]);
     try {
       const apps = await controlApi.listApplications(wsId);
-      setApplications(apps);
+      if (controlStore.activeWorkspace?.id === wsId) setApplications(apps);
     } catch (err) {
       addToast(
         err instanceof Error ? err.message : "Failed to load applications",
@@ -207,9 +210,20 @@
     }
   }
 
+  async function openSidebar() {
+    mobileSidebarOpen = true;
+    await tick();
+    mobileCloseButton?.focus();
+  }
+
+  function closeSidebar() {
+    mobileSidebarOpen = false;
+    mobileMenuButton?.focus();
+  }
+
   function selectNav(section: SectionId) {
     activeSection = section;
-    mobileSidebarOpen = false;
+    if (mobileSidebarOpen) closeSidebar();
   }
 </script>
 
@@ -217,10 +231,16 @@
   <title>{sectionTitles[activeSection]} — Signet Control Plane</title>
 </svelte:head>
 
-<div class="console-shell">
+<svelte:window onkeydown={(event) => {
+  if (event.key === "Escape" && mobileSidebarOpen) closeSidebar();
+}} />
+
+<div class="workspace-theme grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-brand-surface text-brand-text-primary min-[961px]:grid-cols-[15rem_minmax(0,1fr)]">
+  {#if mobileSidebarOpen}
+    <button type="button" class="fixed inset-0 z-40 bg-black/60 min-[961px]:hidden" aria-label="Dismiss navigation" onclick={closeSidebar}></button>
+  {/if}
   <aside
-    class="sidebar"
-    class:sidebar-open={mobileSidebarOpen}
+    class="fixed inset-y-0 left-0 z-50 w-66 flex-col gap-5 overflow-y-auto overscroll-contain border-r border-brand-border bg-brand-surface-card p-4 min-[961px]:sticky min-[961px]:top-0 min-[961px]:z-30 min-[961px]:flex min-[961px]:h-dvh min-[961px]:w-auto {mobileSidebarOpen ? 'flex' : 'hidden'}"
     aria-label="Control Plane navigation"
   >
     <div class="sidebar-brand">
@@ -230,52 +250,44 @@
       </div>
       <button
         type="button"
-        class="mobile-close"
-        onclick={() => (mobileSidebarOpen = false)}
+        bind:this={mobileCloseButton}
+        class="rounded-md border border-brand-border-hover px-2.5 py-1.5 text-xs text-brand-text-primary focus-visible:outline-2 focus-visible:outline-brand-lime min-[961px]:hidden"
+        onclick={closeSidebar}
         aria-label="Close sidebar"
       >
         Close
       </button>
     </div>
 
-    <div class="context-selectors">
-      <label class="selector-field">
-        <span>Workspace</span>
-        <select
-          aria-label="Workspace selector"
+    <div class="flex flex-col gap-3 border-b border-brand-border pb-4">
+      <div class="grid min-w-0 gap-1.5">
+        <span class="text-xs font-medium text-brand-text-secondary">Workspace</span>
+        <Dropdown
+          label="Workspace selector"
           value={controlStore.activeWorkspace?.id ?? ""}
+          options={controlStore.workspaces.map((ws) => ({ value: ws.id, label: ws.name }))}
+          placeholder="No workspaces"
           onchange={handleWorkspaceChange}
-        >
-          {#each controlStore.workspaces as ws}
-            <option value={ws.id}>{ws.name}</option>
-          {/each}
-        </select>
-      </label>
+          class="w-full"
+        />
+      </div>
 
-      <div class="app-selector-row">
-        <label class="selector-field flex-1">
-          <span>Application</span>
-          <select
-            aria-label="Application selector"
+      <div class="flex min-w-0 items-end gap-2">
+        <div class="grid min-w-0 flex-1 gap-1.5">
+          <span class="text-xs font-medium text-brand-text-secondary">Application</span>
+          <Dropdown
+            label="Application selector"
             value={controlStore.activeApplication?.application.id ?? ""}
-            onchange={(e) =>
-              selectApplication((e.currentTarget as HTMLSelectElement).value)}
-          >
-            {#if controlStore.applications.length === 0}
-              <option value="">No applications</option>
-            {:else}
-              {#each controlStore.applications as item}
-                <option value={item.application.id}
-                  >{item.application.name}</option
-                >
-              {/each}
-            {/if}
-          </select>
-        </label>
+            options={controlStore.applications.map(({ application }) => ({ value: application.id, label: application.name }))}
+            placeholder="No applications"
+            onchange={selectApplication}
+            class="w-full"
+          />
+        </div>
         {#if allowMutate}
           <button
             type="button"
-            class="new-app-btn"
+            class="grid size-9 shrink-0 place-items-center rounded-lg border border-brand-border-hover bg-brand-surface-input text-lg text-brand-text-primary hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime"
             title="Create application"
             aria-label="Create application"
             onclick={() => {
@@ -283,7 +295,7 @@
               createAppModalOpen = true;
             }}
           >
-            +
+            <span aria-hidden="true">+</span>
           </button>
         {/if}
       </div>
@@ -292,6 +304,7 @@
         <button
           type="button"
           class:active-dev={controlStore.selectedEnvKind === "development"}
+          aria-pressed={controlStore.selectedEnvKind === "development"}
           onclick={() => selectEnvironmentKind("development")}
         >
           Development
@@ -299,6 +312,7 @@
         <button
           type="button"
           class:active-prod={controlStore.selectedEnvKind === "production"}
+          aria-pressed={controlStore.selectedEnvKind === "production"}
           onclick={() => selectEnvironmentKind("production")}
         >
           Production
@@ -432,7 +446,7 @@
             />
           </svg>
           Users
-          {#if overview}
+          {#if overview && overview.total_users > 0}
             <span class="nav-count">{overview.total_users}</span>
           {/if}
         </button>
@@ -592,45 +606,39 @@
     </div>
   </aside>
 
-  <div class="workspace-stage">
-    <header class="utility-bar">
-      <div class="utility-left">
-        <button
-          type="button"
-          class="mobile-menu-btn"
-          onclick={() => (mobileSidebarOpen = true)}
-          aria-label="Open navigation menu"
-        >
-          Menu
-        </button>
-        <div class="breadcrumbs">
-          <span>{controlStore.activeWorkspace?.name ?? "Workspace"}</span>
-          <span class="sep">/</span>
-          {#if controlStore.activeApplication}
-            <span>{controlStore.activeApplication.application.name}</span>
-            <span class="sep">/</span>
-          {/if}
-          <strong>{sectionTitles[activeSection]}</strong>
+  <div class="min-w-0">
+    <header class="sticky top-0 z-30 border-b border-brand-border bg-brand-surface/95 backdrop-blur">
+      <div class="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div class="flex min-w-0 items-center gap-3">
+          <button
+            bind:this={mobileMenuButton}
+            type="button"
+            class="shrink-0 rounded-md border border-brand-border-hover px-2.5 py-1.5 text-xs text-brand-text-primary focus-visible:outline-2 focus-visible:outline-brand-lime min-[961px]:hidden"
+            onclick={openSidebar}
+            aria-label="Open navigation menu"
+            aria-expanded={mobileSidebarOpen}
+          >Menu</button>
+          <nav class="flex min-w-0 items-center gap-2 text-sm" aria-label="Current section">
+            <span class="hidden truncate text-brand-text-secondary sm:inline">{controlStore.activeWorkspace?.name ?? "Workspace"}</span>
+            <span class="hidden text-brand-text-muted sm:inline" aria-hidden="true">/</span>
+            {#if controlStore.activeApplication}
+              <span class="hidden truncate text-brand-text-secondary md:inline">{controlStore.activeApplication.application.name}</span>
+              <span class="hidden text-brand-text-muted md:inline" aria-hidden="true">/</span>
+            {/if}
+            <span class="min-w-0 truncate font-medium text-brand-text-primary" aria-current="page">{sectionTitles[activeSection]}</span>
+          </nav>
         </div>
-      </div>
 
-      <div class="utility-right">
-        <Badge
-          variant={controlStore.selectedEnvKind === "production"
-            ? "success"
-            : "warning"}
-          size="sm"
-          dot
-        >
-          {controlStore.selectedEnvKind === "production"
-            ? "Production"
-            : "Development"}
-        </Badge>
-        <Badge variant="neutral" size="sm">{activeRole}</Badge>
+        {#if controlStore.activeApplication}
+          <div class="flex shrink-0 items-center gap-2 text-xs text-brand-text-secondary">
+            <span class="size-1.5 rounded-full {controlStore.selectedEnvKind === 'production' ? 'bg-brand-success' : 'bg-brand-warning'}" aria-hidden="true"></span>
+            {controlStore.selectedEnvKind === "production" ? "Production" : "Development"}
+          </div>
+        {/if}
       </div>
     </header>
 
-    <main class="main-canvas">
+    <main class="mx-auto grid w-full max-w-7xl min-w-0 grid-cols-1 gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-7 lg:px-8">
       {#if !allowMutate}
         <div class="readonly-banner" role="status">
           Read-only access: your workspace role is <strong>{activeRole}</strong
@@ -655,12 +663,10 @@
           currentDeveloperId={controlStore.developer.id}
         />
       {:else if !controlStore.activeApplication || !controlStore.activeEnvironment}
-        <div class="empty-app-state">
-          <h1>Create your first application</h1>
-          <p>
-            Every application provisions isolated Development and Production
-            environments with separate API keys, users, domains, and webhooks.
-          </p>
+        <SectionHeader title={sectionTitles[activeSection]} description="Select an application to manage its environments." />
+        <div class="grid justify-items-start gap-3 rounded-xl border border-brand-border bg-brand-surface-card p-6 sm:p-8">
+          <h2 class="m-0 text-xl font-semibold text-brand-text-primary">Create your first application</h2>
+          <p class="max-w-lg text-sm leading-relaxed text-brand-text-secondary">Each application has separate development and production environments, API keys, and users.</p>
           {#if allowMutate}
             <Button
               variant="primary"
@@ -675,6 +681,7 @@
           loading={loadingEnv}
           appName={controlStore.activeApplication.application.name}
           appSlug={controlStore.activeApplication.application.slug}
+          environmentKind={controlStore.selectedEnvKind}
           onRefresh={loadActiveEnvironmentData}
         />
       {:else if activeSection === "analytics"}
@@ -741,6 +748,7 @@
   </div>
 </div>
 
+<div class="workspace-theme">
 <Modal
   open={createAppModalOpen}
   title="Create Application"
@@ -782,29 +790,9 @@
     </label>
   </div>
 </Modal>
+</div>
 
 <style>
-  .console-shell {
-    display: grid;
-    grid-template-columns: 256px 1fr;
-    min-height: 100vh;
-    background-color: #0b0c0e;
-    color: #f4f4f5;
-  }
-
-  .sidebar {
-    background-color: #111215;
-    border-right: 1px solid #1f2228;
-    padding: 1.15rem 0.95rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.15rem;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
-  }
-
   .sidebar-brand {
     display: flex;
     align-items: center;
@@ -821,81 +809,11 @@
     color: #ffffff;
   }
 
-  .mobile-close,
-  .mobile-menu-btn {
-    display: none;
-    background: transparent;
-    border: 1px solid #2e333d;
-    color: #d4d4d8;
-    border-radius: 6px;
-    padding: 0.28rem 0.6rem;
-    font-size: 0.76rem;
-    cursor: pointer;
-  }
-
-  .context-selectors {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #1f2228;
-  }
-
-  .selector-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .selector-field span {
-    font-size: 0.66rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #71717a;
-  }
-
-  .selector-field select {
-    width: 100%;
-    background-color: #15171b;
-    border: 1px solid #23262e;
-    border-radius: 6px;
-    padding: 0.42rem 0.55rem;
-    color: #f4f4f5;
-    font-size: 0.8rem;
-    outline: none;
-  }
-
-  .app-selector-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.4rem;
-  }
-
-  .flex-1 {
-    flex: 1;
-  }
-
-  .new-app-btn {
-    width: 32px;
-    height: 32px;
-    background-color: #15171b;
-    border: 1px solid #2e333d;
-    border-radius: 6px;
-    color: #ffffff;
-    font-size: 1rem;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .new-app-btn:hover {
-    border-color: #ffffff;
-  }
-
   .env-switch {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    background-color: #0b0c0e;
-    border: 1px solid #23262e;
+    background-color: var(--color-brand-surface);
+    border: 1px solid var(--color-brand-border);
     border-radius: 6px;
     padding: 2px;
   }
@@ -903,7 +821,7 @@
   .env-switch button {
     background: transparent;
     border: none;
-    color: #71717a;
+    color: var(--color-brand-text-secondary);
     font-size: 0.74rem;
     font-weight: 500;
     padding: 0.34rem 0.4rem;
@@ -912,13 +830,13 @@
   }
 
   .env-switch button.active-dev {
-    background-color: #26200f;
-    color: #facc15;
+    background-color: #202020;
+    color: #c9c9c9;
   }
 
   .env-switch button.active-prod {
-    background-color: #11241a;
-    color: #4ade80;
+    background-color: #1f1f1f;
+    color: #b8b8b8;
   }
 
   .nav-groups {
@@ -938,7 +856,7 @@
     font-size: 0.66rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #52525b;
+    color: var(--color-brand-text-secondary);
     padding: 0 0.55rem 0.25rem;
   }
 
@@ -951,7 +869,7 @@
     border: 1px solid transparent;
     border-radius: 6px;
     padding: 0.5rem 0.6rem;
-    color: #a1a1aa;
+    color: var(--color-brand-text-secondary);
     font-size: 0.84rem;
     font-weight: 500;
     text-align: left;
@@ -959,13 +877,13 @@
   }
 
   .nav-item:hover {
-    background-color: #181a20;
-    color: #f4f4f5;
+    background-color: var(--color-brand-surface-raised);
+    color: var(--color-brand-text-primary);
   }
 
   .nav-item.active {
-    background-color: #1c1f26;
-    border-color: #2c303a;
+    background-color: var(--color-brand-surface-alt);
+    border-color: var(--color-brand-border-hover);
     color: #ffffff;
   }
 
@@ -973,14 +891,14 @@
     margin-left: auto;
     font-size: 0.7rem;
     font-family: var(--font-mono);
-    color: #71717a;
-    background-color: #15171b;
+    color: var(--color-brand-text-secondary);
+    background-color: var(--color-brand-surface-card);
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
   }
 
   .sidebar-footer {
-    border-top: 1px solid #1f2228;
+    border-top: 1px solid var(--color-brand-border);
     padding-top: 0.85rem;
     display: flex;
     flex-direction: column;
@@ -998,7 +916,7 @@
     height: 30px;
     border-radius: 9999px;
     background-color: #ffffff;
-    color: #0b0c0e;
+    color: var(--color-brand-surface);
     font-size: 0.72rem;
     font-weight: 600;
     display: inline-flex;
@@ -1015,7 +933,7 @@
 
   .dev-meta strong {
     font-size: 0.8rem;
-    color: #f4f4f5;
+    color: var(--color-brand-text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1023,16 +941,16 @@
 
   .dev-meta span {
     font-size: 0.7rem;
-    color: #71717a;
+    color: var(--color-brand-text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .signout-btn {
-    background-color: #15171b;
-    border: 1px solid #23262e;
-    color: #a1a1aa;
+    background-color: var(--color-brand-surface-card);
+    border: 1px solid var(--color-brand-border);
+    color: var(--color-brand-text-secondary);
     border-radius: 6px;
     padding: 0.4rem 0.6rem;
     font-size: 0.76rem;
@@ -1041,94 +959,16 @@
 
   .signout-btn:hover {
     color: #ffffff;
-    border-color: #343944;
-  }
-
-  .workspace-stage {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .utility-bar {
-    height: 54px;
-    padding: 0 1.75rem;
-    border-bottom: 1px solid #1f2228;
-    background-color: #0b0c0e;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    position: sticky;
-    top: 0;
-    z-index: 30;
-  }
-
-  .utility-left,
-  .utility-right {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-  }
-
-  .breadcrumbs {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    font-size: 0.82rem;
-    color: #71717a;
-  }
-
-  .breadcrumbs strong {
-    color: #f4f4f5;
-    font-weight: 500;
-  }
-
-  .sep {
-    color: #3f3f46;
-  }
-
-  .main-canvas {
-    padding: 1.75rem 2rem 3rem;
-    max-width: 1320px;
-    width: 100%;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    border-color: var(--color-brand-border-strong);
   }
 
   .readonly-banner {
     padding: 0.7rem 1rem;
-    background-color: #26200f;
-    border: 1px solid #4b3d18;
-    color: #facc15;
+    background-color: #202020;
+    border: 1px solid #3d3d3d;
+    color: #c9c9c9;
     border-radius: 8px;
     font-size: 0.82rem;
-  }
-
-  .empty-app-state {
-    padding: 4rem 2rem;
-    text-align: center;
-    background-color: #15171b;
-    border: 1px solid #23262e;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.85rem;
-  }
-
-  .empty-app-state h1 {
-    font-size: 1.45rem;
-    margin: 0;
-  }
-
-  .empty-app-state p {
-    max-width: 480px;
-    font-size: 0.88rem;
-    color: #a1a1aa;
-    margin: 0;
   }
 
   .modal-fields {
@@ -1146,47 +986,16 @@
 
   .modal-field span {
     font-size: 0.74rem;
-    color: #a1a1aa;
+    color: var(--color-brand-text-secondary);
   }
 
   .modal-field input {
-    background-color: #0b0c0e;
-    border: 1px solid #23262e;
+    background-color: var(--color-brand-surface);
+    border: 1px solid var(--color-brand-border);
     border-radius: 6px;
     padding: 0.55rem 0.75rem;
-    color: #f4f4f5;
+    color: var(--color-brand-text-primary);
     font-size: 0.84rem;
     outline: none;
-  }
-
-  @media (max-width: 960px) {
-    .console-shell {
-      grid-template-columns: 1fr;
-    }
-
-    .sidebar {
-      position: fixed;
-      left: -280px;
-      width: 268px;
-      z-index: 800;
-      transition: left 180ms ease;
-    }
-
-    .sidebar.sidebar-open {
-      left: 0;
-    }
-
-    .mobile-close,
-    .mobile-menu-btn {
-      display: inline-flex;
-    }
-
-    .utility-bar {
-      padding: 0 1rem;
-    }
-
-    .main-canvas {
-      padding: 1.25rem 1rem 2.5rem;
-    }
   }
 </style>

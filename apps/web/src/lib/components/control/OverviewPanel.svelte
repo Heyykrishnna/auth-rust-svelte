@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Badge from '$lib/components/Badge.svelte';
+	import SectionHeader from './SectionHeader.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
-	import type { EnvironmentOverviewDto } from '$lib/api/types';
+	import type { EnvironmentKind, EnvironmentOverviewDto } from '$lib/api/types';
 	import { computeSuccessRate, formatRelativeTimestamp } from '$lib/control/permissions';
 
 	interface Props {
@@ -10,27 +10,17 @@
 		loading: boolean;
 		appName: string;
 		appSlug: string;
+		environmentKind: EnvironmentKind;
 		onRefresh: () => void;
 	}
 
-	let { overview, loading, appName, appSlug, onRefresh }: Props = $props();
+	let { overview, loading, appName, appSlug, environmentKind, onRefresh }: Props = $props();
 	let snippetTab = $state<'sveltekit' | 'nextjs' | 'oidc'>('sveltekit');
 
-	const authRate24h = $derived(
-		overview ? computeSuccessRate(overview.auth_success_24h, overview.auth_failure_24h) : 100
-	);
 	const webhookRate24h = $derived(
-		overview
-			? computeSuccessRate(
-					overview.webhook_deliveries_succeeded_24h,
-					overview.webhook_deliveries_failed_24h
-				)
-			: 100
-	);
-	const activeUserShare = $derived(
-		overview && overview.total_users > 0
-			? Math.round((overview.active_users / overview.total_users) * 100)
-			: 100
+		overview && overview.webhook_deliveries_succeeded_24h + overview.webhook_deliveries_failed_24h > 0
+			? `${computeSuccessRate(overview.webhook_deliveries_succeeded_24h, overview.webhook_deliveries_failed_24h)}%`
+			: '—'
 	);
 
 	const snippetText = $derived.by(() => {
@@ -55,98 +45,66 @@
 	}
 </script>
 
-<section class="panel-stack" aria-label="Environment overview">
-	<div class="section-header">
-		<div>
-			<h1 class="page-title">Overview</h1>
-			<p class="page-subtitle">
-				{appName} · {overview?.environment_kind === 'production' ? 'Production' : 'Development'} environment health and quick integration
-			</p>
-		</div>
+<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Environment overview">
+	<SectionHeader title="Overview" description={`${appName} · ${environmentKind === 'production' ? 'Production' : 'Development'}`}>
 		<Button variant="outline" size="sm" onclick={onRefresh} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</Button>
-	</div>
+	</SectionHeader>
 
 	{#if loading && !overview}
 		<div class="empty-surface">Loading environment telemetry...</div>
 	{:else if !overview}
 		<div class="empty-surface">Select an application and environment to view overview metrics.</div>
 	{:else}
-		<div class="bento-grid">
-			<div class="kpi-highlight">
-				<div class="kpi-top">
-					<span class="kpi-kicker">Total users in environment</span>
-					<span class="kpi-pill">{overview.active_sessions} active sessions</span>
+		<div class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr]">
+			<article class="flex min-w-0 flex-col justify-between gap-5 rounded-xl bg-brand-lime-soft p-5 text-brand-lime-ink sm:col-span-2 xl:col-span-1">
+				<h2 class="m-0 text-sm font-semibold text-brand-lime-ink">Users in this environment</h2>
+				<div>
+					<p class="m-0 font-heading text-5xl font-bold leading-none tracking-tight text-brand-lime-ink tabular-nums">{overview.total_users.toLocaleString()}</p>
+					<p class="mt-3 text-sm text-brand-lime-ink">{overview.active_users} active · {overview.suspended_users} suspended · {overview.unverified_users} unverified</p>
 				</div>
-				<div class="kpi-hero">{overview.total_users.toLocaleString()}</div>
-				<div class="kpi-foot">
-					<span>{overview.active_users} active · {overview.suspended_users} suspended · {overview.unverified_users} unverified</span>
-					<div class="meter-track meter-track-light">
-						<div class="meter-fill meter-fill-dark" style={`width: ${activeUserShare}%`}></div>
-					</div>
-				</div>
-			</div>
+				<p class="m-0 border-t border-brand-lime-ink/15 pt-3 text-sm font-medium text-brand-lime-ink">{overview.active_sessions.toLocaleString()} active sessions</p>
+			</article>
 
-			<div class="kpi-card">
-				<div class="kpi-card-head">
-					<span class="card-kicker">Authentication health</span>
-					<Badge variant={overview.auth_failure_24h > 10 ? 'warning' : 'success'} size="sm" dot>
-						{authRate24h}% success
-					</Badge>
-				</div>
-				<div class="metric-rows">
-					<div class="metric-row">
-						<span>24h sign-ins succeeded</span>
-						<strong>{overview.auth_success_24h}</strong>
-					</div>
-					<div class="metric-row">
-						<span>24h failures &amp; lockouts</span>
-						<strong class:text-warn={overview.auth_failure_24h > 0}>{overview.auth_failure_24h}</strong>
-					</div>
-					<div class="metric-row">
-						<span>7d sign-ins succeeded</span>
-						<strong>{overview.auth_success_7d}</strong>
-					</div>
-					<div class="metric-row">
-						<span>New users (7d)</span>
-						<strong>+{overview.new_users_7d}</strong>
-					</div>
-				</div>
-			</div>
+			<article class="grid min-w-0 content-start gap-3 rounded-xl border border-brand-border bg-brand-surface-card p-5">
+				<h2 class="m-0 text-sm font-semibold text-brand-text-primary">Authentication</h2>
+				<dl class="grid gap-2.5 border-t border-brand-border pt-3 text-sm">
+					{#each [
+						['Successful sign-ins · 24h', overview.auth_success_24h],
+						['Failures and lockouts · 24h', overview.auth_failure_24h],
+						['Successful sign-ins · 7d', overview.auth_success_7d],
+						['New users · 7d', overview.new_users_7d]
+					] as [label, value] (label)}
+						<div class="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3">
+							<dt class="text-brand-text-secondary">{label}</dt>
+							<dd class="text-right font-medium text-brand-text-primary tabular-nums">{value.toLocaleString()}</dd>
+						</div>
+					{/each}
+				</dl>
+			</article>
 
-			<div class="kpi-card">
-				<div class="kpi-card-head">
-					<span class="card-kicker">Sync &amp; API health</span>
-					<Badge variant={overview.webhook_dead_letters > 0 ? 'danger' : 'neutral'} size="sm" dot>
-						{overview.webhook_dead_letters > 0 ? `${overview.webhook_dead_letters} DLQ` : 'Healthy'}
-					</Badge>
-				</div>
-				<div class="metric-rows">
-					<div class="metric-row">
-						<span>Webhook delivery rate (24h)</span>
-						<strong>{webhookRate24h}%</strong>
-					</div>
-					<div class="metric-row">
-						<span>Active webhook endpoints</span>
-						<strong>{overview.webhook_endpoints_active}</strong>
-					</div>
-					<div class="metric-row">
-						<span>Failed deliveries (24h)</span>
-						<strong class:text-err={overview.webhook_deliveries_failed_24h > 0}>
-							{overview.webhook_deliveries_failed_24h}
-						</strong>
-					</div>
-					<div class="metric-row">
-						<span>Active API credentials</span>
-						<strong>{overview.active_api_keys}</strong>
-					</div>
-				</div>
-			</div>
+			<article class="grid min-w-0 content-start gap-3 rounded-xl border border-brand-border bg-brand-surface-card p-5">
+				<h2 class="m-0 text-sm font-semibold text-brand-text-primary">Webhooks &amp; API</h2>
+				<dl class="grid gap-2.5 border-t border-brand-border pt-3 text-sm">
+					{#each [
+						['Webhook delivery rate · 24h', webhookRate24h],
+						['Active webhook endpoints', overview.webhook_endpoints_active],
+						['Failed deliveries · 24h', overview.webhook_deliveries_failed_24h],
+						['Dead-letter deliveries', overview.webhook_dead_letters],
+						['Active API credentials', overview.active_api_keys]
+					] as [label, value] (label)}
+						<div class="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3">
+							<dt class="text-brand-text-secondary">{label}</dt>
+							<dd class="text-right font-medium text-brand-text-primary tabular-nums">{value.toLocaleString()}</dd>
+						</div>
+					{/each}
+				</dl>
+			</article>
 		</div>
 
-		<div class="two-col">
-			<div class="surface-box">
+		<div class="grid min-w-0 grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+			<div class="surface-box min-w-0">
 				<div class="box-header">
 					<div>
 						<h2 class="box-title">Quick Integration</h2>
@@ -187,7 +145,7 @@
 				</div>
 			</div>
 
-			<div class="surface-box">
+			<div class="surface-box min-w-0">
 				<div class="box-header">
 					<div>
 						<h2 class="box-title">Recent Security &amp; Audit Feed</h2>
@@ -216,170 +174,9 @@
 </section>
 
 <style>
-	.panel-stack {
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
-	}
-
-	.section-header {
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: 1rem;
-		flex-wrap: wrap;
-	}
-
-	.page-title {
-		font-size: 1.75rem;
-		font-weight: 600;
-		color: #ffffff;
-		margin: 0;
-	}
-
-	.page-subtitle {
-		font-size: 0.85rem;
-		color: #71717a;
-		margin: 0.25rem 0 0;
-	}
-
-	.bento-grid {
-		display: grid;
-		grid-template-columns: 1.35fr 1fr 1fr;
-		gap: 1rem;
-	}
-
-	.kpi-highlight {
-		background-color: #f3f4f6;
-		color: #0b0c0e;
-		border-radius: 12px;
-		padding: 1.35rem;
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		gap: 1.15rem;
-	}
-
-	.kpi-top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-
-	.kpi-kicker {
-		font-size: 0.8rem;
-		font-weight: 500;
-		color: #52525b;
-	}
-
-	.kpi-pill {
-		font-size: 0.72rem;
-		font-weight: 600;
-		background-color: #0b0c0e;
-		color: #ffffff;
-		padding: 0.2rem 0.55rem;
-		border-radius: 9999px;
-	}
-
-	.kpi-hero {
-		font-size: 2.5rem;
-		font-weight: 700;
-		letter-spacing: -0.04em;
-		line-height: 1;
-		color: #0b0c0e;
-	}
-
-	.kpi-foot {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		font-size: 0.76rem;
-		color: #52525b;
-	}
-
-	.meter-track {
-		width: 100%;
-		height: 5px;
-		border-radius: 9999px;
-		overflow: hidden;
-	}
-
-	.meter-track-light {
-		background-color: #d4d4d8;
-	}
-
-	.meter-fill {
-		height: 100%;
-		border-radius: 9999px;
-	}
-
-	.meter-fill-dark {
-		background-color: #0b0c0e;
-	}
-
-	.kpi-card {
-		background-color: #15171b;
-		border: 1px solid #23262e;
-		border-radius: 12px;
-		padding: 1.35rem;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.kpi-card-head {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
-	}
-
-	.card-kicker {
-		font-size: 0.82rem;
-		font-weight: 600;
-		color: #e4e4e7;
-	}
-
-	.metric-rows {
-		display: flex;
-		flex-direction: column;
-		gap: 0.65rem;
-	}
-
-	.metric-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		font-size: 0.82rem;
-		color: #a1a1aa;
-		padding-bottom: 0.5rem;
-		border-bottom: 1px solid #1f2228;
-	}
-
-	.metric-row:last-child {
-		border-bottom: none;
-		padding-bottom: 0;
-	}
-
-	.metric-row strong {
-		color: #f4f4f5;
-		font-family: var(--font-mono);
-		font-size: 0.84rem;
-	}
-
-	.text-warn { color: #facc15 !important; }
-	.text-err { color: #f87171 !important; }
-
-	.two-col {
-		display: grid;
-		grid-template-columns: 1.25fr 1fr;
-		gap: 1rem;
-	}
-
 	.surface-box {
-		background-color: #15171b;
-		border: 1px solid #23262e;
+		background-color: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 12px;
 		padding: 1.35rem;
 		display: flex;
@@ -399,19 +196,19 @@
 		font-size: 0.98rem;
 		font-weight: 600;
 		margin: 0;
-		color: #f4f4f5;
+		color: var(--color-brand-text-primary);
 	}
 
 	.box-sub {
 		font-size: 0.78rem;
-		color: #71717a;
+		color: var(--color-brand-text-secondary);
 		margin: 0.2rem 0 0;
 	}
 
 	.seg-tabs {
 		display: inline-flex;
-		background-color: #0b0c0e;
-		border: 1px solid #23262e;
+		background-color: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		padding: 2px;
 	}
@@ -419,7 +216,7 @@
 	.seg-tabs button {
 		background: transparent;
 		border: none;
-		color: #a1a1aa;
+		color: var(--color-brand-text-secondary);
 		font-size: 0.75rem;
 		font-weight: 500;
 		padding: 0.3rem 0.65rem;
@@ -429,7 +226,7 @@
 
 	.seg-tabs button.active {
 		background-color: #ffffff;
-		color: #0b0c0e;
+		color: var(--color-brand-surface);
 	}
 
 	.kv-list {
@@ -440,23 +237,23 @@
 
 	.kv-row {
 		display: grid;
-		grid-template-columns: 112px 1fr auto;
+		grid-template-columns: minmax(0, 112px) minmax(0, 1fr) auto;
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.55rem 0.75rem;
-		background-color: #0b0c0e;
-		border: 1px solid #23262e;
+		background-color: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 	}
 
 	.kv-label {
 		font-size: 0.74rem;
-		color: #71717a;
+		color: var(--color-brand-text-secondary);
 	}
 
 	.kv-code {
 		font-size: 0.76rem;
-		color: #e4e4e7;
+		color: var(--color-brand-text-primary);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -464,8 +261,8 @@
 
 	.copy-btn {
 		background: transparent;
-		border: 1px solid #2e333d;
-		color: #d4d4d8;
+		border: 1px solid var(--color-brand-border-hover);
+		color: #d4d4d4;
 		font-size: 0.72rem;
 		padding: 0.2rem 0.5rem;
 		border-radius: 4px;
@@ -479,8 +276,8 @@
 
 	.code-panel {
 		position: relative;
-		background-color: #0b0c0e;
-		border: 1px solid #23262e;
+		background-color: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		padding: 0.95rem;
 	}
@@ -488,7 +285,7 @@
 	.code-panel pre {
 		margin: 0;
 		overflow-x: auto;
-		color: #d4d4d8;
+		color: #d4d4d4;
 		font-size: 0.76rem;
 		line-height: 1.55;
 	}
@@ -497,9 +294,9 @@
 		position: absolute;
 		top: 0.6rem;
 		right: 0.6rem;
-		background-color: #15171b;
-		border: 1px solid #2e333d;
-		color: #d4d4d8;
+		background-color: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border-hover);
+		color: #d4d4d4;
 		font-size: 0.7rem;
 		padding: 0.25rem 0.55rem;
 		border-radius: 4px;
@@ -517,7 +314,7 @@
 		justify-content: space-between;
 		gap: 0.75rem;
 		padding: 0.6rem 0;
-		border-bottom: 1px solid #1f2228;
+		border-bottom: 1px solid var(--color-brand-border);
 	}
 
 	.feed-row:last-child {
@@ -534,7 +331,7 @@
 	.feed-event {
 		font-family: var(--font-mono);
 		font-size: 0.76rem;
-		color: #f4f4f5;
+		color: var(--color-brand-text-primary);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -542,12 +339,12 @@
 
 	.feed-meta {
 		font-size: 0.72rem;
-		color: #71717a;
+		color: var(--color-brand-text-secondary);
 	}
 
 	.feed-time {
 		font-size: 0.74rem;
-		color: #71717a;
+		color: var(--color-brand-text-secondary);
 		white-space: nowrap;
 	}
 
@@ -555,10 +352,10 @@
 	.empty-inline {
 		padding: 2rem;
 		text-align: center;
-		color: #71717a;
+		color: var(--color-brand-text-secondary);
 		font-size: 0.85rem;
-		background-color: #15171b;
-		border: 1px solid #23262e;
+		background-color: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 12px;
 	}
 
@@ -566,13 +363,6 @@
 		background: transparent;
 		border: none;
 		padding: 1.5rem 0;
-	}
-
-	@media (max-width: 1080px) {
-		.bento-grid,
-		.two-col {
-			grid-template-columns: 1fr;
-		}
 	}
 </style>
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SectionHeader from './SectionHeader.svelte';
+	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
@@ -35,6 +37,15 @@
 
 	const allowTeamManagement = $derived(canManageTeam(actorRole));
 	const allowOwnerAssign = $derived(canManageOwners(actorRole));
+    const roleOptions = $derived.by(() => {
+        const roles: { value: WorkspaceRole; label: string }[] = [
+            { value: 'admin', label: 'Admin' },
+            { value: 'developer', label: 'Developer' },
+            { value: 'viewer', label: 'Viewer' }
+        ];
+        if (allowOwnerAssign) roles.unshift({ value: 'owner', label: 'Owner' });
+        return roles;
+    });
 
 	async function loadMembers() {
 		if (mode !== 'team') return;
@@ -127,28 +138,17 @@
 </script>
 
 {#if mode === 'team'}
-	<section class="panel-stack" aria-label="Workspace team and roles">
-		<div class="section-header">
-			<div>
-				<h1 class="page-title">Team &amp; Roles</h1>
-				<p class="page-subtitle">Manage collaborators for {workspaceName} with strict RBAC enforcement (owner, admin, developer, viewer).</p>
-			</div>
+	<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Workspace team and roles">
+		<SectionHeader title="Team &amp; Roles" description="Manage collaborators for {workspaceName} with strict RBAC enforcement (owner, admin, developer, viewer).">
 			<Badge variant="neutral" size="sm">Your role: {actorRole}</Badge>
-		</div>
+		</SectionHeader>
 
 		{#if allowTeamManagement}
 			<div class="surface-box">
 				<h2 class="box-title">Add Workspace Member</h2>
-				<form class="inline-form" onsubmit={handleAddMember}>
-					<input type="email" bind:value={inviteEmail} placeholder="Registered developer email" required />
-					<select bind:value={inviteRole} aria-label="Member role">
-						{#if allowOwnerAssign}
-							<option value="owner">Owner</option>
-						{/if}
-						<option value="admin">Admin</option>
-						<option value="developer">Developer</option>
-						<option value="viewer">Viewer (Read-only)</option>
-					</select>
+				<form class="flex min-w-0 flex-wrap items-center gap-2 [&>button]:h-9 [&>input]:h-9 [&>input]:max-w-full" onsubmit={handleAddMember}>
+					<input class="control-input" type="email" bind:value={inviteEmail} placeholder="Registered developer email" required />
+					<Dropdown label="Member role" bind:value={inviteRole} options={roleOptions} disabled={inviting} />
 					<Button type="submit" variant="primary" size="sm" loading={inviting} disabled={inviting}>
 						Add Member
 					</Button>
@@ -172,6 +172,7 @@
 					{:else}
 						{#each members as m}
 							{@const editable = canEditMemberRole(actorRole, m.role)}
+							{@const currentRole = roleOptions.find(({ value }) => value === m.role)?.value}
 							<tr>
 								<td>
 									<div class="member-cell">
@@ -180,24 +181,13 @@
 									</div>
 								</td>
 								<td>
-									{#if editable}
-										<select
-											class="role-select"
-											value={m.role}
-											aria-label={`Role for ${m.email}`}
-											onchange={(e) =>
-												handleRoleChange(
-													m,
-													(e.currentTarget as HTMLSelectElement).value as WorkspaceRole
-												)}
-										>
-											{#if allowOwnerAssign}
-												<option value="owner">owner</option>
-											{/if}
-											<option value="admin">admin</option>
-											<option value="developer">developer</option>
-											<option value="viewer">viewer</option>
-										</select>
+									{#if editable && currentRole}
+										<Dropdown
+											label={`Role for ${m.email}`}
+											value={currentRole}
+											options={roleOptions}
+											onchange={(role) => handleRoleChange(m, role)}
+										/>
 									{:else}
 										<Badge variant="neutral" size="sm">{m.role}</Badge>
 									{/if}
@@ -216,13 +206,8 @@
 		</div>
 	</section>
 {:else}
-	<section class="panel-stack" aria-label="Developer account security">
-		<div class="section-header">
-			<div>
-				<h1 class="page-title">Account Security</h1>
-				<p class="page-subtitle">Rotate your Developer Control Plane password using Argon2id hashing.</p>
-			</div>
-		</div>
+	<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Developer account security">
+		<SectionHeader title="Account Security" description="Rotate your Developer Control Plane password using Argon2id hashing." />
 
 		<div class="surface-box narrow">
 			<h2 class="box-title">Change Developer Password</h2>
@@ -253,29 +238,24 @@
 {/if}
 
 <style>
-	.panel-stack { display: flex; flex-direction: column; gap: 1.5rem; }
-	.section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-	.page-title { font-size: 1.75rem; font-weight: 600; color: #ffffff; margin: 0; }
-	.page-subtitle { font-size: 0.85rem; color: #71717a; margin: 0.25rem 0 0; }
-	.surface-box { background-color: #15171b; border: 1px solid #23262e; border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
+	.surface-box { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
 	.narrow { max-width: 520px; }
-	.box-title { font-size: 0.98rem; font-weight: 600; color: #f4f4f5; margin: 0; }
-	.inline-form { display: flex; gap: 0.65rem; flex-wrap: wrap; }
-	.inline-form input, .inline-form select, .role-select { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 6px; padding: 0.5rem 0.75rem; color: #f4f4f5; font-size: 0.82rem; outline: none; }
-	.inline-form input { flex: 1; min-width: 220px; }
-	.table-wrap { background-color: #15171b; border: 1px solid #23262e; border-radius: 12px; overflow-x: auto; }
+	.box-title { font-size: 0.98rem; font-weight: 600; color: var(--color-brand-text-primary); margin: 0; }
+	.control-input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.5rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.82rem; outline: none; }
+	.control-input { flex: 1; min-width: 220px; }
+	.table-wrap { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; overflow-x: auto; }
 	.data-table { width: 100%; border-collapse: collapse; text-align: left; }
-	.data-table th { font-size: 0.72rem; color: #71717a; padding: 0.75rem 1rem; border-bottom: 1px solid #23262e; }
-	.data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid #1f2228; font-size: 0.84rem; color: #d4d4d8; }
+	.data-table th { font-size: 0.72rem; color: var(--color-brand-text-secondary); padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-brand-border); }
+	.data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--color-brand-border); font-size: 0.84rem; color: #d4d4d4; }
 	.member-cell { display: flex; flex-direction: column; }
 	.member-cell strong { color: #ffffff; font-size: 0.86rem; }
-	.member-cell span { color: #71717a; font-size: 0.76rem; }
-	.muted { color: #71717a; font-size: 0.8rem; }
+	.member-cell span { color: var(--color-brand-text-secondary); font-size: 0.76rem; }
+	.muted { color: var(--color-brand-text-secondary); font-size: 0.8rem; }
 	.row-actions { text-align: right; }
 	.password-form { display: flex; flex-direction: column; gap: 0.9rem; }
 	.field { display: flex; flex-direction: column; gap: 0.35rem; }
-	.field span { font-size: 0.76rem; color: #a1a1aa; }
-	.field input { background-color: #0b0c0e; border: 1px solid #23262e; border-radius: 6px; padding: 0.55rem 0.75rem; color: #f4f4f5; font-size: 0.85rem; outline: none; }
+	.field span { font-size: 0.76rem; color: var(--color-brand-text-secondary); }
+	.field input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.85rem; outline: none; }
 	.form-actions { display: flex; justify-content: flex-end; }
 </style>
 

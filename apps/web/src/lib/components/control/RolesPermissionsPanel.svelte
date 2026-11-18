@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SectionHeader from './SectionHeader.svelte';
+	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -174,21 +176,17 @@
 	}
 </script>
 
-<section class="panel-stack" aria-label="Custom roles and permissions">
-	<div class="panel-header">
-		<div>
-			<h1>Roles &amp; Permissions</h1>
-			<p>Define custom environment permissions and assign them to application-wide or organization-scoped roles.</p>
-		</div>
+<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Custom roles and permissions">
+	<SectionHeader title="Roles &amp; Permissions" description="Define custom environment permissions and assign them to application-wide or organization-scoped roles.">
 		{#if canMutate}
 			<Button variant="primary" size="sm" onclick={openCreateRoleModal}>
 				Create Custom Role
 			</Button>
 		{/if}
-	</div>
+	</SectionHeader>
 
-	<div class="split-grid">
-		<div class="card">
+	<div class="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+		<div class="card min-w-0">
 			<div class="card-head">
 				<div>
 					<h2>Roles ({filteredRoles.length})</h2>
@@ -245,7 +243,7 @@
 									{/if}
 								</div>
 							</div>
-							<div class="role-actions">
+							<div class="role-actions flex-wrap">
 								{#if canMutate && !role.is_system}
 									<Button variant="outline" size="sm" onclick={() => openEditRoleModal(role)}>
 										Edit
@@ -266,7 +264,7 @@
 			{/if}
 		</div>
 
-		<div class="card">
+		<div class="card min-w-0">
 			<div class="card-head">
 				<div>
 					<h2>Permissions ({permissions.length})</h2>
@@ -275,7 +273,7 @@
 			</div>
 
 			{#if canMutate}
-				<form class="perm-form" onsubmit={handleCreatePermission}>
+				<form class="perm-form grid min-w-0 gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] [&>button]:h-9 [&>input]:h-9 [&>input]:min-w-0" onsubmit={handleCreatePermission}>
 					<input
 						type="text"
 						required
@@ -299,7 +297,7 @@
 				{#each permissions as perm (perm.id)}
 					<div class="perm-row">
 						<div>
-							<code>{perm.slug}</code>
+							<code class="wrap-anywhere">{perm.slug}</code>
 							{#if perm.description}
 								<span class="perm-desc">{perm.description}</span>
 							{/if}
@@ -339,13 +337,18 @@
 				<span>Role Slug</span>
 				<input type="text" required bind:value={roleSlug} placeholder="org:billing_admin" />
 			</label>
-			<label class="field">
+			<div class="field">
 				<span>Scope</span>
-				<select bind:value={roleScope}>
-					<option value="organization">organization</option>
-					<option value="application">application</option>
-				</select>
-			</label>
+				<Dropdown
+					label="Role scope"
+					bind:value={roleScope}
+					class="w-full"
+					options={[
+						{ value: 'organization', label: 'Organization' },
+						{ value: 'application', label: 'Application' }
+					]}
+					/>
+			</div>
 		{/if}
 		<label class="field">
 			<span>Display Name</span>
@@ -366,7 +369,7 @@
 							checked={selectedPerms.includes(perm.slug)}
 							onchange={() => togglePermissionSelection(perm.slug)}
 						/>
-						<code>{perm.slug}</code>
+						<code class="wrap-anywhere">{perm.slug}</code>
 					</label>
 				{/each}
 			</div>
@@ -375,49 +378,11 @@
 </Modal>
 
 <style>
-	.panel-stack {
-		display: flex;
-		flex-direction: column;
-		gap: 1.25rem;
-	}
 
-	.panel-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 1rem;
-		flex-wrap: wrap;
-	}
-
-	.panel-header h1 {
-		margin: 0;
-		font-size: 1.35rem;
-		font-weight: 600;
-		color: var(--text-primary);
-	}
-
-	.panel-header p {
-		margin: 0.25rem 0 0;
-		font-size: 0.875rem;
-		color: var(--text-secondary);
-	}
-
-	.split-grid {
-		display: grid;
-		grid-template-columns: 1.4fr 1fr;
-		gap: 1rem;
-		align-items: start;
-	}
-
-	@media (max-width: 980px) {
-		.split-grid {
-			grid-template-columns: 1fr;
-		}
-	}
 
 	.card {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		padding: 1.1rem;
 		display: flex;
@@ -436,19 +401,19 @@
 	.card-head h2 {
 		margin: 0;
 		font-size: 1rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 
 	.card-head p {
 		margin: 0.2rem 0 0;
 		font-size: 0.8rem;
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 	}
 
 	.filter-tabs {
 		display: inline-flex;
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		padding: 2px;
 	}
@@ -456,7 +421,7 @@
 	.filter-tabs button {
 		background: transparent;
 		border: none;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 		padding: 0.28rem 0.6rem;
 		font-size: 0.76rem;
 		border-radius: 4px;
@@ -464,8 +429,8 @@
 	}
 
 	.filter-tabs button.active {
-		background: var(--bg-elevated);
-		color: var(--text-primary);
+		background: var(--color-brand-surface-raised);
+		color: var(--color-brand-text-primary);
 	}
 
 	.role-list,
@@ -477,8 +442,8 @@
 
 	.role-row,
 	.perm-row {
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		padding: 0.75rem 0.85rem;
 		display: flex;
@@ -503,7 +468,7 @@
 
 	.role-title strong {
 		font-size: 0.9rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 
 	.role-desc,
@@ -511,7 +476,7 @@
 		display: block;
 		margin: 0;
 		font-size: 0.78rem;
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 	}
 
 	.perm-tags {
@@ -523,10 +488,10 @@
 	.perm-chip {
 		font-size: 0.72rem;
 		padding: 0.16rem 0.45rem;
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 4px;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 	}
 
 	.role-actions {
@@ -535,20 +500,14 @@
 		flex-shrink: 0;
 	}
 
-	.perm-form {
-		display: grid;
-		grid-template-columns: 1fr 1fr auto;
-		gap: 0.5rem;
-	}
 
 	.perm-form input,
-	.field input,
-	.field select {
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-subtle);
+	.field input {
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		padding: 0.45rem 0.65rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 		font-size: 0.84rem;
 	}
 
@@ -563,7 +522,7 @@
 		flex-direction: column;
 		gap: 0.35rem;
 		font-size: 0.8rem;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 	}
 
 	.perm-check-grid {
@@ -573,8 +532,8 @@
 		max-height: 220px;
 		overflow-y: auto;
 		padding: 0.5rem;
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 	}
 
@@ -583,18 +542,18 @@
 		align-items: center;
 		gap: 0.45rem;
 		font-size: 0.78rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 		cursor: pointer;
 	}
 
 	.error-text {
-		color: var(--danger);
+		color: var(--color-brand-danger-text);
 		font-size: 0.82rem;
 		margin: 0;
 	}
 
 	.muted {
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 		font-size: 0.82rem;
 		margin: 0;
 	}

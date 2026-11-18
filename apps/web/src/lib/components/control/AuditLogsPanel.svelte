@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SectionHeader from './SectionHeader.svelte';
+	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
@@ -88,36 +90,36 @@
 	}
 </script>
 
-<section class="panel-stack" aria-label="Audit log explorer">
-	<div class="section-header">
-		<div>
-			<h1 class="page-title">Audit Logs</h1>
-			<p class="page-subtitle">Immutable environment-scoped trail of authentication, credential, webhook, and role mutations.</p>
-		</div>
+<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Audit log explorer">
+	<SectionHeader title="Audit Logs" description="Immutable environment-scoped trail of authentication, credential, webhook, and role mutations.">
 		<div class="export-group">
 			<Button variant="outline" size="sm" disabled={logs.length === 0} onclick={handleExportCsv}>Export CSV</Button>
 			<Button variant="outline" size="sm" disabled={logs.length === 0} onclick={handleExportJson}>Export JSON</Button>
 		</div>
-	</div>
+	</SectionHeader>
 
 	<form
-		class="filter-bar"
+		class="flex min-w-0 flex-wrap items-center gap-2 [&>button]:h-9 [&>input]:h-9 [&>input]:max-w-full"
 		onsubmit={(e) => {
 			e.preventDefault();
 			offset = 0;
 			loadAuditLogs();
 		}}
 	>
-		<input type="search" bind:value={queryText} placeholder="Search event, actor ID, resource, metadata..." aria-label="Search audit logs" />
-		<select bind:value={actorType} aria-label="Actor type">
-			<option value="all">All actors</option>
-			<option value="developer">Developer</option>
-			<option value="user">User</option>
-			<option value="system">System</option>
-		</select>
-		<input type="text" bind:value={resourceType} placeholder="Resource type" aria-label="Resource type" />
-		<input type="datetime-local" bind:value={fromDate} aria-label="From date" />
-		<input type="datetime-local" bind:value={toDate} aria-label="To date" />
+		<input class="control-input" type="search" bind:value={queryText} placeholder="Search event, actor ID, resource, metadata..." aria-label="Search audit logs" />
+		<Dropdown
+			label="Actor type"
+			bind:value={actorType}
+			options={[
+				{ value: 'all', label: 'All actors' },
+				{ value: 'developer', label: 'Developer' },
+				{ value: 'user', label: 'User' },
+				{ value: 'system', label: 'System' }
+			]}
+			/>
+		<input class="control-input" type="text" bind:value={resourceType} placeholder="Resource type" aria-label="Resource type" />
+		<input class="control-input" type="datetime-local" bind:value={fromDate} aria-label="From date" />
+		<input class="control-input" type="datetime-local" bind:value={toDate} aria-label="To date" />
 		<Button type="submit" variant="primary" size="sm">Apply</Button>
 	</form>
 
@@ -179,26 +181,21 @@
 </section>
 
 <style>
-	.panel-stack { display: flex; flex-direction: column; gap: 1.25rem; }
-	.section-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-	.page-title { font-size: 1.75rem; font-weight: 600; color: #ffffff; margin: 0; }
-	.page-subtitle { font-size: 0.85rem; color: #71717a; margin: 0.25rem 0 0; }
 	.export-group { display: flex; gap: 0.5rem; }
-	.filter-bar { display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }
-	.filter-bar input, .filter-bar select { background-color: #15171b; border: 1px solid #23262e; border-radius: 6px; padding: 0.48rem 0.7rem; color: #f4f4f5; font-size: 0.8rem; outline: none; }
-	.filter-bar input[type='search'] { flex: 1; min-width: 220px; }
-	.table-wrap { background-color: #15171b; border: 1px solid #23262e; border-radius: 12px; overflow-x: auto; }
+	.control-input { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.48rem 0.7rem; color: var(--color-brand-text-primary); font-size: 0.8rem; outline: none; }
+	.control-input[type='search'] { flex: 1; min-width: 220px; }
+	.table-wrap { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; overflow-x: auto; }
 	.data-table { width: 100%; border-collapse: collapse; text-align: left; }
-	.data-table th { font-size: 0.72rem; color: #71717a; padding: 0.75rem 1rem; border-bottom: 1px solid #23262e; }
-	.data-table td { padding: 0.8rem 1rem; border-bottom: 1px solid #1f2228; font-size: 0.82rem; color: #d4d4d8; }
+	.data-table th { font-size: 0.72rem; color: var(--color-brand-text-secondary); padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-brand-border); }
+	.data-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--color-brand-border); font-size: 0.82rem; color: #d4d4d4; }
 	.mono { font-family: var(--font-mono); font-size: 0.76rem; }
 	.strong { color: #ffffff; }
-	.muted { color: #71717a; font-size: 0.78rem; }
+	.muted { color: var(--color-brand-text-secondary); font-size: 0.78rem; }
 	.row-actions { text-align: right; }
-	.mini-btn { background: transparent; border: 1px solid #2e333d; color: #d4d4d8; border-radius: 4px; padding: 0.22rem 0.55rem; font-size: 0.72rem; cursor: pointer; }
-	.meta-row td { background-color: #0b0c0e; }
-	.meta-row pre { margin: 0; font-size: 0.74rem; color: #a1a1aa; white-space: pre-wrap; }
-	.empty-surface { padding: 2.5rem; text-align: center; color: #71717a; background-color: #15171b; border: 1px solid #23262e; border-radius: 12px; font-size: 0.85rem; }
+	.mini-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; border-radius: 4px; padding: 0.22rem 0.55rem; font-size: 0.72rem; cursor: pointer; }
+	.meta-row td { background-color: var(--color-brand-surface); }
+	.meta-row pre { margin: 0; font-size: 0.74rem; color: var(--color-brand-text-secondary); white-space: pre-wrap; }
+	.empty-surface { padding: 2.5rem; text-align: center; color: var(--color-brand-text-secondary); background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; font-size: 0.85rem; }
 	.pagination-row { display: flex; align-items: center; justify-content: space-between; }
 	.page-btns { display: flex; gap: 0.5rem; }
 </style>

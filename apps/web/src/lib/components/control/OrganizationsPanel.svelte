@@ -1,4 +1,6 @@
 <script lang="ts">
+	import SectionHeader from './SectionHeader.svelte';
+	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -279,13 +281,9 @@
 	}
 </script>
 
-<section class="panel-stack" aria-label="Organizations directory">
-	<div class="panel-header">
-		<div>
-			<h1>Organizations</h1>
-			<p>Manage B2B workspaces, member roles, and replay-proof invitations in this environment.</p>
-		</div>
-		<div class="header-actions">
+<section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Organizations directory">
+	<SectionHeader title="Organizations" description="Manage B2B workspaces, member roles, and replay-proof invitations in this environment.">
+		<div class="flex min-w-0 flex-wrap items-center gap-2">
 			<div class="view-toggle" role="group" aria-label="Layout toggle">
 				<button type="button" class:active={viewMode === 'table'} onclick={() => (viewMode = 'table')}>
 					Table
@@ -307,7 +305,7 @@
 				</Button>
 			{/if}
 		</div>
-	</div>
+	</SectionHeader>
 
 	<div class="toolbar">
 		<input
@@ -507,20 +505,13 @@
 										<span class="row-sub">{member.email}</span>
 									</div>
 									<div class="row-controls">
-										<select
-											aria-label={`Role for ${member.email}`}
+										<Dropdown
+											label={`Role for ${member.email}`}
 											value={member.roles[0] ?? 'org:member'}
+											options={orgRoles.map((role) => ({ value: role.slug, label: role.slug }))}
 											disabled={!canMutate || busyAction}
-											onchange={(e) =>
-												handleMemberRoleChange(
-													member.id,
-													(e.currentTarget as HTMLSelectElement).value
-												)}
-										>
-											{#each orgRoles as role (role.id)}
-												<option value={role.slug}>{role.slug}</option>
-											{/each}
-										</select>
+											onchange={(role) => handleMemberRoleChange(member.id, role)}
+										/>
 										<Button
 											variant="outline"
 											size="sm"
@@ -538,7 +529,7 @@
 
 				<div class="drawer-section">
 					<h3>Invite Member</h3>
-					<form class="invite-form" onsubmit={handleCreateInvitation}>
+					<form class="invite-form grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_4.5rem_auto] [&>button]:h-9 [&>input]:h-9 [&>input]:min-w-0" onsubmit={handleCreateInvitation}>
 						<input
 							type="email"
 							required
@@ -546,11 +537,12 @@
 							bind:value={inviteEmail}
 							disabled={!canMutate || busyAction}
 						/>
-						<select bind:value={inviteRole} disabled={!canMutate || busyAction} aria-label="Invite role">
-							{#each orgRoles as role (role.id)}
-								<option value={role.slug}>{role.slug}</option>
-							{/each}
-						</select>
+						<Dropdown
+							label="Invite role"
+							bind:value={inviteRole}
+							options={orgRoles.map((role) => ({ value: role.slug, label: role.slug }))}
+							disabled={!canMutate || busyAction}
+						/>
 						<input
 							type="number"
 							min="1"
@@ -614,43 +606,10 @@
 {/if}
 
 <style>
-	.panel-stack {
-		display: flex;
-		flex-direction: column;
-		gap: 1.25rem;
-	}
-
-	.panel-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 1rem;
-		flex-wrap: wrap;
-	}
-
-	.panel-header h1 {
-		margin: 0;
-		font-size: 1.35rem;
-		font-weight: 600;
-		color: var(--text-primary);
-	}
-
-	.panel-header p {
-		margin: 0.25rem 0 0;
-		font-size: 0.875rem;
-		color: var(--text-secondary);
-	}
-
-	.header-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
 	.view-toggle {
 		display: inline-flex;
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		padding: 2px;
 	}
@@ -658,7 +617,7 @@
 	.view-toggle button {
 		background: transparent;
 		border: none;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 		padding: 0.3rem 0.65rem;
 		font-size: 0.78rem;
 		border-radius: 4px;
@@ -666,8 +625,8 @@
 	}
 
 	.view-toggle button.active {
-		background: var(--bg-elevated);
-		color: var(--text-primary);
+		background: var(--color-brand-surface-raised);
+		color: var(--color-brand-text-primary);
 	}
 
 	.toolbar {
@@ -682,41 +641,41 @@
 		flex: 1;
 		min-width: 220px;
 		max-width: 380px;
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		padding: 0.5rem 0.75rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 		font-size: 0.85rem;
 	}
 
 	.count-pill {
 		font-size: 0.78rem;
-		color: var(--text-muted);
-		border: 1px solid var(--border-subtle);
-		background: var(--bg-surface);
+		color: var(--color-brand-text-muted);
+		border: 1px solid var(--color-brand-border);
+		background: var(--color-brand-surface-card);
 		padding: 0.3rem 0.6rem;
 		border-radius: 999px;
 	}
 
 	.empty-box {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		padding: 2.25rem 1.5rem;
 		text-align: center;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 	}
 
 	.empty-box strong {
 		display: block;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 		margin-bottom: 0.35rem;
 	}
 
 	.table-wrap {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		overflow-x: auto;
 	}
@@ -731,14 +690,14 @@
 	.data-table td {
 		padding: 0.75rem 1rem;
 		text-align: left;
-		border-bottom: 1px solid var(--border-subtle);
+		border-bottom: 1px solid var(--color-brand-border);
 	}
 
 	.data-table th {
 		font-size: 0.74rem;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 		font-weight: 500;
 	}
 
@@ -757,8 +716,8 @@
 	}
 
 	.org-card {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		padding: 1rem;
 		display: flex;
@@ -776,14 +735,14 @@
 	.org-card-top h3 {
 		margin: 0 0 0.2rem;
 		font-size: 0.95rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 
 	.org-card-meta {
 		display: flex;
 		gap: 0.75rem;
 		font-size: 0.78rem;
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 	}
 
 	.modal-form {
@@ -797,31 +756,29 @@
 		flex-direction: column;
 		gap: 0.35rem;
 		font-size: 0.8rem;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 	}
 
 	.field input,
 	.field textarea,
-	.invite-form input,
-	.invite-form select,
-	.row-controls select {
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-subtle);
+	.invite-form input {
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		padding: 0.45rem 0.65rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 		font-size: 0.84rem;
 		font-family: inherit;
 	}
 
 	.error-text {
-		color: var(--danger);
+		color: var(--color-brand-danger-text);
 		font-size: 0.82rem;
 		margin: 0;
 	}
 
 	.muted {
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 		font-size: 0.84rem;
 		margin: 0;
 	}
@@ -837,8 +794,8 @@
 
 	.drawer-panel {
 		width: min(620px, 100%);
-		background: var(--bg-sidebar);
-		border-left: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border-left: 1px solid var(--color-brand-border);
 		display: flex;
 		flex-direction: column;
 		height: 100%;
@@ -847,7 +804,7 @@
 
 	.drawer-header {
 		padding: 1.1rem 1.25rem;
-		border-bottom: 1px solid var(--border-subtle);
+		border-bottom: 1px solid var(--color-brand-border);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -856,19 +813,19 @@
 	.drawer-header h2 {
 		margin: 0;
 		font-size: 1.08rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 
 	.drawer-sub {
 		margin: 0.2rem 0 0;
 		font-size: 0.78rem;
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 	}
 
 	.close-btn {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
-		color: var(--text-secondary);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
+		color: var(--color-brand-text-secondary);
 		padding: 0.35rem 0.7rem;
 		border-radius: 6px;
 		cursor: pointer;
@@ -890,8 +847,8 @@
 	}
 
 	.drawer-section {
-		background: var(--bg-surface);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface-card);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 8px;
 		padding: 1rem;
 		display: flex;
@@ -902,7 +859,7 @@
 	.drawer-section h3 {
 		margin: 0;
 		font-size: 0.9rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 
 	.two-col {
@@ -923,8 +880,8 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.55rem 0.7rem;
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-subtle);
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border);
 		border-radius: 6px;
 		flex-wrap: wrap;
 	}
@@ -932,13 +889,13 @@
 	.mini-row strong {
 		display: block;
 		font-size: 0.84rem;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 
 	.row-sub {
 		display: block;
 		font-size: 0.76rem;
-		color: var(--text-muted);
+		color: var(--color-brand-text-muted);
 	}
 
 	.row-controls {
@@ -947,12 +904,6 @@
 		gap: 0.5rem;
 	}
 
-	.invite-form {
-		display: grid;
-		grid-template-columns: 1fr auto 72px auto;
-		gap: 0.5rem;
-		align-items: center;
-	}
 
 	.token-box {
 		display: flex;
@@ -960,21 +911,21 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.7rem;
-		background: var(--bg-canvas);
-		border: 1px solid var(--border-strong);
+		background: var(--color-brand-surface);
+		border: 1px solid var(--color-brand-border-strong);
 		border-radius: 6px;
 	}
 
 	.token-box strong {
 		display: block;
 		font-size: 0.78rem;
-		color: var(--text-secondary);
+		color: var(--color-brand-text-secondary);
 		margin-bottom: 0.25rem;
 	}
 
 	.token-box code {
 		font-size: 0.78rem;
 		word-break: break-all;
-		color: var(--text-primary);
+		color: var(--color-brand-text-primary);
 	}
 </style>
