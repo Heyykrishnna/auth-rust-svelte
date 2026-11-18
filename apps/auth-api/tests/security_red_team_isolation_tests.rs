@@ -323,7 +323,7 @@ mod live_phase10_red_team_suite {
         .unwrap();
 
         sqlx::query(
-            "INSERT INTO workspace_members (workspace_id, developer_id, role) VALUES ($1, $2, 'owner')",
+            "INSERT INTO developer_workspace_members (workspace_id, developer_id, role) VALUES ($1, $2, 'owner')",
         )
         .bind(ws_a_uuid)
         .bind(dev_a_uuid)
@@ -331,7 +331,7 @@ mod live_phase10_red_team_suite {
         .await
         .unwrap();
         sqlx::query(
-            "INSERT INTO workspace_members (workspace_id, developer_id, role) VALUES ($1, $2, 'owner')",
+            "INSERT INTO developer_workspace_members (workspace_id, developer_id, role) VALUES ($1, $2, 'owner')",
         )
         .bind(ws_b_uuid)
         .bind(dev_b_uuid)
