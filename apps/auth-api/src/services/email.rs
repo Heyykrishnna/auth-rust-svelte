@@ -6,6 +6,171 @@ use tracing::{error, info, warn};
 use crate::config::AppConfig;
 use crate::errors::AppError;
 
+#[derive(Debug, Clone)]
+pub struct EmailBrand {
+    pub app_name: String,
+    pub primary_color: String,
+    pub support_email: Option<String>,
+}
+
+impl EmailBrand {
+    pub fn from_environment_branding(branding: &serde_json::Value, fallback_name: &str) -> Self {
+        let app_name = branding
+            .get("app_name")
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or(fallback_name)
+            .to_string();
+        let primary_color = branding
+            .get("primary_color")
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|s| s.starts_with('#') && (s.len() == 4 || s.len() == 7))
+            .unwrap_or("#8b5cf6")
+            .to_string();
+        let support_email = branding
+            .get("support_email")
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(ToString::to_string);
+        Self {
+            app_name,
+            primary_color,
+            support_email,
+        }
+    }
+}
+
+pub async fn send_branded_otp_email(
+    config: &AppConfig,
+    brand: &EmailBrand,
+    to_email: &str,
+    to_name: &str,
+    otp: &str,
+) -> Result<(), AppError> {
+    let host = match &config.smtp_host {
+        Some(h) if !h.trim().is_empty() => h.trim(),
+        _ => {
+            warn!(
+                to = to_email,
+                brand = %brand.app_name,
+                "SMTP host not configured; skipping branded OTP email dispatch"
+            );
+            return Ok(());
+        }
+    };
+
+    let from_header = if config.smtp_from.contains('<') {
+        config.smtp_from.clone()
+    } else {
+        format!("{} <{}>", brand.app_name, config.smtp_from)
+    };
+    let to_header = if to_name.trim().is_empty() {
+        to_email.to_string()
+    } else {
+        format!("{} <{}>", to_name.trim(), to_email)
+    };
+    let support_line = brand
+        .support_email
+        .as_deref()
+        .map(|s| format!("\n\nNeed help? Contact {s}."))
+        .unwrap_or_default();
+    let subject = format!("{} - Your Verification Code", brand.app_name);
+    let text_body = format!(
+        "Hello {},\n\nYour {} verification code is: {}\n\nThis code will expire in 10 minutes.{}",
+        if to_name.trim().is_empty() {
+            "there"
+        } else {
+            to_name.trim()
+        },
+        brand.app_name,
+        otp,
+        support_line
+    );
+    let html_body = format!(
+        "<!DOCTYPE html><html><body style=\"font-family:sans-serif;background:#0a0a14;color:#f1f5f9;padding:32px;\"><div style=\"max-width:520px;margin:0 auto;background:#121226;border-radius:12px;padding:32px;text-align:center;\"><h2 style=\"color:{};margin-top:0;\">{}</h2><p>Use the verification code below:</p><div style=\"font-family:monospace;font-size:32px;font-weight:700;letter-spacing:6px;margin:20px 0;\">{}</div><p style=\"color:#94a3b8;font-size:13px;\">This code expires in 10 minutes.</p></div></body></html>",
+        brand.primary_color, brand.app_name, otp
+    );
+
+    send_smtp_message(
+        config,
+        host,
+        from_header,
+        to_header,
+        to_email,
+        subject,
+        text_body,
+        html_body,
+    )
+    .await
+}
+
+pub async fn send_branded_password_reset_email(
+    config: &AppConfig,
+    brand: &EmailBrand,
+    to_email: &str,
+    to_name: &str,
+    reset_token: &str,
+) -> Result<(), AppError> {
+    let host = match &config.smtp_host {
+        Some(h) if !h.trim().is_empty() => h.trim(),
+        _ => {
+            warn!(
+                to = to_email,
+                brand = %brand.app_name,
+                "SMTP host not configured; skipping branded password reset email dispatch"
+            );
+            return Ok(());
+        }
+    };
+
+    let from_header = if config.smtp_from.contains('<') {
+        config.smtp_from.clone()
+    } else {
+        format!("{} <{}>", brand.app_name, config.smtp_from)
+    };
+    let to_header = if to_name.trim().is_empty() {
+        to_email.to_string()
+    } else {
+        format!("{} <{}>", to_name.trim(), to_email)
+    };
+    let base_origin = config
+        .cors_origins
+        .first()
+        .cloned()
+        .unwrap_or_else(|| "http://localhost:3000".to_string());
+    let reset_url = format!("{}/reset-password?token={}", base_origin, reset_token);
+    let subject = format!("{} - Password Reset Request", brand.app_name);
+    let text_body = format!(
+        "Hello {},\n\nUse the link below to reset your {} password:\n\n{}\n\nThis link expires in 15 minutes.",
+        if to_name.trim().is_empty() {
+            "there"
+        } else {
+            to_name.trim()
+        },
+        brand.app_name,
+        reset_url
+    );
+    let html_body = format!(
+        "<!DOCTYPE html><html><body style=\"font-family:sans-serif;background:#0a0a14;color:#f1f5f9;padding:32px;\"><div style=\"max-width:520px;margin:0 auto;background:#121226;border-radius:12px;padding:32px;text-align:center;\"><h2 style=\"color:{};margin-top:0;\">{}</h2><p>Reset your password using the button below:</p><a href=\"{}\" style=\"display:inline-block;background:{};color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;\">Reset Password</a><p style=\"color:#94a3b8;font-size:13px;margin-top:20px;\">This link expires in 15 minutes.</p></div></body></html>",
+        brand.primary_color, brand.app_name, reset_url, brand.primary_color
+    );
+
+    send_smtp_message(
+        config,
+        host,
+        from_header,
+        to_header,
+        to_email,
+        subject,
+        text_body,
+        html_body,
+    )
+    .await
+}
+
 pub async fn send_registration_otp(
     config: &AppConfig,
     to_email: &str,
