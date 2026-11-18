@@ -1,6 +1,7 @@
 pub mod audit;
 pub mod authentication;
 pub mod authorization;
+pub mod backend_sync;
 pub mod client_auth;
 pub mod control_auth;
 pub mod control_plane;
@@ -8,7 +9,9 @@ pub mod cookies;
 pub mod credentials;
 pub mod domains;
 pub mod email;
+pub mod oidc_provider;
 pub mod sessions;
 pub mod signing_keys;
 pub mod social_oauth;
 pub mod tokens;
+pub mod webhooks;
