@@ -6,7 +6,9 @@ pub mod users;
 
 use axum::routing::get;
 use axum::Router;
+use axum_prometheus::metrics_exporter_prometheus::PrometheusHandle;
 use axum_prometheus::PrometheusMetricLayer;
+use std::sync::OnceLock;
 use std::time::Duration;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
@@ -19,8 +21,13 @@ use crate::middleware::{
 };
 use crate::AppState;
 
+static PROMETHEUS_PAIR: OnceLock<(PrometheusMetricLayer<'static>, PrometheusHandle)> =
+    OnceLock::new();
+
 pub fn build_router(state: AppState) -> Router {
-    let (prometheus_layer, metrics_handle) = PrometheusMetricLayer::pair();
+    let (prometheus_layer, metrics_handle) = PROMETHEUS_PAIR
+        .get_or_init(PrometheusMetricLayer::pair)
+        .clone();
 
     let authenticated_api = Router::new()
         .nest("/users", users::routes())
@@ -31,6 +38,10 @@ pub fn build_router(state: AppState) -> Router {
 
     Router::new()
         .merge(health::routes())
+        .route(
+            "/.well-known/jwks.json",
+            get(crate::handlers::client_auth::jwks_endpoint),
+        )
         .route(
             "/metrics",
             get(move || async move { metrics_handle.render() }),

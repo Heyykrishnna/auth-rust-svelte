@@ -1,3 +1,4 @@
+pub mod client_auth;
 pub mod control_plane;
 pub mod csrf;
 pub mod health;
