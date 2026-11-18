@@ -92,7 +92,7 @@ governor = "0.6"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
-axum-test = "14"
+axum-test = "21"
 
 [profile.release]
 opt-level = 3
