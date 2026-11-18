@@ -104,3 +104,10 @@ export function maskSecretPrefix(prefix: string): string {
 	return `${prefix}••••••••••••••••••••••••`;
 }
 
+
+export function parseLineList(raw: string): string[] {
+	return raw
+		.split(/[\n,]/)
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+}
