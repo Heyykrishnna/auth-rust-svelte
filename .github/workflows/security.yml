@@ -47,6 +47,10 @@ jobs:
           cache: npm
       - name: Run npm audit
         run: npm audit --workspaces --audit-level=high
+      - name: Verify Picomatch security regressions
+        run: npm run test:security
+      - name: Require review when upstream Picomatch changes
+        run: test "$(npm view picomatch version)" = "4.0.7"
 
   gitleaks:
     name: Secret Leak Detection

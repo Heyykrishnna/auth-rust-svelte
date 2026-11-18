@@ -12,14 +12,18 @@
     "dev:api": "cd apps/auth-api && cargo watch -x run",
     "build": "npm -w @secure-auth/shared-types run check && npm -w @secure-auth/web run build",
     "check": "npm -w @secure-auth/shared-types run check && npm -w @secure-auth/web run check",
-    "test": "npm -w @secure-auth/web run test",
-    "lint": "npm -w @secure-auth/web run lint"
+    "test": "npm run test:security && npm -w @secure-auth/web run test",
+    "lint": "npm -w @secure-auth/web run lint",
+    "check:vendor": "node vendor/picomatch/scripts/generate.mjs --check",
+    "test:security": "node --test vendor/picomatch/test/*.test.cjs"
   },
   "devDependencies": {
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "picomatch": "file:vendor/picomatch"
   },
   "overrides": {
-    "eslint": "^10.9.1"
+    "eslint": "^10.9.1",
+    "picomatch": "$picomatch"
   },
   "engines": {
     "node": "^22.17.0 || >=24.0.0"

@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY packages/shared-types ./packages/shared-types
+COPY vendor/picomatch ./vendor/picomatch
 COPY apps/web/package.json ./apps/web/package.json
 
 RUN npm ci --ignore-scripts
@@ -19,10 +20,11 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY packages/shared-types ./packages/shared-types
+COPY vendor/picomatch ./vendor/picomatch
 COPY apps/web/package.json ./apps/web/package.json
 RUN npm ci --omit=dev --ignore-scripts && \
     npm cache clean --force && \
-    rm -rf /usr/local/lib/node_modules/npm /opt/yarn* && \
+    rm -rf /usr/local/lib/node_modules/npm /opt/yarn* /app/vendor && \
     rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 COPY --from=builder /app/apps/web/build ./build
