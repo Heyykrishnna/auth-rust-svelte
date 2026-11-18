@@ -32,6 +32,30 @@ where
     Ok(membership)
 }
 
+pub async fn find_application_user_by_id<'e, E>(
+    executor: E,
+    environment_id: EnvironmentId,
+    app_user_id: AppUserId,
+) -> Result<Option<ApplicationUser>, AppError>
+where
+    E: PgExecutor<'e>,
+{
+    let membership = sqlx::query_as::<_, ApplicationUser>(
+        r#"
+        SELECT id, environment_id, user_id, status, external_id, public_metadata, private_metadata, version, joined_at, last_active_at, created_at, updated_at
+        FROM application_users
+        WHERE environment_id = $1 AND id = $2
+        LIMIT 1
+        "#,
+    )
+    .bind(environment_id)
+    .bind(app_user_id)
+    .fetch_optional(executor)
+    .await?;
+
+    Ok(membership)
+}
+
 pub async fn find_application_user_by_user_id<'e, E>(
     executor: E,
     environment_id: EnvironmentId,

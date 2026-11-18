@@ -13,3 +13,4 @@ pub mod tenant_memberships;
 pub mod tenant_rbac;
 pub mod tenants;
 pub mod users;
+pub mod webhooks;
