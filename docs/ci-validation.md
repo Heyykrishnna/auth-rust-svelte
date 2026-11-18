@@ -8,7 +8,7 @@ The [latest original CI run](https://github.com/Heyykrishnna/auth-rust-svelte/ac
 
 ## Repairs
 
-- Updated the Rust builder to 1.96 and matching Debian runtime libraries. Builds use the committed lockfile, compile both executables, and retain Cargo caches without suppressing errors. Both Dockerfile copies stay synchronized. The runtime includes curl for the existing Compose health check.
+- Updated the Rust builder to 1.96 and a minimal Alpine runtime using static musl binaries. Builds use the committed lockfile, compile both executables, and retain Cargo caches without suppressing errors. Both Dockerfile copies stay synchronized. The Compose health check uses wget from the runtime.
 - Added a development image with cargo-watch, selected the API as the default Cargo executable, and corrected the frontend workspace mount and working directory in the Compose development override.
 - Migrated to patched SvelteKit 3, Vite 8, Vitest 5, TypeScript 6, SQLx 0.9, Validator, and compatible telemetry dependencies. Removed unused OAuth dependencies that brought obsolete TLS and RSA implementations. Updated SQLx's optional SQLite dependency in the lockfile to its patched compatible release.
 - Disabled stripping for build-time Rust dependencies to avoid the macOS proc-macro loader failure tracked in [rust-lang/rust#157750](https://github.com/rust-lang/rust/issues/157750). Production executable stripping stays enabled.
@@ -49,6 +49,8 @@ The [latest original CI run](https://github.com/Heyykrishnna/auth-rust-svelte/ac
 
 Database tests used isolated host PostgreSQL 18 and Redis because local Docker storage is read-only. CI retains PostgreSQL 16. Full Linux container builds and Trivy scans could not execute locally; the new GitHub runs are being checked for those results. The isolated host web build verifies the Dockerfile's dependency/layout/lifecycle sequence, not its Alpine image.
 
+A later GitHub run successfully built both initial container images and passed Rust tests, web checks, workflow/infrastructure validation, secret detection, and the Rust audit. It exposed a TCP-reset race in the new web readiness probe, now fixed with bounded retries for all connection errors. It also exposed vulnerabilities in bundled global npm tooling and the Debian API runtime. Follow-up changes remove unused npm/Yarn from the web runtime and switch the API to static musl binaries in Alpine; these changes require a new scan.
+
 SvelteKit currently prints a deprecation notice for the preserved `$lib` and other configured import aliases. They continue to pass type checking, builds, and runtime smoke tests. Kustomize also prints existing `commonLabels` deprecation notices; rendering succeeds.
 
 ## Remaining blockers and external prerequisites
@@ -57,4 +59,4 @@ The [Picomatch advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) list
 
 The README also has a pre-existing link to a missing `LICENSE` file. No legal license text was invented or changed as part of the workflow repair.
 
-The implementation was committed as `7a2a52fa03a55ddb0536c636ec6cde3127e5668c` and the local `origin/main` points to that commit. GitHub verification is being checked separately; registry publication, manifest push, and cluster rollout have not yet been verified. GHCR access, main-branch bot-write policy, real production domains/secrets, and Argo CD cluster health require the configured repository and deployment environment; see [deployment.md](deployment.md).
+The implementation was committed as `7a2a52fa03a55ddb0536c636ec6cde3127e5668c` with subsequent follow-up commits on `main`. GitHub verification is being checked separately; registry publication, manifest push, and cluster rollout have not yet been verified. GHCR access, main-branch bot-write policy, real production domains/secrets, and Argo CD cluster health require the configured repository and deployment environment; see [deployment.md](deployment.md).

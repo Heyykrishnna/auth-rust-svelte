@@ -1,4 +1,6 @@
-FROM rust:1.96.0-bookworm AS builder
+FROM rust:1.96.0-alpine AS builder
+
+RUN apk add --no-cache musl-dev
 
 WORKDIR /app
 
@@ -17,11 +19,9 @@ FROM builder AS development
 
 RUN cargo install cargo-watch --version 8.5.3 --locked
 
-FROM debian:bookworm-slim AS runtime
+FROM alpine:3.24 AS runtime
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates curl libssl3 && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk upgrade --no-cache && apk add --no-cache ca-certificates
 
 WORKDIR /app
 

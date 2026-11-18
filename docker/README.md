@@ -6,9 +6,9 @@ This directory contains containerization definitions, guidelines, and production
 
 ### 1. `auth-api` (`docker/Dockerfile.api` & `apps/auth-api/Dockerfile`)
 
-- **Base image**: `rust:1.96.0-bookworm` (builder) → `debian:bookworm-slim` (runtime)
+- **Base image**: `rust:1.96.0-alpine` (builder) → `alpine:3.24` (runtime)
 - **Features**:
-  - Debian runtime matching the builder ABI, with CA certificates, OpenSSL, and curl for the Compose health check
+  - Static musl binaries in a minimal Alpine runtime with CA certificates and wget for the Compose health check
   - Multi-stage build with BuildKit Cargo cache mounts
   - Runs as non-root user (`65534:65534`)
   - Both `auth-api` and `webhook-worker` binaries plus database migrations are included

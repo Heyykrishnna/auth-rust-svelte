@@ -62,7 +62,7 @@ secure-auth-platform/
 │       └── release.yml    # GitOps production manifest tag bump
 │
 ├── docker/
-│   ├── Dockerfile.api     # Multi-stage Debian Rust build
+│   ├── Dockerfile.api     # Multi-stage Alpine Rust build
 │   ├── Dockerfile.web     # Multi-stage Alpine Node.js build
 │   └── README.md
 │
