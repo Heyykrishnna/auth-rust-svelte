@@ -63,7 +63,7 @@ jobs:
             fi
           done
           echo "ready=true" >> "$GITHUB_OUTPUT"
-      - uses: imranismail/setup-kustomize@2ba527d4d055ab63514ba50a99456fc35684947f
+      - uses: imranismail/setup-kustomize@53f941b41dca13ed61874bbc6b4b6e1562877530
         if: steps.checks.outputs.ready == 'true'
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
         if: steps.checks.outputs.ready == 'true'
