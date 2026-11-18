@@ -1,9 +1,9 @@
+use crate::errors::ApiErrorEnvelope;
 use axum::extract::Request;
 use axum::http::{Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use rand_core::{OsRng, RngCore};
-use serde_json::json;
 use subtle::ConstantTimeEq;
 
 static CSRF_COOKIE: &str = "csrf_token";
@@ -49,9 +49,15 @@ pub async fn csrf_protection_middleware(req: Request, next: Next) -> Response {
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
 
+    let request_id = req
+        .headers()
+        .get("x-request-id")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
     match (cookie_token, header_token) {
         (Some(cookie), Some(header)) if constant_time_eq(&cookie, &header) => next.run(req).await,
-        _ => csrf_rejection(),
+        _ => csrf_rejection(request_id),
     }
 }
 
@@ -97,14 +103,14 @@ fn constant_time_eq(a: &str, b: &str) -> bool {
     a_bytes.ct_eq(b_bytes).into()
 }
 
-fn csrf_rejection() -> Response {
-    let body = json!({
-        "error": {
-            "code": "CSRF_TOKEN_INVALID",
-            "message": "Missing or invalid CSRF token"
-        },
-        "status": 403
-    });
+fn csrf_rejection(request_id: Option<String>) -> Response {
+    let body = ApiErrorEnvelope::new(
+        StatusCode::FORBIDDEN,
+        "CSRF_TOKEN_INVALID",
+        "Missing or invalid CSRF token",
+        request_id,
+        None,
+    );
     (StatusCode::FORBIDDEN, axum::Json(body)).into_response()
 }
 

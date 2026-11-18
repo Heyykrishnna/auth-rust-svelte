@@ -1,7 +1,43 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use serde_json::json;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ApiErrorBody {
+    pub code: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ApiErrorEnvelope {
+    pub error: ApiErrorBody,
+    pub status: u16,
+}
+
+impl ApiErrorEnvelope {
+    pub fn new(
+        status: StatusCode,
+        code: impl Into<String>,
+        message: impl Into<String>,
+        request_id: Option<String>,
+        details: Option<serde_json::Value>,
+    ) -> Self {
+        Self {
+            error: ApiErrorBody {
+                code: code.into(),
+                message: message.into(),
+                request_id,
+                details,
+            },
+            status: status.as_u16(),
+        }
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum AppError {
@@ -54,9 +90,9 @@ pub enum AppError {
     Internal(String),
 }
 
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let (status, code, message) = match &self {
+impl AppError {
+    pub fn to_envelope(&self, request_id: Option<String>) -> (StatusCode, ApiErrorEnvelope) {
+        let (status, code, message) = match self {
             AppError::UserNotFound => (StatusCode::NOT_FOUND, "USER_NOT_FOUND", self.to_string()),
             AppError::InvalidCredentials => (
                 StatusCode::UNAUTHORIZED,
@@ -133,14 +169,20 @@ impl IntoResponse for AppError {
             }
         };
 
-        let body = json!({
-            "error": {
-                "code": code,
-                "message": message,
-            },
-            "status": status.as_u16(),
-        });
+        (
+            status,
+            ApiErrorEnvelope::new(status, code, message, request_id, None),
+        )
+    }
 
-        (status, axum::Json(body)).into_response()
+    pub fn into_response_with_request_id(self, request_id: Option<String>) -> Response {
+        let (status, envelope) = self.to_envelope(request_id);
+        (status, axum::Json(envelope)).into_response()
+    }
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        self.into_response_with_request_id(None)
     }
 }
