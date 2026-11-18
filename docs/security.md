@@ -10,18 +10,19 @@ The platform enforces fine-grained authorization via role-to-permission mapping:
 
 ### 1.1 Permission Matrix
 
-| Permission | Description | User | Moderator | Admin |
-|------------|-------------|:----:|:---------:|:-----:|
-| `user:read` | Read own profile and basic user info | ✅ | ✅ | ✅ |
-| `user:write` | Update own profile (name, avatar) | ✅ | ✅ | ✅ |
-| `session:read` | List own active sessions | ✅ | ✅ | ✅ |
-| `session:delete` | Revoke own sessions | ✅ | ✅ | ✅ |
-| `user:suspend` | Suspend or flag abusive accounts | ❌ | ✅ | ✅ |
-| `admin:access` | View admin dashboard & system metrics | ❌ | ❌ | ✅ |
-| `user:delete` | Permanently delete user accounts | ❌ | ❌ | ✅ |
-| `audit:read` | Inspect system-wide security audit logs | ❌ | ❌ | ✅ |
+| Permission       | Description                             | User | Moderator | Admin |
+| ---------------- | --------------------------------------- | :--: | :-------: | :---: |
+| `user:read`      | Read own profile and basic user info    |  ✅  |    ✅     |  ✅   |
+| `user:write`     | Update own profile (name, avatar)       |  ✅  |    ✅     |  ✅   |
+| `session:read`   | List own active sessions                |  ✅  |    ✅     |  ✅   |
+| `session:delete` | Revoke own sessions                     |  ✅  |    ✅     |  ✅   |
+| `user:suspend`   | Suspend or flag abusive accounts        |  ❌  |    ✅     |  ✅   |
+| `admin:access`   | View admin dashboard & system metrics   |  ❌  |    ❌     |  ✅   |
+| `user:delete`    | Permanently delete user accounts        |  ❌  |    ❌     |  ✅   |
+| `audit:read`     | Inspect system-wide security audit logs |  ❌  |    ❌     |  ✅   |
 
 ### 1.2 Enforcing Authorization in Axum
+
 Permissions are resolved during JWT decoding or database extraction and enforced via Axum middleware:
 
 ```rust
@@ -37,13 +38,13 @@ Router::new()
 
 Endpoints susceptible to brute force or credential stuffing attacks are strictly throttled using a Redis-backed token bucket algorithm:
 
-| Endpoint | Window | Max Requests | Keying Strategy | Violation Action |
-|----------|--------|--------------|-----------------|------------------|
-| `/api/auth/login` | 60s | 5 requests | IP + Email | 429 Too Many Requests + exponential backoff |
-| `/api/auth/register` | 600s | 3 registrations | IP | 429 Too Many Requests |
-| `/api/auth/password-reset` | 300s | 3 requests | Email / IP | 429 Too Many Requests |
-| `/api/auth/refresh` | 60s | 30 requests | Session / IP | 429 Too Many Requests |
-| General API endpoints | 60s | 120 requests | User ID / IP | 429 Too Many Requests |
+| Endpoint                   | Window | Max Requests    | Keying Strategy | Violation Action                            |
+| -------------------------- | ------ | --------------- | --------------- | ------------------------------------------- |
+| `/api/auth/login`          | 60s    | 5 requests      | IP + Email      | 429 Too Many Requests + exponential backoff |
+| `/api/auth/register`       | 600s   | 3 registrations | IP              | 429 Too Many Requests                       |
+| `/api/auth/password-reset` | 300s   | 3 requests      | Email / IP      | 429 Too Many Requests                       |
+| `/api/auth/refresh`        | 60s    | 30 requests     | Session / IP    | 429 Too Many Requests                       |
+| General API endpoints      | 60s    | 120 requests    | User ID / IP    | 429 Too Many Requests                       |
 
 ---
 
@@ -67,6 +68,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 Every security-sensitive event produces an immutable audit record stored in the `audit_logs` table and forwarded to Loki:
 
 ### Logged Events
+
 - `AUTH_LOGIN_SUCCESS` & `AUTH_LOGIN_FAILURE`
 - `AUTH_LOGOUT`
 - `TOKEN_ROTATED` & `TOKEN_REUSE_DETECTED`
@@ -75,6 +77,7 @@ Every security-sensitive event produces an immutable audit record stored in the 
 - `USER_SUSPENDED` / `USER_DELETED`
 
 ### Audit Schema
+
 ```sql
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -109,13 +112,12 @@ The platform implements automated security verification on every pull request an
 4. **Container Image Scanning**: `trivy` inspects Docker images for OS-level and application vulnerabilities, publishing SARIF reports directly to GitHub Security.
 5. **SBOM**: Generates Software Bill of Materials in SPDX format with 90-day retention.
 
-
 ### Test fixture findings
 
 `.gitleaksignore` lists exact commit/path/rule/line fingerprints for reviewed synthetic test data: test JWT/encryption keys, dummy token hashes, sample publishable keys, the frontend one-time-key test, and the historic CI test JWT. These exclusions do not allow entire paths or secret patterns. Full Git history remains scanned; a new finding at another fingerprint fails the job. Review any additional exclusion against its original source before adding it.
 
 ### Outstanding upstream advisories
 
-As checked on 2026-11-18, [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) affects Picomatch through 4.0.7 and lists no patched release. It is pulled in by frontend development tooling. The full Node audit remains enforced and fails until an upstream fix is available; production-only auditing is a separate check and does not replace it.
+As checked on 2026-11-18, [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) affects Picomatch through 4.0.7 and lists no patched upstream release. The frontend tooling uses a [private, reproducible patch](../vendor/picomatch/README.md) through a root npm override. It removes the affected nested wildcard repetition, retains the upstream license, and passes exploit regressions and all 1,983 upstream compatibility tests. The complete Node audit remains enforced and reports zero vulnerabilities with the patched dependency. CI checks patch integrity and requires review when the upstream latest release changes.
 
 The Rust audit also reports [RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543), an unmaintained warning for Chrono. It is visible in audit output. Vulnerability and unsoundness findings remain blocking.

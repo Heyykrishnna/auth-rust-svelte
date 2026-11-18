@@ -20,43 +20,43 @@ The [latest original CI run](https://github.com/Heyykrishnna/auth-rust-svelte/ac
 
 ## Verification
 
-| Check | Outcome |
-| --- | --- |
-| `npm ci` | Passed |
-| `npm run check` | Passed; zero Svelte errors/warnings in diagnostics |
-| `npm run lint` | Passed |
-| `npm test` | Passed: 37 tests, 8 files |
-| `npm run build` | Passed |
-| Isolated web Dockerfile install/build/runtime stages reproduced on host | Passed, including production-only install with zero audit findings |
-| Built web HTTP smoke test | Passed: five public routes return 200; unauthenticated dashboard returns 303 |
-| `cargo fmt --manifest-path apps/auth-api/Cargo.toml --check` | Passed |
-| `cargo clippy --locked --manifest-path apps/auth-api/Cargo.toml --all-targets --all-features -- -D warnings` | Passed |
-| `cargo test --locked --manifest-path apps/auth-api/Cargo.toml --all-targets --all-features` | Passed: 44 tests; database cases run separately |
-| Database tests with `TEST_DATABASE_URL`, `--ignored --test-threads=1` | Passed: all 19, twice consecutively on the same database after fixture repair |
-| `cargo build --locked --manifest-path apps/auth-api/Cargo.toml --release --bins` | Passed after the build-time stripping fix; both executables built |
-| `cargo audit --deny unsound` | Passed; Chrono unmaintained warning remains visible |
-| `npm audit --workspaces --audit-level=high` | Fails on the unpatched Picomatch advisory; 15 high findings including affected dependents, zero critical/moderate findings |
-| `actionlint` 1.7.12 | Passed for all three workflows |
-| Prettier checks of changed workflow/package/Compose configuration | Passed |
-| Gitleaks 8.30.1, full Git history | Passed: 92 commits scanned, no unexcluded findings |
-| Helm lint: default, development, production | Passed |
-| Helm production template rendering | Passed |
-| Kustomize: development and production | Passed |
-| Production image rewrite in temporary overlay | Passed: API and worker share the API tag; frontend uses the web tag |
-| Release script scenarios | Passed: 14 cases covering valid/invalid/injected tags, full SHA, registry casing, success/failure/pending gates, and stale commits |
-| Docker Compose configuration | Passed with `config --quiet` |
-| Dockerfile pair synchronization and `git diff --check` | Passed |
+| Check                                                                                                        | Outcome                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `npm ci`                                                                                                     | Passed                                                                                                                             |
+| `npm run check`                                                                                              | Passed; zero Svelte errors/warnings in diagnostics                                                                                 |
+| `npm run lint`                                                                                               | Passed                                                                                                                             |
+| `npm test`                                                                                                   | Passed: 37 web tests plus 4 Picomatch security/compatibility regressions                                                           |
+| `npm run build`                                                                                              | Passed                                                                                                                             |
+| Isolated web Dockerfile install/build/runtime stages reproduced on host                                      | Passed, including production-only install with zero audit findings                                                                 |
+| Built web HTTP smoke test                                                                                    | Passed: five public routes return 200; unauthenticated dashboard returns 303                                                       |
+| `cargo fmt --manifest-path apps/auth-api/Cargo.toml --check`                                                 | Passed                                                                                                                             |
+| `cargo clippy --locked --manifest-path apps/auth-api/Cargo.toml --all-targets --all-features -- -D warnings` | Passed                                                                                                                             |
+| `cargo test --locked --manifest-path apps/auth-api/Cargo.toml --all-targets --all-features`                  | Passed: 44 tests; database cases run separately                                                                                    |
+| Database tests with `TEST_DATABASE_URL`, `--ignored --test-threads=1`                                        | Passed: all 19, twice consecutively on the same database after fixture repair                                                      |
+| `cargo build --locked --manifest-path apps/auth-api/Cargo.toml --release --bins`                             | Passed after the build-time stripping fix; both executables built                                                                  |
+| `cargo audit --deny unsound`                                                                                 | Passed; Chrono unmaintained warning remains visible                                                                                |
+| `npm audit --workspaces --audit-level=high`                                                                  | Passed: zero vulnerabilities after the private Picomatch patch                                                                     |
+| `actionlint` 1.7.12                                                                                          | Passed for all three workflows                                                                                                     |
+| Prettier checks of changed workflow/package/Compose configuration                                            | Passed                                                                                                                             |
+| Gitleaks 8.30.1, full Git history                                                                            | Passed: 92 commits scanned, no unexcluded findings                                                                                 |
+| Helm lint: default, development, production                                                                  | Passed                                                                                                                             |
+| Helm production template rendering                                                                           | Passed                                                                                                                             |
+| Kustomize: development and production                                                                        | Passed                                                                                                                             |
+| Production image rewrite in temporary overlay                                                                | Passed: API and worker share the API tag; frontend uses the web tag                                                                |
+| Release script scenarios                                                                                     | Passed: 14 cases covering valid/invalid/injected tags, full SHA, registry casing, success/failure/pending gates, and stale commits |
+| Docker Compose configuration                                                                                 | Passed with `config --quiet`                                                                                                       |
+| Dockerfile pair synchronization and `git diff --check`                                                       | Passed                                                                                                                             |
 
 Database tests used isolated host PostgreSQL 18 and Redis because local Docker storage is read-only. CI retains PostgreSQL 16. Full Linux container builds and Trivy scans could not execute locally; the new GitHub runs are being checked for those results. The isolated host web build verifies the Dockerfile's dependency/layout/lifecycle sequence, not its Alpine image.
 
-A later GitHub run successfully built both initial container images and passed Rust tests, web checks, workflow/infrastructure validation, secret detection, and the Rust audit. It exposed a TCP-reset race in the new web readiness probe, now fixed with bounded retries for all connection errors. It also exposed vulnerabilities in bundled global npm tooling and the Debian API runtime. Follow-up changes remove unused npm/Yarn from the web runtime and switch the API to static musl binaries in Alpine; these changes require a new scan.
+A later GitHub run successfully built both initial container images and passed Rust tests, web checks, workflow/infrastructure validation, secret detection, and the Rust audit. It exposed a TCP-reset race in the new web readiness probe, now fixed with bounded retries for all connection errors. It also exposed vulnerabilities in bundled global npm tooling and the Debian API runtime. Follow-up changes removed unused npm/Yarn from the web runtime and switched the API to static musl binaries in Alpine; subsequent GitHub scans passed for both images.
 
 SvelteKit currently prints a deprecation notice for the preserved `$lib` and other configured import aliases. They continue to pass type checking, builds, and runtime smoke tests. Kustomize also prints existing `commonLabels` deprecation notices; rendering succeeds.
 
 ## Remaining blockers and external prerequisites
 
-The [Picomatch advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) lists no patched version as of this validation. The complete Node audit remains blocking, so automatic production promotion stays blocked. No audit thresholds or scanner failures were weakened to produce green checks. See [security.md](security.md) for the advisory and fixture-exclusion policy.
+The [Picomatch advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) still has no patched upstream release. A [private reproducible fork](../vendor/picomatch/README.md) now fixes the reported single-branch wildcard repetition and routes all consumers through the npm override. The exact audit command passes with zero vulnerabilities. The exploit regression times out against original 4.0.7 and passes against the patch; all 1,983 upstream tests pass. Audit thresholds remain enforced. The scheduled security job requires review when upstream publishes a newer version.
 
-The README also has a pre-existing link to a missing `LICENSE` file. No legal license text was invented or changed as part of the workflow repair.
+The README previously linked to a missing `LICENSE` file. The rewritten README states the current license status explicitly; no project license text was invented.
 
-The implementation was committed as `7a2a52fa03a55ddb0536c636ec6cde3127e5668c` with subsequent follow-up commits on `main`. GitHub verification is being checked separately; registry publication, manifest push, and cluster rollout have not yet been verified. GHCR access, main-branch bot-write policy, real production domains/secrets, and Argo CD cluster health require the configured repository and deployment environment; see [deployment.md](deployment.md).
+The implementation was committed as `7a2a52fa03a55ddb0536c636ec6cde3127e5668c` with subsequent follow-up commits on `main`. All jobs in [CI run 44299559535](https://github.com/Heyykrishnna/auth-rust-svelte/actions/runs/44299559535) and [security run 44299559574](https://github.com/Heyykrishnna/auth-rust-svelte/actions/runs/44299559574) passed for commit `156d3654a069d35214e7931f9432f888e30350f6`, including both container builds, both vulnerability scans, and GHCR publication. [GitOps run 44300228408](https://github.com/Heyykrishnna/auth-rust-svelte/actions/runs/44300228408) verified both registry images and successfully committed/pushed the production manifest update. Cluster rollout remains unverified. GHCR access, main-branch bot-write policy, real production domains/secrets, and Argo CD cluster health require the configured repository and deployment environment; see [deployment.md](deployment.md).
