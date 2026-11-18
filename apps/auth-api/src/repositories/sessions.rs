@@ -1,6 +1,6 @@
 use chrono::Utc;
 use deadpool_redis::Pool as RedisPool;
-use sqlx::PgPool;
+use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::errors::AppError;
@@ -105,7 +105,10 @@ pub async fn is_token_blacklisted(pool: &RedisPool, jti: &str) -> Result<bool, A
     Ok(exists > 0)
 }
 
-pub async fn create_pg_session(pool: &PgPool, session: &Session) -> Result<(), AppError> {
+pub async fn create_pg_session<'e, E>(executor: E, session: &Session) -> Result<(), AppError>
+where
+    E: PgExecutor<'e>,
+{
     let sanitized_ip = session.ip_address.as_deref().and_then(|raw| {
         raw.trim()
             .parse::<std::net::IpAddr>()
@@ -129,7 +132,7 @@ pub async fn create_pg_session(pool: &PgPool, session: &Session) -> Result<(), A
     .bind(session.expires_at)
     .bind(session.last_used_at)
     .bind(session.revoked_at)
-    .execute(pool)
+    .execute(executor)
     .await?;
 
     Ok(())
@@ -170,10 +173,13 @@ pub async fn list_user_pg_sessions(pool: &PgPool, user_id: Uuid) -> Result<Vec<S
     Ok(sessions)
 }
 
-pub async fn revoke_pg_session(pool: &PgPool, session_id: Uuid) -> Result<(), AppError> {
+pub async fn revoke_pg_session<'e, E>(executor: E, session_id: Uuid) -> Result<(), AppError>
+where
+    E: PgExecutor<'e>,
+{
     sqlx::query("UPDATE sessions SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL")
         .bind(session_id)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
     Ok(())

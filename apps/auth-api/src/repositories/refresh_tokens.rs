@@ -1,10 +1,13 @@
-use sqlx::PgPool;
+use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::RefreshToken;
 
-pub async fn create_refresh_token(pool: &PgPool, token: &RefreshToken) -> Result<(), AppError> {
+pub async fn create_refresh_token<'e, E>(executor: E, token: &RefreshToken) -> Result<(), AppError>
+where
+    E: PgExecutor<'e>,
+{
     sqlx::query(
         r#"
         INSERT INTO refresh_tokens (id, user_id, session_id, token_hash, family_id, expires_at, revoked_at, created_at)
@@ -19,7 +22,7 @@ pub async fn create_refresh_token(pool: &PgPool, token: &RefreshToken) -> Result
     .bind(token.expires_at)
     .bind(token.revoked_at)
     .bind(token.created_at)
-    .execute(pool)
+    .execute(executor)
     .await?;
 
     Ok(())
@@ -44,7 +47,10 @@ pub async fn find_by_token_hash(
     Ok(token)
 }
 
-pub async fn revoke_token(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
+pub async fn revoke_token<'e, E>(executor: E, id: Uuid) -> Result<(), AppError>
+where
+    E: PgExecutor<'e>,
+{
     sqlx::query(
         r#"
         UPDATE refresh_tokens
@@ -53,13 +59,16 @@ pub async fn revoke_token(pool: &PgPool, id: Uuid) -> Result<(), AppError> {
         "#,
     )
     .bind(id)
-    .execute(pool)
+    .execute(executor)
     .await?;
 
     Ok(())
 }
 
-pub async fn revoke_family(pool: &PgPool, family_id: Uuid) -> Result<u64, AppError> {
+pub async fn revoke_family<'e, E>(executor: E, family_id: Uuid) -> Result<u64, AppError>
+where
+    E: PgExecutor<'e>,
+{
     let result = sqlx::query(
         r#"
         UPDATE refresh_tokens
@@ -68,7 +77,7 @@ pub async fn revoke_family(pool: &PgPool, family_id: Uuid) -> Result<u64, AppErr
         "#,
     )
     .bind(family_id)
-    .execute(pool)
+    .execute(executor)
     .await?;
 
     Ok(result.rows_affected())

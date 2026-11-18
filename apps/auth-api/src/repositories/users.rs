@@ -1,10 +1,13 @@
-use sqlx::PgPool;
+use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::User;
 
-pub async fn create_user(pool: &PgPool, user: User) -> Result<User, AppError> {
+pub async fn create_user<'e, E>(executor: E, user: User) -> Result<User, AppError>
+where
+    E: PgExecutor<'e>,
+{
     let created = sqlx::query_as::<_, User>(
         r#"
         INSERT INTO users (id, email, display_name, password_hash, avatar_url, email_verified, status, created_at, updated_at)
@@ -21,7 +24,7 @@ pub async fn create_user(pool: &PgPool, user: User) -> Result<User, AppError> {
     .bind(user.status)
     .bind(user.created_at)
     .bind(user.updated_at)
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await?;
 
     Ok(created)

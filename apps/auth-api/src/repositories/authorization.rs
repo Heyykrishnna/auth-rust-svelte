@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use crate::errors::AppError;
@@ -56,11 +56,14 @@ pub async fn get_role_permissions(pool: &PgPool, role_id: &str) -> Result<Vec<St
     Ok(rows)
 }
 
-pub async fn assign_role_to_user(
-    pool: &PgPool,
+pub async fn assign_role_to_user<'e, E>(
+    executor: E,
     user_id: Uuid,
     role_id: &str,
-) -> Result<(), AppError> {
+) -> Result<(), AppError>
+where
+    E: PgExecutor<'e>,
+{
     sqlx::query(
         r#"
         INSERT INTO user_roles (user_id, role_id)
@@ -70,7 +73,7 @@ pub async fn assign_role_to_user(
     )
     .bind(user_id)
     .bind(role_id)
-    .execute(pool)
+    .execute(executor)
     .await?;
 
     Ok(())
