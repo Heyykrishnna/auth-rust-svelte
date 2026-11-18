@@ -311,3 +311,271 @@ export interface ApplicationDomainDto {
   created_at: string;
   updated_at: string;
 }
+
+export interface AuditLogEntryDto {
+  id: string;
+  environment_id: string | null;
+  user_id: string | null;
+  actor_type: string;
+  actor_id: string | null;
+  resource_type: string | null;
+  resource_id: string | null;
+  event: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface EnvironmentOverviewDto {
+  environment_id: string;
+  environment_kind: EnvironmentKind;
+  environment_slug: string;
+  total_users: number;
+  active_users: number;
+  suspended_users: number;
+  unverified_users: number;
+  new_users_7d: number;
+  active_sessions: number;
+  auth_success_24h: number;
+  auth_failure_24h: number;
+  auth_success_7d: number;
+  auth_failure_7d: number;
+  active_api_keys: number;
+  webhook_endpoints_active: number;
+  webhook_deliveries_succeeded_24h: number;
+  webhook_deliveries_failed_24h: number;
+  webhook_dead_letters: number;
+  issuer_url: string;
+  jwks_uri: string;
+  publishable_key: string | null;
+  recent_events: AuditLogEntryDto[];
+}
+
+export interface OAuthProviderConfigDto {
+  provider: 'google' | 'github' | string;
+  enabled: boolean;
+  use_platform_credentials: boolean;
+  client_id: string | null;
+  has_custom_secret: boolean;
+  scopes: string[];
+  callback_url: string;
+  updated_at: string | null;
+}
+
+export interface EnvironmentUserListItemDto {
+  app_user_id: string;
+  sub: string;
+  email: string;
+  email_verified: boolean;
+  display_name: string;
+  avatar_url: string | null;
+  status: string;
+  external_id: string | null;
+  roles: string[];
+  active_sessions_count: number;
+  version: number;
+  joined_at: string;
+  last_active_at: string | null;
+  updated_at: string;
+}
+
+export interface PaginatedEnvironmentUsersDto {
+  users: EnvironmentUserListItemDto[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface UserSessionItemDto {
+  id: string;
+  user_agent: string | null;
+  ip_address: string | null;
+  active_organization_id: string | null;
+  created_at: string;
+  last_used_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+}
+
+export interface LinkedOAuthProviderDto {
+  provider: string;
+  email: string | null;
+  linked_at: string;
+}
+
+export interface EnvironmentUserDetailDto {
+  app_user_id: string;
+  sub: string;
+  email: string;
+  email_verified: boolean;
+  display_name: string;
+  avatar_url: string | null;
+  status: string;
+  external_id: string | null;
+  public_metadata: Record<string, unknown>;
+  private_metadata: Record<string, unknown>;
+  version: number;
+  joined_at: string;
+  last_active_at: string | null;
+  updated_at: string;
+  roles: string[];
+  available_roles: string[];
+  linked_providers: LinkedOAuthProviderDto[];
+  sessions: UserSessionItemDto[];
+  audit_logs: AuditLogEntryDto[];
+}
+
+export interface PaginatedAuditLogsDto {
+  logs: AuditLogEntryDto[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface WorkspaceMemberDto {
+  developer_id: string;
+  email: string;
+  display_name: string;
+  role: WorkspaceRole | string;
+  status: string;
+  joined_at: string;
+}
+
+export interface WebhookEndpointViewDto {
+  id: string;
+  environment_id: string;
+  url: string;
+  description: string;
+  subscribed_events: string[];
+  status: 'active' | 'paused' | 'disabled' | string;
+  consecutive_failures: number;
+  disabled_reason: string | null;
+  previous_secret_expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatedWebhookEndpointDto {
+  endpoint: WebhookEndpointViewDto;
+  signing_secret: string;
+}
+
+export interface RotatedWebhookSecretDto {
+  endpoint: WebhookEndpointViewDto;
+  signing_secret: string;
+  previous_secret_expires_at: string;
+}
+
+export interface WebhookDeliveryDto {
+  id: string;
+  environment_id: string;
+  webhook_endpoint_id: string;
+  outbox_event_id: string;
+  attempt_number: number;
+  request_headers: Record<string, unknown>;
+  response_status: number | null;
+  response_body_excerpt: string | null;
+  latency_ms: number | null;
+  status: 'pending' | 'succeeded' | 'retrying' | 'failed' | 'dead_letter' | string;
+  next_retry_at: string | null;
+  delivered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrganizationDto {
+  id: string;
+  environment_id: string;
+  slug: string;
+  name: string;
+  logo_url: string | null;
+  status: 'active' | 'suspended' | 'deleted' | string;
+  metadata: Record<string, unknown>;
+  version: number;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaginatedOrganizationsDto {
+  data: OrganizationDto[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
+export interface OrganizationMemberDto {
+  id: string;
+  organization_id: string;
+  application_user_id: string;
+  sub: string;
+  email: string;
+  display_name: string;
+  status: string;
+  roles: string[];
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrganizationInvitationDto {
+  id: string;
+  organization_id: string;
+  email: string;
+  role_slug: string | null;
+  status: 'pending' | 'accepted' | 'revoked' | 'expired' | string;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+}
+
+export interface CreatedInvitationDto {
+  invitation: OrganizationInvitationDto;
+  invitation_token: string;
+}
+
+export interface EnvironmentPermissionDto {
+  id: string;
+  slug: string;
+  description: string;
+  created_at: string;
+}
+
+export interface EnvironmentRoleDto {
+  id: string;
+  slug: string;
+  name: string;
+  scope: 'application' | 'organization' | string;
+  description: string;
+  is_system: boolean;
+  permissions: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserEmailDto {
+  id: string;
+  email: string;
+  verified: boolean;
+  verified_at: string | null;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export interface LinkedOAuthAccountDto {
+  id: string;
+  provider: string;
+  email: string | null;
+  email_verified: boolean;
+  created_at: string;
+}
+
+export interface IdentityDataExportDto {
+  exported_at: string;
+  user: Record<string, unknown>;
+  emails: UserEmailDto[];
+  oauth_accounts: LinkedOAuthAccountDto[];
+  memberships: Record<string, unknown>[];
+  organizations: Record<string, unknown>[];
+  recent_audit_logs: Record<string, unknown>[];
+}
