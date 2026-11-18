@@ -5,16 +5,14 @@ use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::models::Session;
-
-const SESSION_PREFIX: &str = "session:";
-const BLACKLIST_PREFIX: &str = "blacklist:";
+use crate::repositories::redis_keys;
 
 pub async fn store_redis_session(pool: &RedisPool, session: &Session) -> Result<(), AppError> {
     let mut conn = pool
         .get()
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
-    let key = format!("{}{}", SESSION_PREFIX, session.id);
+    let key = redis_keys::global_legacy_session_key(session.id);
     let value = serde_json::to_string(session).map_err(|e| AppError::Internal(e.to_string()))?;
     let ttl = (session.expires_at - Utc::now()).num_seconds().max(0) as u64;
 
@@ -37,7 +35,7 @@ pub async fn get_redis_session(
         .get()
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
-    let key = format!("{}{}", SESSION_PREFIX, session_id);
+    let key = redis_keys::global_legacy_session_key(session_id);
 
     let value: Option<String> = redis::cmd("GET")
         .arg(&key)
@@ -60,7 +58,7 @@ pub async fn delete_redis_session(pool: &RedisPool, session_id: Uuid) -> Result<
         .get()
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
-    let key = format!("{}{}", SESSION_PREFIX, session_id);
+    let key = redis_keys::global_legacy_session_key(session_id);
     let _: () = redis::cmd("DEL")
         .arg(&key)
         .query_async(&mut conn)
@@ -78,7 +76,7 @@ pub async fn blacklist_token(pool: &RedisPool, jti: &str, ttl_secs: u64) -> Resu
         .get()
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
-    let key = format!("{}{}", BLACKLIST_PREFIX, jti);
+    let key = redis_keys::global_token_blacklist_key(jti);
     let _: () = redis::cmd("SETEX")
         .arg(&key)
         .arg(ttl_secs)
@@ -95,7 +93,7 @@ pub async fn is_token_blacklisted(pool: &RedisPool, jti: &str) -> Result<bool, A
         .get()
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
-    let key = format!("{}{}", BLACKLIST_PREFIX, jti);
+    let key = redis_keys::global_token_blacklist_key(jti);
     let exists: i64 = redis::cmd("EXISTS")
         .arg(&key)
         .query_async(&mut conn)

@@ -3,12 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::errors::AppError;
-
-const LOGIN_ATTEMPT_PREFIX: &str = "login_attempt:";
-const VERIFY_CODE_PREFIX: &str = "verify_code:";
-const PASSWORD_RESET_PREFIX: &str = "password_reset:";
-const RATE_LIMIT_PREFIX: &str = "rate_limit:";
-const PENDING_REG_PREFIX: &str = "pending_reg:";
+use crate::repositories::redis_keys;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PendingRegistration {
@@ -39,7 +34,7 @@ pub async fn check_login_attempts(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", LOGIN_ATTEMPT_PREFIX, normalize_email(email));
+    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
     let val: Option<String> = redis::cmd("GET")
         .arg(&key)
         .query_async(&mut conn)
@@ -71,7 +66,7 @@ pub async fn record_failed_login(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", LOGIN_ATTEMPT_PREFIX, normalize_email(email));
+    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
     let count: i64 = redis::cmd("INCR")
         .arg(&key)
         .query_async(&mut conn)
@@ -96,7 +91,7 @@ pub async fn clear_login_attempts(pool: &RedisPool, email: &str) -> Result<(), A
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", LOGIN_ATTEMPT_PREFIX, normalize_email(email));
+    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
     let _: () = redis::cmd("DEL")
         .arg(&key)
         .query_async(&mut conn)
@@ -117,7 +112,7 @@ pub async fn store_verification_code(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", VERIFY_CODE_PREFIX, code.trim());
+    let key = redis_keys::global_verify_code_key(code.trim());
     let value = serde_json::to_string(data).map_err(|e| AppError::Internal(e.to_string()))?;
 
     let _: () = redis::cmd("SETEX")
@@ -140,7 +135,7 @@ pub async fn consume_verification_code(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", VERIFY_CODE_PREFIX, code.trim());
+    let key = redis_keys::global_verify_code_key(code.trim());
     let val: Option<String> = redis::cmd("GET")
         .arg(&key)
         .query_async(&mut conn)
@@ -174,7 +169,7 @@ pub async fn store_password_reset_token(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", PASSWORD_RESET_PREFIX, token.trim());
+    let key = redis_keys::global_password_reset_key(token.trim());
     let value = user_id.to_string();
 
     let _: () = redis::cmd("SETEX")
@@ -197,7 +192,7 @@ pub async fn consume_password_reset_token(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", PASSWORD_RESET_PREFIX, token.trim());
+    let key = redis_keys::global_password_reset_key(token.trim());
     let val: Option<String> = redis::cmd("GET")
         .arg(&key)
         .query_async(&mut conn)
@@ -232,7 +227,7 @@ pub async fn check_and_increment_rate_limit(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", RATE_LIMIT_PREFIX, identifier);
+    let key = redis_keys::global_rate_limit_key(identifier);
     let count: i64 = redis::cmd("INCR")
         .arg(&key)
         .query_async(&mut conn)
@@ -261,11 +256,7 @@ pub async fn store_pending_registration(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!(
-        "{}{}",
-        PENDING_REG_PREFIX,
-        normalize_email(&registration.email)
-    );
+    let key = redis_keys::global_pending_registration_key(&normalize_email(&registration.email));
     let value =
         serde_json::to_string(registration).map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -289,7 +280,7 @@ pub async fn get_pending_registration(
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", PENDING_REG_PREFIX, normalize_email(email));
+    let key = redis_keys::global_pending_registration_key(&normalize_email(email));
     let val: Option<String> = redis::cmd("GET")
         .arg(&key)
         .query_async(&mut conn)
@@ -312,7 +303,7 @@ pub async fn remove_pending_registration(pool: &RedisPool, email: &str) -> Resul
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = format!("{}{}", PENDING_REG_PREFIX, normalize_email(email));
+    let key = redis_keys::global_pending_registration_key(&normalize_email(email));
     let _: () = redis::cmd("DEL")
         .arg(&key)
         .query_async(&mut conn)
