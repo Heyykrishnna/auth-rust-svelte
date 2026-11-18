@@ -1,10 +1,13 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::encode::IsNull;
+use sqlx::error::BoxDynError;
+use sqlx::postgres::{PgArgumentBuffer, PgTypeInfo, PgValueRef};
+use sqlx::{Decode, Encode, FromRow, Postgres, Type};
+use std::str::FromStr;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "auth_audit_event", rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AuditEvent {
     LoginSuccess,
@@ -18,19 +21,67 @@ pub enum AuditEvent {
     AccountLocked,
 }
 
+impl AuditEvent {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::LoginSuccess => "LOGIN_SUCCESS",
+            Self::LoginFailed => "LOGIN_FAILED",
+            Self::Logout => "LOGOUT",
+            Self::PasswordChanged => "PASSWORD_CHANGED",
+            Self::EmailVerified => "EMAIL_VERIFIED",
+            Self::SessionRevoked => "SESSION_REVOKED",
+            Self::MfaEnabled => "MFA_ENABLED",
+            Self::MfaFailed => "MFA_FAILED",
+            Self::AccountLocked => "ACCOUNT_LOCKED",
+        }
+    }
+}
+
+impl FromStr for AuditEvent {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "LOGIN_SUCCESS" => Ok(Self::LoginSuccess),
+            "LOGIN_FAILED" => Ok(Self::LoginFailed),
+            "LOGOUT" => Ok(Self::Logout),
+            "PASSWORD_CHANGED" => Ok(Self::PasswordChanged),
+            "EMAIL_VERIFIED" => Ok(Self::EmailVerified),
+            "SESSION_REVOKED" => Ok(Self::SessionRevoked),
+            "MFA_ENABLED" => Ok(Self::MfaEnabled),
+            "MFA_FAILED" => Ok(Self::MfaFailed),
+            "ACCOUNT_LOCKED" => Ok(Self::AccountLocked),
+            other => Err(format!("Unknown audit event: {other}")),
+        }
+    }
+}
+
+impl Type<Postgres> for AuditEvent {
+    fn type_info() -> PgTypeInfo {
+        <String as Type<Postgres>>::type_info()
+    }
+
+    fn compatible(ty: &PgTypeInfo) -> bool {
+        <String as Type<Postgres>>::compatible(ty)
+    }
+}
+
+impl<'q> Encode<'q, Postgres> for AuditEvent {
+    fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> Result<IsNull, BoxDynError> {
+        <&str as Encode<Postgres>>::encode_by_ref(&self.as_str(), buf)
+    }
+}
+
+impl<'r> Decode<'r, Postgres> for AuditEvent {
+    fn decode(value: PgValueRef<'r>) -> Result<Self, BoxDynError> {
+        let raw = <String as Decode<Postgres>>::decode(value)?;
+        AuditEvent::from_str(&raw).map_err(|err| err.into())
+    }
+}
+
 impl std::fmt::Display for AuditEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::LoginSuccess => write!(f, "LOGIN_SUCCESS"),
-            Self::LoginFailed => write!(f, "LOGIN_FAILED"),
-            Self::Logout => write!(f, "LOGOUT"),
-            Self::PasswordChanged => write!(f, "PASSWORD_CHANGED"),
-            Self::EmailVerified => write!(f, "EMAIL_VERIFIED"),
-            Self::SessionRevoked => write!(f, "SESSION_REVOKED"),
-            Self::MfaEnabled => write!(f, "MFA_ENABLED"),
-            Self::MfaFailed => write!(f, "MFA_FAILED"),
-            Self::AccountLocked => write!(f, "ACCOUNT_LOCKED"),
-        }
+        f.write_str(self.as_str())
     }
 }
 

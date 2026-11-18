@@ -1,13 +1,19 @@
 pub mod audit_log;
 pub mod authorization;
 pub mod domain_event;
+pub mod identity;
+pub mod ids;
 pub mod refresh_token;
 pub mod session;
+pub mod tenant;
 pub mod user;
 
 pub use audit_log::*;
 pub use authorization::*;
 pub use domain_event::*;
+pub use identity::*;
+pub use ids::*;
 pub use refresh_token::*;
 pub use session::*;
+pub use tenant::*;
 pub use user::*;
