@@ -915,3 +915,101 @@ async fn test_live_smtp_send() {
     .await;
     assert!(res.is_ok());
 }
+
+#[test]
+fn test_session_with_id_matches_refresh_token_session_claim() {
+    use auth_api::models::Session;
+    use auth_api::services::tokens::{generate_token_pair, hash_token, validate_refresh_token};
+    use chrono::{Duration, Utc};
+
+    let user_id = Uuid::new_v4();
+    let session_id = Uuid::new_v4();
+    let secret = "super_secure_test_secret_key_that_is_at_least_32_chars!";
+
+    let tokens = generate_token_pair(
+        user_id,
+        "session-sync@example.com",
+        "Session Sync",
+        session_id,
+        secret,
+        900,
+        604800,
+    )
+    .expect("token generation should succeed");
+
+    let refresh_claims = validate_refresh_token(&tokens.refresh_token, secret)
+        .expect("refresh token should validate");
+    let claim_session_id =
+        Uuid::parse_str(&refresh_claims.session_id).expect("session_id claim should be a UUID");
+
+    let token_hash = hash_token(&tokens.refresh_token);
+    let persisted_session = Session::with_id(
+        session_id,
+        user_id,
+        token_hash.clone(),
+        Utc::now() + Duration::days(7),
+        Some("TestAgent/1.0".to_string()),
+        Some("127.0.0.1".to_string()),
+    );
+
+    assert_eq!(persisted_session.id, session_id);
+    assert_eq!(persisted_session.id, claim_session_id);
+    assert_eq!(persisted_session.refresh_token_hash, token_hash);
+    assert_eq!(persisted_session.session_hash, token_hash);
+}
+
+#[test]
+fn test_unified_api_error_envelope_with_request_id() {
+    use auth_api::errors::{ApiErrorEnvelope, AppError};
+    use axum::http::StatusCode;
+
+    let err = AppError::InvalidToken("Refresh token reuse detected".to_string());
+    let (status, envelope) = err.to_envelope(Some("req-12345".to_string()));
+
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(envelope.status, 401);
+    assert_eq!(envelope.error.code, "INVALID_TOKEN");
+    assert_eq!(envelope.error.message, "Refresh token reuse detected");
+    assert_eq!(envelope.error.request_id.as_deref(), Some("req-12345"));
+    assert!(envelope.error.details.is_none());
+
+    let serialized = serde_json::to_value(&envelope).expect("envelope should serialize");
+    assert_eq!(serialized["status"], 401);
+    assert_eq!(serialized["error"]["code"], "INVALID_TOKEN");
+    assert_eq!(serialized["error"]["request_id"], "req-12345");
+    assert!(serialized["error"].get("details").is_none());
+
+    let roundtrip: ApiErrorEnvelope =
+        serde_json::from_value(serialized).expect("envelope should deserialize");
+    assert_eq!(roundtrip, envelope);
+}
+
+#[test]
+fn test_domain_event_envelope_serialization() {
+    use auth_api::models::{
+        AggregateType, DomainEventEnvelope, DomainEventType, DOMAIN_EVENT_SPEC_VERSION,
+    };
+
+    let env_id = Uuid::new_v4();
+    let app_user_id = Uuid::new_v4();
+    let event = DomainEventEnvelope::new(
+        DomainEventType::UserUpdated,
+        Some(env_id),
+        AggregateType::ApplicationUser,
+        app_user_id,
+        4,
+        serde_json::json!({ "email": "alice@example.com", "version": 4 }),
+    );
+
+    let json_val = serde_json::to_value(&event).expect("domain event should serialize");
+    assert_eq!(json_val["spec_version"], DOMAIN_EVENT_SPEC_VERSION);
+    assert_eq!(json_val["event_type"], "user.updated");
+    assert_eq!(json_val["aggregate_type"], "application_user");
+    assert_eq!(json_val["aggregate_id"], app_user_id.to_string());
+    assert_eq!(json_val["environment_id"], env_id.to_string());
+    assert_eq!(json_val["aggregate_version"], 4);
+
+    let roundtrip: DomainEventEnvelope =
+        serde_json::from_value(json_val).expect("domain event should deserialize");
+    assert_eq!(roundtrip, event);
+}
