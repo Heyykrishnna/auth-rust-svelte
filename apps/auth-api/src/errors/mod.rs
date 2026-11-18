@@ -65,6 +65,9 @@ pub enum AppError {
     #[error("Forbidden: {0}")]
     Forbidden(String),
 
+    #[error("Not found: {0}")]
+    NotFound(String),
+
     #[error("Too many requests: {0}")]
     TooManyRequests(String),
 
@@ -113,6 +116,7 @@ impl AppError {
             AppError::TokenExpired => (StatusCode::UNAUTHORIZED, "TOKEN_EXPIRED", self.to_string()),
             AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", msg.clone()),
             AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg.clone()),
+            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
             AppError::TooManyRequests(msg) => (
                 StatusCode::TOO_MANY_REQUESTS,
                 "TOO_MANY_REQUESTS",

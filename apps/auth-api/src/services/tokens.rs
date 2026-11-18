@@ -31,6 +31,12 @@ pub struct TenantAccessTokenClaims {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub org_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub org_slug: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub org_role: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub org_permissions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
     pub roles: Vec<String>,
     pub permissions: Vec<String>,
@@ -40,6 +46,14 @@ pub struct TenantAccessTokenClaims {
     pub iat: i64,
     pub exp: i64,
     pub jti: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct OrganizationTokenContext {
+    pub org_id: Option<OrganizationId>,
+    pub org_slug: Option<String>,
+    pub org_role: Option<String>,
+    pub org_permissions: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -106,6 +120,9 @@ pub fn issue_es256_access_token_with_key(
         app_user_id: input.app_user_id.to_string(),
         sid: input.session_id.to_string(),
         org_id: input.active_organization_id.map(|id| id.to_string()),
+        org_slug: None,
+        org_role: None,
+        org_permissions: Vec::new(),
         scope: None,
         roles: input.roles,
         permissions: input.permissions,
@@ -151,6 +168,53 @@ pub async fn issue_tenant_access_token(
     issue_es256_access_token_with_key(input, &active_key.kid, &pkcs8_der)
 }
 
+pub async fn issue_tenant_access_token_with_org(
+    db: &PgPool,
+    config: &AppConfig,
+    input: IssueAccessTokenInput<'_>,
+    org_ctx: Option<OrganizationTokenContext>,
+) -> Result<(String, TenantAccessTokenClaims), AppError> {
+    let active_key = signing_keys::ensure_active_signing_key(db, config).await?;
+    let pkcs8_der = signing_keys::decrypt_signing_key_pkcs8(&active_key, config)?;
+    let now = Utc::now().timestamp();
+    let ctx = org_ctx.unwrap_or_default();
+    let org_id = ctx
+        .org_id
+        .or(input.active_organization_id)
+        .map(|id| id.to_string());
+    let claims = TenantAccessTokenClaims {
+        iss: input.issuer_url.to_string(),
+        sub: input.user_id.to_string(),
+        aud: input.environment_id.to_string(),
+        azp: input.authorized_party.to_string(),
+        app_user_id: input.app_user_id.to_string(),
+        sid: input.session_id.to_string(),
+        org_id,
+        org_slug: ctx.org_slug,
+        org_role: ctx.org_role,
+        org_permissions: ctx.org_permissions,
+        scope: None,
+        roles: input.roles,
+        permissions: input.permissions,
+        amr: input.amr,
+        acr: input.acr,
+        ver: input.version,
+        iat: now,
+        exp: now + input.ttl_secs,
+        jti: Uuid::new_v4().to_string(),
+    };
+
+    let mut header = Header::new(Algorithm::ES256);
+    header.kid = Some(active_key.kid);
+    header.typ = Some(ACCESS_TOKEN_TYP.to_string());
+
+    let encoding_key = EncodingKey::from_ec_der(&pkcs8_der);
+    let token = encode(&header, &claims, &encoding_key)
+        .map_err(|e| AppError::TokenCreation(e.to_string()))?;
+
+    Ok((token, claims))
+}
+
 pub async fn issue_tenant_access_token_with_scope(
     db: &PgPool,
     config: &AppConfig,
@@ -168,6 +232,9 @@ pub async fn issue_tenant_access_token_with_scope(
         app_user_id: input.app_user_id.to_string(),
         sid: input.session_id.to_string(),
         org_id: input.active_organization_id.map(|id| id.to_string()),
+        org_slug: None,
+        org_role: None,
+        org_permissions: Vec::new(),
         scope: Some(scope.to_string()),
         roles: input.roles,
         permissions: input.permissions,
