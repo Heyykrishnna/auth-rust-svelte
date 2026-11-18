@@ -237,6 +237,7 @@ export interface WorkspaceSummary {
   status: string;
   role: WorkspaceRole | string;
   created_at: string;
+  logo_version?: string | null;
 }
 
 export interface ApplicationDto {

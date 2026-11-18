@@ -45,6 +45,10 @@ pub fn control_routes() -> Router<AppState> {
             patch(control_plane::update_workspace),
         )
         .route(
+            "/workspaces/:workspace_id/logo",
+            get(control_plane::get_workspace_logo),
+        )
+        .route(
             "/applications",
             get(control_plane::list_applications).post(control_plane::create_application),
         )

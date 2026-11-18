@@ -72,8 +72,11 @@ export const controlApi = {
 	createWorkspace: (payload: { name: string; slug: string }, options?: RequestOptions) =>
 		apiClient.post<WorkspaceSummary>('/v1/control/workspaces', payload, options),
 
-	updateWorkspace: (workspaceId: string, payload: { name: string }, options?: RequestOptions) =>
-		apiClient.patch<WorkspaceSummary>(`/v1/control/workspaces/${workspaceId}`, payload, options),
+	updateWorkspace: (
+		workspaceId: string,
+		payload: { name?: string; logo?: { action: 'replace'; jpeg: string } | { action: 'remove' } },
+		options?: RequestOptions
+	) => apiClient.patch<WorkspaceSummary>(`/v1/control/workspaces/${workspaceId}`, payload, options),
 
 	listWorkspaceMembers: (workspaceId: string, options?: RequestOptions) =>
 		apiClient.get<WorkspaceMemberDto[]>(`/v1/control/workspaces/${workspaceId}/members`, options),

@@ -13,6 +13,7 @@
 	import AccountSecurityPanel from './AccountSecurityPanel.svelte';
 	import WorkspaceTeam from './WorkspaceTeam.svelte';
 	import WorkspaceApplications from './WorkspaceApplications.svelte';
+	import WorkspaceAvatar from './WorkspaceAvatar.svelte';
 	import WorkspaceSettings from './WorkspaceSettings.svelte';
 
 	let {
@@ -209,9 +210,17 @@
 			<div
 				class="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 text-sm sm:px-6 lg:px-9"
 			>
-				<span class="min-w-0 truncate font-medium">
-					{workspace?.name ?? 'Developer Console'}
-				</span>
+				<div class="flex min-w-0 items-center gap-2.5">
+					{#if workspace}
+						<WorkspaceAvatar
+							{workspace}
+							class="size-7 rounded-md text-[10px]"
+						/>
+					{/if}
+					<span class="min-w-0 truncate font-medium">
+						{workspace?.name ?? 'Developer Console'}
+					</span>
+				</div>
 				{#if workspace}
 					<span class="shrink-0 text-xs text-brand-text-secondary capitalize">
 						{workspace.role}

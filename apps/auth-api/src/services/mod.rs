@@ -23,3 +23,4 @@ pub mod signing_keys;
 pub mod social_oauth;
 pub mod tokens;
 pub mod webhooks;
+pub mod workspace_logo;

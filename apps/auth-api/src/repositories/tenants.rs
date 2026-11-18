@@ -18,6 +18,12 @@ pub struct WorkspaceWithRole {
     pub status: String,
     pub role: String,
     pub created_at: DateTime<Utc>,
+    pub logo_version: Option<Uuid>,
+}
+
+pub enum WorkspaceLogoUpdate {
+    Replace(Vec<u8>),
+    Remove,
 }
 
 pub async fn create_developer<'e, E>(
@@ -137,15 +143,21 @@ where
     Ok(())
 }
 
-pub async fn rename_workspace<'e, E>(
+pub async fn update_workspace_profile<'e, E>(
     executor: E,
     workspace_id: WorkspaceId,
     developer_id: DeveloperId,
-    name: &str,
+    name: Option<&str>,
+    logo: Option<WorkspaceLogoUpdate>,
 ) -> Result<Option<WorkspaceWithRole>, AppError>
 where
     E: PgExecutor<'e>,
 {
+    let change_logo = logo.is_some();
+    let (logo_jpeg, logo_version) = match logo {
+        Some(WorkspaceLogoUpdate::Replace(bytes)) => (Some(bytes), Some(Uuid::new_v4())),
+        _ => (None, None),
+    };
     let workspace = sqlx::query_as::<_, WorkspaceWithRole>(
         r#"
         WITH editor AS (
@@ -155,20 +167,50 @@ where
             FOR SHARE
         )
         UPDATE developer_workspaces AS workspace
-        SET name = $3, updated_at = now()
+        SET name = COALESCE($3, workspace.name),
+            logo_jpeg = CASE WHEN $4 THEN $5 ELSE workspace.logo_jpeg END,
+            logo_version = CASE WHEN $4 THEN $6 ELSE workspace.logo_version END
         FROM editor
         WHERE workspace.id = editor.workspace_id AND workspace.status != 'deleted'
         RETURNING workspace.id, workspace.slug, workspace.name, workspace.status,
-                  editor.role, workspace.created_at
+                  editor.role, workspace.created_at, workspace.logo_version
         "#,
     )
     .bind(workspace_id)
     .bind(developer_id)
     .bind(name)
+    .bind(change_logo)
+    .bind(logo_jpeg)
+    .bind(logo_version)
     .fetch_optional(executor)
     .await?;
 
     Ok(workspace)
+}
+
+pub async fn workspace_logo<'e, E>(
+    executor: E,
+    workspace_id: WorkspaceId,
+    developer_id: DeveloperId,
+) -> Result<Option<Vec<u8>>, AppError>
+where
+    E: PgExecutor<'e>,
+{
+    let logo = sqlx::query_scalar(
+        r#"
+        SELECT workspace.logo_jpeg
+        FROM developer_workspaces workspace
+        JOIN developer_workspace_members member ON member.workspace_id = workspace.id
+        WHERE workspace.id = $1 AND member.developer_id = $2
+          AND workspace.status != 'deleted' AND workspace.logo_jpeg IS NOT NULL
+        "#,
+    )
+    .bind(workspace_id)
+    .bind(developer_id)
+    .fetch_optional(executor)
+    .await?;
+
+    Ok(logo)
 }
 
 pub async fn list_developer_workspaces<'e, E>(
@@ -180,7 +222,7 @@ where
 {
     let workspaces = sqlx::query_as::<_, WorkspaceWithRole>(
         r#"
-        SELECT dw.id, dw.slug, dw.name, dw.status, dwm.role, dw.created_at
+        SELECT dw.id, dw.slug, dw.name, dw.status, dwm.role, dw.created_at, dw.logo_version
         FROM developer_workspaces dw
         JOIN developer_workspace_members dwm ON dwm.workspace_id = dw.id
         WHERE dwm.developer_id = $1 AND dw.status != 'deleted'

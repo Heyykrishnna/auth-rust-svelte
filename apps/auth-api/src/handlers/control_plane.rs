@@ -1,5 +1,6 @@
 use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
+use axum::http::{header, StatusCode};
+use axum::response::IntoResponse;
 use axum::Json;
 use axum_extra::extract::cookie::CookieJar;
 use serde::{Deserialize, Serialize};
@@ -13,7 +14,7 @@ use crate::models::{
     EnrollmentPolicy, EnvironmentKind, WorkspaceId, WorkspaceRole,
 };
 use crate::repositories::db::{begin_tx, commit_tx};
-use crate::repositories::tenants::{self as tenant_repo, WorkspaceWithRole};
+use crate::repositories::tenants::{self as tenant_repo, WorkspaceLogoUpdate, WorkspaceWithRole};
 use crate::services::control_auth::{
     self, attach_dev_auth_cookies, clear_dev_auth_cookies, DeveloperProfileResponse,
 };
@@ -22,6 +23,7 @@ use crate::services::control_plane::{
     CredentialSummary, UpdateEnvironmentInput,
 };
 use crate::services::domains as domain_service;
+use crate::services::workspace_logo;
 use crate::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -52,7 +54,15 @@ pub struct CreateWorkspaceRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateWorkspaceRequest {
-    pub name: String,
+    pub name: Option<String>,
+    pub logo: Option<WorkspaceLogoRequest>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum WorkspaceLogoRequest {
+    Replace { jpeg: String },
+    Remove,
 }
 
 #[derive(Debug, Deserialize)]
@@ -205,6 +215,7 @@ pub async fn create_workspace(
             status: ws.status,
             role: WorkspaceRole::Owner.as_str().to_string(),
             created_at: ws.created_at,
+            logo_version: None,
         }),
     ))
 }
@@ -225,16 +236,56 @@ pub async fn update_workspace(
     Path(workspace_id): Path<WorkspaceId>,
     Json(body): Json<UpdateWorkspaceRequest>,
 ) -> Result<Json<WorkspaceWithRole>, AppError> {
-    let name = validate_workspace_name(&body.name)?;
+    let name = body
+        .name
+        .as_deref()
+        .map(validate_workspace_name)
+        .transpose()?;
+    let (logo, logo_event) = match body.logo {
+        Some(WorkspaceLogoRequest::Replace { jpeg }) => {
+            control_plane::require_workspace_access(
+                &state.db,
+                dev.developer_id,
+                workspace_id,
+                WorkspaceRole::Admin,
+            )
+            .await?;
+            let bytes = tokio::task::spawn_blocking(move || workspace_logo::normalize_jpeg(&jpeg))
+                .await
+                .map_err(|err| {
+                    AppError::Internal(format!("Could not process workspace logo: {err}"))
+                })??;
+            (
+                Some(WorkspaceLogoUpdate::Replace(bytes)),
+                Some("WORKSPACE_LOGO_UPDATED"),
+            )
+        }
+        Some(WorkspaceLogoRequest::Remove) => (
+            Some(WorkspaceLogoUpdate::Remove),
+            Some("WORKSPACE_LOGO_REMOVED"),
+        ),
+        None => (None, None),
+    };
+    let event = match (name, logo_event) {
+        (Some(_), Some(_)) => "WORKSPACE_PROFILE_UPDATED",
+        (Some(_), None) => "WORKSPACE_RENAMED",
+        (None, Some(event)) => event,
+        _ => {
+            return Err(AppError::Validation(
+                "Provide a workspace name or logo change".to_string(),
+            ))
+        }
+    };
     let mut tx = begin_tx(&state.db).await?;
-    let updated = tenant_repo::rename_workspace(&mut *tx, workspace_id, dev.developer_id, name)
-        .await?
-        .ok_or_else(|| AppError::Forbidden("You cannot edit this workspace".to_string()))?;
+    let updated =
+        tenant_repo::update_workspace_profile(&mut *tx, workspace_id, dev.developer_id, name, logo)
+            .await?
+            .ok_or_else(|| AppError::Forbidden("You cannot edit this workspace".to_string()))?;
     tenant_repo::record_control_audit_log(
         &mut *tx,
         None,
         dev.developer_id,
-        "WORKSPACE_RENAMED",
+        event,
         "developer_workspace",
         Some(workspace_id.into_inner()),
         json!({}),
@@ -242,6 +293,23 @@ pub async fn update_workspace(
     .await?;
     commit_tx(tx).await?;
     Ok(Json(updated))
+}
+
+pub async fn get_workspace_logo(
+    State(state): State<AppState>,
+    dev: AuthenticatedDeveloper,
+    Path(workspace_id): Path<WorkspaceId>,
+) -> Result<impl IntoResponse, AppError> {
+    let logo = tenant_repo::workspace_logo(&state.db, workspace_id, dev.developer_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Workspace logo not found".to_string()))?;
+    Ok((
+        [
+            (header::CONTENT_TYPE, "image/jpeg"),
+            (header::CACHE_CONTROL, "private, no-store"),
+        ],
+        logo,
+    ))
 }
 
 pub async fn create_application(

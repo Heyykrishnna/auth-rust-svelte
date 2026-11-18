@@ -115,7 +115,8 @@ Authenticated via Developer session + Workspace RBAC (`owner`, `admin`, `develop
 
 - `/v1/control/auth/*` — Developer sign-up, sign-in, sign-out, session management
 - `/v1/control/workspaces/*` — Workspaces & team member role management
-- `PATCH /v1/control/workspaces/{workspace_id}` — Update the workspace display name with `{"name":"New name"}`. Owners and admins can rename a workspace. The response includes the updated workspace and the caller’s role.
+- `PATCH /v1/control/workspaces/{workspace_id}` — Owners and admins can update `name` and `logo` independently. Provide `{"action":"replace","jpeg":"<base64>"}` for a JPEG logo up to 256 pixels per edge and 60,000 base64 characters, or `{"action":"remove"}` to clear it. The response includes the updated workspace, its logo version, and the caller’s role.
+- `GET /v1/control/workspaces/{workspace_id}/logo` — Workspace members can fetch the stored JPEG. The endpoint returns 404 when the logo is absent or outside the caller’s workspace access.
 - `/v1/control/applications` & `/:app_id` — Application CRUD & suspension
 - `/v1/control/applications/:app_id/environments/:env_kind` — Environment settings, enrollment policy, branding
 - `/v1/control/applications/:app_id/environments/:env_kind/credentials` — Publishable & secret key creation/rotation/revocation

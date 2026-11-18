@@ -70,6 +70,7 @@ mod live_phase07_control_plane_suite {
     use axum::body::Body;
     use axum::extract::ConnectInfo;
     use axum::http::{Method, Request, StatusCode};
+    use base64::{engine::general_purpose::STANDARD, Engine};
     use deadpool_redis::{Config as RedisConfig, Runtime as RedisRuntime};
     use serde_json::{json, Value};
     use sqlx::postgres::PgPoolOptions;
@@ -340,6 +341,59 @@ mod live_phase07_control_plane_suite {
         assert_eq!(updated["id"], ws_a_id.to_string());
         assert_eq!(updated["role"], "owner");
         assert_eq!(updated["name"], "Studio workspace");
+        assert!(updated["logo_version"].is_null());
+
+        let logo_request = |token: &str, logo: Value| {
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(&path)
+                .header("authorization", format!("Bearer {token}"))
+                .header("content-type", "application/json")
+                .body(Body::from(json!({ "logo": logo }).to_string()))
+                .unwrap()
+        };
+        let read_logo = |token: &str| {
+            Request::builder()
+                .uri(format!("{path}/logo"))
+                .header("authorization", format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap()
+        };
+        let jpeg = |edge: u32| {
+            let mut bytes = Vec::new();
+            let image = image::RgbImage::from_pixel(edge, edge, image::Rgb([8, 75, 42]));
+            image::codecs::jpeg::JpegEncoder::new(&mut bytes)
+                .encode_image(&image)
+                .unwrap();
+            json!({ "action": "replace", "jpeg": STANDARD.encode(bytes) })
+        };
+        let denied = send_request(&app, logo_request(&viewer_token, jpeg(12))).await;
+        assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+        for invalid in [
+            json!({ "action": "replace", "jpeg": STANDARD.encode(b"<svg/>") }),
+            jpeg(257),
+        ] {
+            let response = send_request(&app, logo_request(&owner_token, invalid)).await;
+            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        let replaced = send_request(&app, logo_request(&owner_token, jpeg(12))).await;
+        assert_eq!(replaced.status(), StatusCode::OK);
+        let profile = read_json(replaced).await;
+        assert_eq!(profile["name"], "Studio workspace");
+        assert!(profile["logo_version"].is_string());
+
+        let outsider_logo = send_request(&app, read_logo(&outsider_token)).await;
+        assert_eq!(outsider_logo.status(), StatusCode::NOT_FOUND);
+        let member_logo = send_request(&app, read_logo(&viewer_token)).await;
+        assert_eq!(member_logo.status(), StatusCode::OK);
+        assert_eq!(member_logo.headers()["content-type"], "image/jpeg");
+        assert_eq!(member_logo.headers()["cache-control"], "private, no-store");
+        let image = axum::body::to_bytes(member_logo.into_body(), 65536)
+            .await
+            .unwrap();
+        let decoded = image::load_from_memory_with_format(&image, image::ImageFormat::Jpeg)
+            .expect("stored logo is a valid JPEG");
+        assert_eq!((decoded.width(), decoded.height()), (12, 12));
 
         let promoted = send_request(
             &app,
@@ -359,6 +413,17 @@ mod live_phase07_control_plane_suite {
         let admin_update = read_json(renamed).await;
         assert_eq!(admin_update["role"], "admin");
         assert_eq!(admin_update["slug"], updated["slug"]);
+        assert_eq!(admin_update["logo_version"], profile["logo_version"]);
+
+        let removed = send_request(
+            &app,
+            logo_request(&viewer_token, json!({ "action": "remove" })),
+        )
+        .await;
+        assert_eq!(removed.status(), StatusCode::OK);
+        assert!(read_json(removed).await["logo_version"].is_null());
+        let missing = send_request(&app, read_logo(&owner_token)).await;
+        assert_eq!(missing.status(), StatusCode::NOT_FOUND);
 
         let persisted =
             sqlx::query_scalar::<_, String>("SELECT name FROM developer_workspaces WHERE id = $1")

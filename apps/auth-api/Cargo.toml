@@ -46,6 +46,7 @@ redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 
 argon2 = "0.5"
 base64 = "0.22"
+image = { version = "0.25.10", default-features = false, features = ["jpeg"] }
 jsonwebtoken = "9"
 ring = "0.17"
 uuid = { version = "1", features = ["v4", "serde"] }
