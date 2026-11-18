@@ -1,6 +1,6 @@
 # Phase 03: Asymmetric Token Infrastructure & Multi-Tenant Auth Engine
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phase 02 completed (environments, credentials, dynamic CORS, tenant extraction)
 - **Primary Targets:** `apps/auth-api/src/services/tokens.rs`, `apps/auth-api/src/services/authentication.rs`, `apps/auth-api/src/services/sessions.rs`, `apps/auth-api/src/services/authorization.rs`, `apps/auth-api/src/handlers/`, `apps/auth-api/src/routes/`
 
@@ -112,12 +112,12 @@ Replace the stubbed `handle_oidc_callback` in `apps/auth-api/src/services/authen
 
 ## Acceptance Criteria
 
-- [ ] `GET /.well-known/jwks.json` serves valid RS256/ES256 public keys and supports zero-downtime key rotation.
-- [ ] Zero HS256 secrets remain in access/ID token issuance or verification.
-- [ ] Two independent applications (`Ferrum` and `Elysiar`) can register and authenticate the same global user with completely isolated `app_sessions`, `aud`-scoped JWTs, and environment-specific roles.
-- [ ] Refresh token reuse revokes the entire token family atomically and records a security audit event.
-- [ ] Google and GitHub OAuth callbacks execute real PKCE + `state` + `nonce` validation and enforce verified-email-only account linking.
-- [ ] All Phase 03 security and tenant-isolation tests pass.
+- [x] `GET /.well-known/jwks.json` serves valid RS256/ES256 public keys and supports zero-downtime key rotation.
+- [x] Zero HS256 secrets remain in access/ID token issuance or verification.
+- [x] Two independent applications (`Ferrum` and `Elysiar`) can register and authenticate the same global user with completely isolated `app_sessions`, `aud`-scoped JWTs, and environment-specific roles.
+- [x] Refresh token reuse revokes the entire token family atomically and records a security audit event.
+- [x] Google and GitHub OAuth callbacks execute real PKCE + `state` + `nonce` validation and enforce verified-email-only account linking.
+- [x] All Phase 03 security and tenant-isolation tests pass.
 
 ---
 
