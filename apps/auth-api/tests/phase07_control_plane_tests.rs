@@ -144,6 +144,11 @@ mod live_phase07_control_plane_suite {
             smtp_from: "noreply@example.test".to_string(),
             smtp_from_name: "Auth Platform".to_string(),
         });
+        let active = auth_api::services::signing_keys::ensure_active_signing_key(&db, &config)
+            .await
+            .unwrap();
+        auth_api::services::signing_keys::decrypt_signing_key_pkcs8(&active, &config)
+            .expect("[DEBUG-ci] signing key fixture decrypts with suite KEK");
         let state = AppState {
             db: db.clone(),
             redis,

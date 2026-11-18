@@ -22,7 +22,7 @@ We audited the complete `auth-rust-svelte` monorepo across its Rust Axum identit
 
 The platform demonstrates **strong foundational architecture**: zero `unsafe` Rust blocks, zero TypeScript `any` escape hatches or XSS sinks, strict ES256 JWT enforcement (`alg: none` and HS256-confusion resistant), AES-256-GCM envelope encryption, DNS-time SSRF webhook defenses, transactional-outbox delivery, a bounded Argon2id blocking pool, and 132 automated passing tests (62 Rust + 70 JS/TS/Web + 24 live-Postgres integration tests).
 
-However, **the repository is NOT yet safe for unsupervised production deployment** due to **1 High finding (Severity 8)** and **9 Medium findings (Severity 5–6)**: most critically, `apps/auth-api/src/config/mod.rs` falls back to hardcoded development secrets for both `JWT_SECRET` and `SIGNING_KEY_KEK` when environment variables are absent, and `infrastructure/kubernetes/base/auth/secrets.yaml` omits `SIGNING_KEY_KEK` and `COOKIE_SECURE=true` — meaning a default Kubernetes rollout would silently boot production with a publicly committed encryption key and insecure cookies. Secondary pre-launch blockers include in-memory `PeerIpKeyExtractor` rate limiting (which collapses all users behind NGINX Ingress into a single bucket), `panic = "abort"` with no `CatchPanicLayer`, missing TOTP/WebAuthn MFA enforcement, soft-only GDPR deletion without PII anonymization, per-request `reqwest::Client` construction in webhook deliveries, and missing frontend CSP headers in SvelteKit SSR.
+However, **the repository is NOT yet safe for unsupervised production deployment** due to **1 High finding (Severity 8)** and **11 Medium findings (Severity 5–6)**: most critically, `apps/auth-api/src/config/mod.rs` falls back to hardcoded development secrets for both `JWT_SECRET` and `SIGNING_KEY_KEK` when environment variables are absent, and `infrastructure/kubernetes/base/auth/secrets.yaml` omits `SIGNING_KEY_KEK` and `COOKIE_SECURE=true` — meaning a default Kubernetes rollout would silently boot production with a publicly committed encryption key and insecure cookies. Secondary pre-launch blockers include in-memory `PeerIpKeyExtractor` rate limiting (which collapses all users behind NGINX Ingress into a single bucket), `panic = "abort"` with no `CatchPanicLayer`, missing TOTP/WebAuthn MFA enforcement, soft-only GDPR deletion without PII anonymization, per-request `reqwest::Client` construction in webhook deliveries, and missing frontend CSP headers in SvelteKit SSR.
 
 ---
 
@@ -50,14 +50,12 @@ However, **the repository is NOT yet safe for unsupervised production deployment
 | 8 | HIGH | 1 | `F-001` |
 | 7 | HIGH | 0 | — |
 | 6 | MEDIUM | 3 | `F-002`, `F-003`, `F-004` |
-| 5 | MEDIUM | 7 | `F-005`, `F-006`, `F-007`, `F-009`, `F-011`, `F-012`, `F-013`, `F-016` *(8 total at Sev 5)* |
-| 4 | LOW | 4 | `F-008`, `F-010`, `F-014`, `F-017`, `F-018` *(5 total at Sev 4)* |
+| 5 | MEDIUM | 8 | `F-005`, `F-006`, `F-007`, `F-009`, `F-011`, `F-012`, `F-013`, `F-016` |
+| 4 | LOW | 5 | `F-008`, `F-010`, `F-014`, `F-017`, `F-018` |
 | 3 | LOW | 3 | `F-015`, `F-019`, `F-020` |
 | 2 | INFO | 0 | — |
 | 1 | INFO | 0 | — |
 | **Total Findings** | | **20** | **1 High · 11 Medium · 8 Low · 0 Critical** |
-
-*(Correction note: Table counts precisely match the 20 findings below: 1 at Sev 8, 3 at Sev 6, 8 at Sev 5, 5 at Sev 4, 3 at Sev 3 = 20 total.)*
 
 ### Items Verified (Scope-Gated Summary)
 
