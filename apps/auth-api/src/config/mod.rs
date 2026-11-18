@@ -217,4 +217,17 @@ impl AppConfig {
     pub fn refresh_token_duration(&self) -> Duration {
         Duration::from_secs(self.jwt_refresh_expiry_secs)
     }
+
+    pub fn portal_origin(&self) -> String {
+        env::var("PORTAL_ORIGIN")
+            .ok()
+            .map(|v| v.trim().trim_end_matches('/').to_string())
+            .filter(|v| !v.is_empty())
+            .unwrap_or_else(|| {
+                self.cors_origins
+                    .first()
+                    .map(|v| v.trim_end_matches('/').to_string())
+                    .unwrap_or_else(|| "http://localhost:3000".to_string())
+            })
+    }
 }
