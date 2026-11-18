@@ -1,12 +1,19 @@
 import {
 	AuthSdkError,
 	createAuthClient,
+	hasPermission as evaluateScopedPermission,
 	type AuthSessionSnapshot,
-	type ClientUser
+	type ClientUser,
+	type OrganizationInvitationView,
+	type OrganizationMemberView,
+	type PermissionCheckInput,
+	type UserOrganizationMembership
 } from '@secure-auth/core';
 import type {
 	AuthGateProps,
 	AuthProviderProps,
+	OrganizationProfileProps,
+	OrganizationSwitcherProps,
 	ProtectProps,
 	ReactAuthContextValue,
 	ReactAuthState,
@@ -22,6 +29,8 @@ import type {
 export type {
 	AuthGateProps,
 	AuthProviderProps,
+	OrganizationProfileProps,
+	OrganizationSwitcherProps,
 	ProtectProps,
 	ReactAuthContextValue,
 	ReactAuthState,
@@ -43,12 +52,34 @@ export interface ReactAuthSdk {
 	usePermissions(): {
 		roles: string[];
 		permissions: string[];
+		orgRole: string | null;
+		orgPermissions: string[];
 		hasPermission(permission: string): boolean;
 		hasRole(role: string): boolean;
+		has(check: PermissionCheckInput): boolean;
+	};
+	useOrganization(): {
+		isLoaded: boolean;
+		organization: UserOrganizationMembership['organization'] | null;
+		membership: UserOrganizationMembership | null;
+		orgId: string | null;
+		orgSlug: string | null;
+		orgRole: string | null;
+		orgPermissions: string[];
+		setActive(organizationId: string | null): Promise<void>;
+	};
+	useOrganizationList(): {
+		isLoaded: boolean;
+		organizations: UserOrganizationMembership[];
+		activeOrgId: string | null;
+		refresh(): Promise<UserOrganizationMembership[]>;
+		setActive(organizationId: string | null): Promise<void>;
 	};
 	SignIn(props?: SignInProps): ReactElementLike;
 	SignUp(props?: SignUpProps): ReactElementLike;
 	UserButton(props?: UserButtonProps): ReactElementLike | null;
+	OrganizationSwitcher(props?: OrganizationSwitcherProps): ReactElementLike | null;
+	OrganizationProfile(props?: OrganizationProfileProps): ReactElementLike | null;
 	SignedIn(props: AuthGateProps): ReactElementLike | null;
 	SignedOut(props: AuthGateProps): ReactElementLike | null;
 	Protect(props: ProtectProps): ReactElementLike | null;
@@ -60,6 +91,11 @@ function initialAuthState(initial?: Partial<ReactAuthState>): ReactAuthState {
 		isSignedIn: Boolean(initial?.isSignedIn),
 		user: initial?.user ?? null,
 		sessionId: initial?.sessionId ?? null,
+		activeOrgId: initial?.activeOrgId ?? null,
+		orgSlug: initial?.orgSlug ?? null,
+		orgRole: initial?.orgRole ?? null,
+		orgPermissions: initial?.orgPermissions ? [...initial.orgPermissions] : [],
+		organizations: initial?.organizations ? [...initial.organizations] : [],
 		roles: initial?.roles ? [...initial.roles] : [],
 		permissions: initial?.permissions ? [...initial.permissions] : []
 	};
@@ -76,25 +112,42 @@ function snapshotToReactState(
 		isSignedIn,
 		user: isSignedIn ? user : null,
 		sessionId: isSignedIn ? (snap.sessionId ?? prev.sessionId) : null,
+		activeOrgId: isSignedIn ? (snap.activeOrganizationId ?? prev.activeOrgId) : null,
+		orgSlug: isSignedIn ? (snap.orgSlug ?? prev.orgSlug) : null,
+		orgRole: isSignedIn ? (snap.orgRole ?? prev.orgRole) : null,
+		orgPermissions: isSignedIn
+			? (snap.orgPermissions.length > 0 ? [...snap.orgPermissions] : [...prev.orgPermissions])
+			: [],
+		organizations: isSignedIn ? [...prev.organizations] : [],
 		roles: isSignedIn ? (user?.roles ?? prev.roles) : [],
 		permissions: isSignedIn ? (user?.permissions ?? prev.permissions) : []
 	};
 }
 
 export function canAccess(
-	state: Pick<ReactAuthState, 'isSignedIn' | 'roles' | 'permissions'>,
-	requirements: { permission?: string; role?: string } = {}
+	state: Pick<
+		ReactAuthState,
+		'isSignedIn' | 'roles' | 'permissions'
+	> &
+		Partial<Pick<ReactAuthState, 'activeOrgId' | 'orgRole' | 'orgPermissions'>>,
+	requirements: PermissionCheckInput = {}
 ): boolean {
 	if (!state.isSignedIn) {
 		return false;
 	}
-	if (requirements.permission && !state.permissions.includes(requirements.permission)) {
-		return false;
+	if (!requirements.permission && !requirements.role) {
+		return !requirements.orgId || state.activeOrgId === requirements.orgId;
 	}
-	if (requirements.role && !state.roles.includes(requirements.role)) {
-		return false;
-	}
-	return true;
+	return evaluateScopedPermission(
+		{
+			roles: state.roles,
+			permissions: state.permissions,
+			org_id: state.activeOrgId ?? undefined,
+			org_role: state.orgRole ?? undefined,
+			org_permissions: state.orgPermissions ?? []
+		},
+		requirements
+	);
 }
 
 export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
@@ -131,8 +184,39 @@ export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
 		return {
 			roles: ctx.roles,
 			permissions: ctx.permissions,
+			orgRole: ctx.orgRole,
+			orgPermissions: ctx.orgPermissions,
 			hasPermission: ctx.hasPermission,
-			hasRole: ctx.hasRole
+			hasRole: ctx.hasRole,
+			has: ctx.has
+		};
+	}
+
+	function useOrganization() {
+		const ctx = useAuth();
+		const membership = ctx.activeOrgId
+			? (ctx.organizations.find((item) => item.organization.id === ctx.activeOrgId) ?? null)
+			: null;
+		return {
+			isLoaded: ctx.isLoaded,
+			organization: membership?.organization ?? null,
+			membership,
+			orgId: ctx.activeOrgId,
+			orgSlug: ctx.orgSlug,
+			orgRole: ctx.orgRole,
+			orgPermissions: ctx.orgPermissions,
+			setActive: ctx.setActiveOrganization
+		};
+	}
+
+	function useOrganizationList() {
+		const ctx = useAuth();
+		return {
+			isLoaded: ctx.isLoaded,
+			organizations: ctx.organizations,
+			activeOrgId: ctx.activeOrgId,
+			refresh: ctx.refreshOrganizations,
+			setActive: ctx.setActiveOrganization
 		};
 	}
 
@@ -167,8 +251,25 @@ export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
 			() => ({
 				...state,
 				client,
-				hasPermission: (permission: string) => state.permissions.includes(permission),
-				hasRole: (role: string) => state.roles.includes(role),
+				hasPermission: (permission: string) =>
+					state.permissions.includes(permission) || state.orgPermissions.includes(permission),
+				hasRole: (role: string) => state.roles.includes(role) || state.orgRole === role,
+				has: (check: PermissionCheckInput) => canAccess(state, check),
+				refreshOrganizations: async () => {
+					const list = await client.listOrganizations();
+					setState((prev) => ({ ...prev, organizations: list }));
+					return list;
+				},
+				setActiveOrganization: async (organizationId: string | null) => {
+					const switched = await client.switchActiveOrganization(organizationId);
+					setState((prev) => ({
+						...prev,
+						activeOrgId: switched.active_organization_id,
+						orgSlug: switched.org_slug,
+						orgRole: switched.org_role,
+						orgPermissions: [...switched.org_permissions]
+					}));
+				},
 				signInWithRedirect: (options) => client.signInWithRedirect(options),
 				signInWithPassword: async (input) => {
 					const res = await client.signInWithPassword(input);
@@ -177,6 +278,11 @@ export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
 						isSignedIn: true,
 						user: res.user,
 						sessionId: res.session_id,
+						activeOrgId: null,
+						orgSlug: null,
+						orgRole: null,
+						orgPermissions: [],
+						organizations: [],
 						roles: [...res.user.roles],
 						permissions: [...res.user.permissions]
 					});
@@ -191,6 +297,11 @@ export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
 						isSignedIn: true,
 						user: res.user,
 						sessionId: res.session_id,
+						activeOrgId: null,
+						orgSlug: null,
+						orgRole: null,
+						orgPermissions: [],
+						organizations: [],
 						roles: [...res.user.roles],
 						permissions: [...res.user.permissions]
 					});
@@ -202,6 +313,11 @@ export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
 						isSignedIn: false,
 						user: null,
 						sessionId: null,
+						activeOrgId: null,
+						orgSlug: null,
+						orgRole: null,
+						orgPermissions: [],
+						organizations: [],
 						roles: [],
 						permissions: []
 					});
@@ -517,6 +633,136 @@ export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
 		);
 	}
 
+	function OrganizationSwitcher(props: OrganizationSwitcherProps = {}): ReactElementLike | null {
+		const auth = useAuth();
+		const [open, setOpen] = react.useState(false);
+		const [switching, setSwitching] = react.useState(false);
+
+		if (!auth.isSignedIn) {
+			return null;
+		}
+
+		const allowPersonal = props.allowPersonal ?? true;
+		const activeOrg = auth.organizations.find((o) => o.organization.id === auth.activeOrgId);
+		const label = activeOrg?.organization.name ?? auth.orgSlug ?? 'Personal Account';
+
+		const selectOrg = async (orgId: string | null) => {
+			setSwitching(true);
+			try {
+				await auth.setActiveOrganization(orgId);
+				setOpen(false);
+				props.onSwitch?.(orgId);
+			} finally {
+				setSwitching(false);
+			}
+		};
+
+		const options: ReactElementLike[] = [];
+		if (allowPersonal) {
+			options.push(
+				react.createElement(
+					'button',
+					{
+						key: '__personal',
+						type: 'button',
+						role: 'option',
+						'aria-selected': auth.activeOrgId === null,
+						disabled: switching,
+						onClick: () => selectOrg(null)
+					},
+					'Personal Account'
+				)
+			);
+		}
+		for (const item of auth.organizations) {
+			options.push(
+				react.createElement(
+					'button',
+					{
+						key: item.organization.id,
+						type: 'button',
+						role: 'option',
+						'aria-selected': auth.activeOrgId === item.organization.id,
+						disabled: switching,
+						onClick: () => selectOrg(item.organization.id)
+					},
+					`${item.organization.name} (${item.roles[0] ?? 'org:member'})`
+				)
+			);
+		}
+
+		const menu = open
+			? react.createElement('div', { className: 'sa-org-menu', role: 'listbox' }, options)
+			: null;
+
+		return react.createElement(
+			'div',
+			{ className: 'sa-org-switcher' },
+			react.createElement(
+				'button',
+				{
+					type: 'button',
+					className: 'sa-org-trigger',
+					'aria-haspopup': 'listbox',
+					'aria-expanded': open,
+					disabled: switching,
+					onClick: () => setOpen((prev) => !prev)
+				},
+				label
+			),
+			menu
+		);
+	}
+
+	function OrganizationProfile(props: OrganizationProfileProps = {}): ReactElementLike | null {
+		const auth = useAuth();
+		const targetOrgId = props.organizationId ?? auth.activeOrgId;
+		const [members, setMembers] = react.useState<OrganizationMemberView[]>([]);
+		const [invitations, setInvitations] = react.useState<OrganizationInvitationView[]>([]);
+
+		react.useEffect(() => {
+			if (!targetOrgId || !auth.isSignedIn) {
+				setMembers([]);
+				setInvitations([]);
+				return;
+			}
+			void auth.client
+				.listOrganizationMembers(targetOrgId)
+				.then(setMembers)
+				.catch(() => setMembers([]));
+			void auth.client
+				.listOrganizationInvitations(targetOrgId)
+				.then(setInvitations)
+				.catch(() => setInvitations([]));
+		}, [targetOrgId, auth.isSignedIn, auth.client]);
+
+		if (!targetOrgId) {
+			return null;
+		}
+
+		return react.createElement(
+			'section',
+			{ className: 'sa-org-profile', 'aria-label': 'Organization profile' },
+			react.createElement('h3', null, auth.orgSlug ?? targetOrgId),
+			react.createElement(
+				'ul',
+				{ className: 'sa-org-members' },
+				members.map((m) =>
+					react.createElement('li', { key: m.id }, `${m.display_name} (${m.roles.join(', ')})`)
+				)
+			),
+			invitations.length > 0
+				? react.createElement(
+						'ul',
+						{ className: 'sa-org-invitations' },
+						invitations.map((inv) =>
+							react.createElement('li', { key: inv.id }, `${inv.email} - ${inv.status}`)
+						)
+					)
+				: null
+		);
+	}
+
 	function SignedIn(props: AuthGateProps): ReactElementLike | null {
 		const auth = useAuth();
 		if (!auth.isLoaded || !auth.isSignedIn) {
@@ -538,7 +784,13 @@ export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
 		if (!auth.isLoaded) {
 			return null;
 		}
-		if (canAccess(auth, { permission: props.permission, role: props.role })) {
+		if (
+			canAccess(auth, {
+				permission: props.permission,
+				role: props.role,
+				orgId: props.orgId
+			})
+		) {
 			return react.createElement(react.Fragment, null, props.children ?? null);
 		}
 		if (props.fallback === undefined || props.fallback === null) {
@@ -554,9 +806,13 @@ export function createReactAuth(react: ReactRuntime): ReactAuthSdk {
 		useUser,
 		useSession,
 		usePermissions,
+		useOrganization,
+		useOrganizationList,
 		SignIn,
 		SignUp,
 		UserButton,
+		OrganizationSwitcher,
+		OrganizationProfile,
 		SignedIn,
 		SignedOut,
 		Protect
@@ -629,6 +885,14 @@ export function usePermissions() {
 	return getDefaultSdk().usePermissions();
 }
 
+export function useOrganization() {
+	return getDefaultSdk().useOrganization();
+}
+
+export function useOrganizationList() {
+	return getDefaultSdk().useOrganizationList();
+}
+
 export function SignIn(props?: SignInProps): ReactElementLike {
 	return getDefaultSdk().SignIn(props);
 }
@@ -639,6 +903,18 @@ export function SignUp(props?: SignUpProps): ReactElementLike {
 
 export function UserButton(props?: UserButtonProps): ReactElementLike | null {
 	return getDefaultSdk().UserButton(props);
+}
+
+export function OrganizationSwitcher(
+	props?: OrganizationSwitcherProps
+): ReactElementLike | null {
+	return getDefaultSdk().OrganizationSwitcher(props);
+}
+
+export function OrganizationProfile(
+	props?: OrganizationProfileProps
+): ReactElementLike | null {
+	return getDefaultSdk().OrganizationProfile(props);
 }
 
 export function SignedIn(props: AuthGateProps): ReactElementLike | null {

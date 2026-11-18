@@ -3,6 +3,8 @@ import test from 'node:test';
 import { AuthSdkError } from '@secure-auth/core';
 import {
 	AuthProvider,
+	OrganizationProfile,
+	OrganizationSwitcher,
 	Protect,
 	SignIn,
 	SignUp,
@@ -13,6 +15,8 @@ import {
 	configureReactRuntime,
 	createReactAuth,
 	useAuth,
+	useOrganization,
+	useOrganizationList,
 	usePermissions,
 	useSession,
 	useUser
@@ -165,7 +169,12 @@ test('configureReactRuntime wires top-level React exports cleanly', () => {
 	const tree = renderComponent(AuthProvider, {
 		config: {
 			issuerUrl: 'https://auth.example.test',
-			publishableKey: 'pub-elysiar'
+			publishableKey: 'pub-elysiar',
+			fetch: async () =>
+				new Response(JSON.stringify([]), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
 		},
 		initialState: {
 			isLoaded: true,
@@ -187,5 +196,79 @@ test('configureReactRuntime wires top-level React exports cleanly', () => {
 	assert.equal(renderComponent(Protect, { fallback: 'blocked', children: 'ok' })?.props.children, 'blocked');
 	assert.equal(renderComponent(SignIn, { mode: 'direct' }).type, 'section');
 	assert.equal(renderComponent(SignUp, {}).type, 'section');
+});
+
+test('Phase 08: React organization hooks, switcher, profile, and scoped Protect work cleanly', () => {
+	const { runtime, renderComponent } = createTestReactRuntime();
+	configureReactRuntime(runtime);
+
+	const tree = renderComponent(AuthProvider, {
+		config: {
+			issuerUrl: 'https://auth.example.test',
+			publishableKey: 'pub-elysiar',
+			fetch: async () =>
+				new Response(JSON.stringify([]), {
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				})
+		},
+		initialState: {
+			isLoaded: true,
+			isSignedIn: true,
+			sessionId: 'sid_org',
+			activeOrgId: 'org_1',
+			orgSlug: 'acme',
+			orgRole: 'org:admin',
+			orgPermissions: ['org:billing:write'],
+			organizations: [
+				{
+					organization: {
+						id: 'org_1',
+						environment_id: 'env_1',
+						slug: 'acme',
+						name: 'Acme',
+						logo_url: null,
+						status: 'active',
+						metadata: {},
+						version: 1,
+						member_count: 2,
+						created_at: '2026-01-01T00:00:00Z',
+						updated_at: '2026-01-01T00:00:00Z'
+					},
+					member_id: 'mem_1',
+					roles: ['org:admin'],
+					status: 'active',
+					joined_at: '2026-01-01T00:00:00Z'
+				}
+			],
+			roles: ['user'],
+			permissions: ['profile.read']
+		},
+		children: 'org-member'
+	});
+	tree.type(tree.props);
+
+	assert.equal(useOrganization().orgSlug, 'acme');
+	assert.equal(useOrganizationList().organizations.length, 1);
+	assert.equal(renderComponent(OrganizationSwitcher, {})?.type, 'div');
+	assert.equal(renderComponent(OrganizationProfile, {})?.type, 'section');
+	assert.equal(
+		renderComponent(Protect, {
+			permission: 'org:billing:write',
+			orgId: 'org_1',
+			children: 'allowed',
+			fallback: 'denied'
+		})?.props.children,
+		'allowed'
+	);
+	assert.equal(
+		renderComponent(Protect, {
+			permission: 'org:billing:write',
+			orgId: 'org_2',
+			children: 'allowed',
+			fallback: 'denied'
+		})?.props.children,
+		'denied'
+	);
 });
 

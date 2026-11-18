@@ -3,8 +3,10 @@ import type {
 	AuthClientConfig,
 	ClientUser,
 	RedirectSignInOptions,
-	SignOutOptions
+	SignOutOptions,
+	UserOrganizationMembership
 } from '@secure-auth/core/client';
+import type { PermissionCheckInput } from '@secure-auth/core/server';
 
 export type ReactNodeLike =
 	| string
@@ -46,6 +48,11 @@ export interface ReactAuthState {
 	isSignedIn: boolean;
 	user: ClientUser | null;
 	sessionId: string | null;
+	activeOrgId: string | null;
+	orgSlug: string | null;
+	orgRole: string | null;
+	orgPermissions: string[];
+	organizations: UserOrganizationMembership[];
 	roles: string[];
 	permissions: string[];
 }
@@ -54,6 +61,9 @@ export interface ReactAuthContextValue extends ReactAuthState {
 	client: AuthClient;
 	hasPermission(permission: string): boolean;
 	hasRole(role: string): boolean;
+	has(check: PermissionCheckInput): boolean;
+	refreshOrganizations(): Promise<UserOrganizationMembership[]>;
+	setActiveOrganization(organizationId: string | null): Promise<void>;
 	signInWithRedirect(options?: RedirectSignInOptions): Promise<string>;
 	signInWithPassword(input: { email: string; password: string }): Promise<void>;
 	signUp(input: { email: string; password: string; displayName: string }): Promise<void>;
@@ -92,6 +102,16 @@ export interface AuthGateProps {
 export interface ProtectProps {
 	permission?: string;
 	role?: string;
+	orgId?: string;
 	fallback?: ReactNodeLike;
 	children?: ReactNodeLike;
+}
+
+export interface OrganizationSwitcherProps {
+	allowPersonal?: boolean;
+	onSwitch?: (orgId: string | null) => void;
+}
+
+export interface OrganizationProfileProps {
+	organizationId?: string;
 }
