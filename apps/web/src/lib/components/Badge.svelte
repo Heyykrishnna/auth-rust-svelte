@@ -53,7 +53,7 @@
 
 <span class={classes}>
   {#if dot}
-    <span class="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true"></span>
+    <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
   {/if}
   {@render children()}
 </span>

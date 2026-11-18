@@ -121,7 +121,7 @@
 	aria-labelledby="workspace-profile-heading"
 >
 	<header
-		class="rounded-t-xl border-b border-brand-border bg-brand-surface-raised px-4 py-4 sm:px-6"
+		class="rounded-t-xl border-b border-brand-border bg-brand-surface-raised p-4 sm:px-6"
 	>
 		<h2 class="font-heading text-lg font-bold" id="workspace-profile-heading">
 			Workspace profile

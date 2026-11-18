@@ -129,7 +129,7 @@
 	<Card>
 		{#if loading && users.length === 0}
 			<div class="text-center py-12 px-4 text-brand-text-muted flex flex-col items-center gap-3">
-				<div class="w-6 h-6 border-2 border-brand-lime border-r-transparent rounded-full animate-spin"></div>
+				<div class="size-6 border-2 border-brand-lime border-r-transparent rounded-full animate-spin"></div>
 				<p class="m-0 text-sm">Querying Rust API for registered users...</p>
 			</div>
 		{:else if filteredUsers.length === 0}
@@ -153,7 +153,7 @@
 							<tr class="transition-colors {user.id === authStore.user?.id ? 'bg-brand-lime/[0.04]' : 'hover:bg-white/[0.02]'}">
 								<td class="px-4 py-3.5 border-b border-white/5 text-sm align-middle">
 									<div class="flex items-center gap-3">
-										<div class="w-9 h-9 rounded-full bg-brand-lime/10 text-brand-lime border border-brand-lime/20 flex items-center justify-center font-bold text-xs shrink-0">
+										<div class="size-9 rounded-full bg-brand-lime/10 text-brand-lime border border-brand-lime/20 flex items-center justify-center font-bold text-xs shrink-0">
 											{getUserInitials(user)}
 										</div>
 										<div class="flex flex-col gap-0.5">

@@ -321,13 +321,21 @@
 				{#if draft}
 					<div class="provider-card task-surface">
 						<div class="provider-head">
-							<div>
-								<strong>{p.provider === 'google' ? 'Google' : 'GitHub'}</strong>
+							<div class="flex items-center gap-2.5">
+								{#if p.provider === 'google'}
+									<svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+										<path d="M21.8 12.23c0-.72-.06-1.41-.18-2.08H12v3.94h5.49a4.7 4.7 0 0 1-2.04 3.08v2.56h3.3c1.93-1.78 3.05-4.4 3.05-7.5zM12 22c2.76 0 5.07-.91 6.76-2.47l-3.3-2.56c-.91.61-2.08.98-3.46.98-2.66 0-4.91-1.8-5.72-4.21H2.87v2.64A10.21 10.21 0 0 0 12 22zM6.28 13.74A6.13 6.13 0 0 1 5.96 12c0-.6.11-1.19.32-1.74V7.62H2.87A10.21 10.21 0 0 0 1.8 12c0 1.65.4 3.21 1.07 4.38l3.41-2.64zM12 6.05c1.5 0 2.85.52 3.91 1.53l2.93-2.93C17.06 2.99 14.75 2 12 2A10.21 10.21 0 0 0 2.87 7.62l3.41 2.64c.81-2.41 3.06-4.21 5.72-4.21z" />
+									</svg>
+								{:else}
+									<svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+										<path d="M12 2C6.48 2 2 6.48 2 12.02c0 4.42 2.87 8.18 6.84 9.5.5.09.68-.22.68-.48 0-.24-.01-.87-.01-1.7-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.03a9.56 9.56 0 0 1 5 0c1.91-1.3 2.75-1.03 2.75-1.03.55 1.38.2 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.85-2.34 4.7-4.57 4.94.36.31.68.92.68 1.86 0 1.34-.01 2.42-.01 2.75 0 .27.18.58.69.48A10.02 10.02 0 0 0 22 12.02C22 6.48 17.52 2 12 2z" />
+									</svg>
+								{/if}
 								<Badge variant={draft.enabled ? 'success' : 'neutral'} size="sm" dot>
 									{draft.enabled ? 'Enabled' : 'Disabled'}
 								</Badge>
 							</div>
-							<SelectionRow label="Active" bind:checked={draft.enabled} disabled={!canEditProviders} />
+							<SelectionRow compact label="Active" bind:checked={draft.enabled} disabled={!canEditProviders} />
 						</div>
 
 						<div class="callback-row">

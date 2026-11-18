@@ -14,7 +14,7 @@
 
 <button
 	type="button"
-	class="inline-flex min-h-8 h-8 w-8 shrink-0 items-center justify-center rounded-md text-red-500 hover:text-red-400 transition-colors cursor-pointer bg-transparent border-0 p-0 disabled:opacity-50 disabled:cursor-not-allowed {className}"
+	class="inline-flex h-8 min-h-8 size-8 shrink-0 items-center justify-center rounded-md text-red-500 hover:text-red-400 transition-colors cursor-pointer bg-transparent border-0 p-0 disabled:opacity-50 disabled:cursor-not-allowed {className}"
 	title={label}
 	aria-label={label}
 	{disabled}

@@ -29,7 +29,7 @@
 </script>
 
 <header class="sticky top-0 z-50 bg-brand-surface/95 backdrop-blur-md border-b border-brand-border">
-  <div class="max-w-7xl mx-auto px-6 h-[60px] flex items-center justify-between">
+  <div class="max-w-7xl mx-auto px-6 h-15 flex items-center justify-between">
     <a
       href={authStore.isAuthenticated ? "/dashboard" : "/"}
       class="flex items-center gap-2.5 text-brand-text-primary no-underline font-semibold text-base tracking-tight"
@@ -98,7 +98,7 @@
       {#if authStore.isAuthenticated && authStore.user}
         <div class="flex items-center gap-2.5 pl-1 pr-2.5 py-1 rounded-full bg-brand-surface-card border border-brand-border">
           <div
-            class="w-7 h-7 rounded-full bg-brand-lime text-brand-lime-ink flex items-center justify-center font-heading font-bold text-xs select-none"
+            class="size-7 rounded-full bg-brand-lime text-brand-lime-ink flex items-center justify-center font-heading font-bold text-xs select-none"
             title={authStore.user.email}
           >
             {getUserInitials(authStore.user)}

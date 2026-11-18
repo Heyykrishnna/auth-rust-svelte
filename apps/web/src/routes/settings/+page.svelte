@@ -266,7 +266,7 @@
               <div
                 class="flex items-center gap-4 p-4 rounded-xl border {session.is_current ? 'border-emerald-500/40 bg-emerald-950/10' : 'border-brand-border bg-brand-surface-card'}"
               >
-                <div class="text-xs font-mono font-bold text-brand-lime w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                <div class="text-xs font-mono font-bold text-brand-lime size-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
                   SES
                 </div>
                 <div class="flex-1 flex flex-col gap-1 min-w-0">

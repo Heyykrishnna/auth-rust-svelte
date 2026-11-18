@@ -46,7 +46,7 @@
 <div class="max-w-7xl mx-auto px-6 py-8 pb-16">
 	<div class="flex flex-wrap items-center justify-between gap-8 p-8 rounded-xl bg-brand-surface-card border border-brand-border mb-8">
 		<div class="flex items-center gap-6">
-			<div class="w-16 h-16 rounded-full bg-brand-lime text-brand-lime-ink flex items-center justify-center font-heading font-bold text-2xl shrink-0 select-none">
+			<div class="size-16 rounded-full bg-brand-lime text-brand-lime-ink flex items-center justify-center font-heading font-bold text-2xl shrink-0 select-none">
 				{getUserInitials(authStore.user)}
 			</div>
 			<div class="flex flex-col">
@@ -86,7 +86,7 @@
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
 		<Card>
 			<div class="flex items-start gap-4">
-				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+				<div class="size-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
 					<span class="text-xs font-mono font-bold text-brand-lime">SEC</span>
 				</div>
 				<div class="flex flex-col gap-1">
@@ -99,7 +99,7 @@
 
 		<Card>
 			<div class="flex items-start gap-4">
-				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+				<div class="size-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
 					<span class="text-xs font-mono font-bold text-brand-lime">SES</span>
 				</div>
 				<div class="flex flex-col gap-1">
@@ -122,7 +122,7 @@
 
 		<Card>
 			<div class="flex items-start gap-4">
-				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+				<div class="size-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
 					<span class="text-xs font-mono font-bold text-brand-lime">RBAC</span>
 				</div>
 				<div class="flex flex-col gap-1">
@@ -137,7 +137,7 @@
 
 		<Card>
 			<div class="flex items-start gap-4">
-				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+				<div class="size-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
 					<span class="text-xs font-mono font-bold text-brand-lime">DATE</span>
 				</div>
 				<div class="flex flex-col gap-1">

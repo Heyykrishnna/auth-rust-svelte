@@ -51,19 +51,19 @@
 	<div class="max-w-md w-full p-8 rounded-xl bg-brand-surface-card border border-brand-border text-center shadow-2xl">
 		{#if status === 'loading'}
 			<div
-				class="w-12 h-12 border-4 border-brand-lime border-r-transparent rounded-full animate-spin mx-auto mb-6"
+				class="size-12 border-4 border-brand-lime border-r-transparent rounded-full animate-spin mx-auto mb-6"
 				aria-hidden="true"
 			></div>
 			<h2 class="text-xl font-bold font-heading text-brand-text-primary mb-2">Completing sign in…</h2>
 			<p class="text-sm text-brand-text-secondary m-0">Please wait while we authenticate you.</p>
 		{:else if status === 'success'}
-			<div class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 bg-emerald-500/15 text-emerald-300 border-2 border-emerald-500/30">
+			<div class="size-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 bg-emerald-500/15 text-emerald-300 border-2 border-emerald-500/30">
 				✓
 			</div>
 			<h2 class="text-xl font-bold font-heading text-brand-text-primary mb-2">Successfully signed in!</h2>
 			<p class="text-sm text-brand-text-secondary m-0">Redirecting to your dashboard…</p>
 		{:else}
-			<div class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 bg-rose-500/15 text-rose-300 border-2 border-rose-500/30">
+			<div class="size-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 bg-rose-500/15 text-rose-300 border-2 border-rose-500/30">
 				✕
 			</div>
 			<h2 class="text-xl font-bold font-heading text-brand-text-primary mb-2">Authentication failed</h2>
