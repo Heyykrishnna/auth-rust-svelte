@@ -18,12 +18,12 @@
 <div class="landing">
 	<section class="hero animate-fade-in-up">
 		<div class="hero-badge">
-			<span class="badge badge-info">✦ Built with Rust + SvelteKit</span>
+			<span class="badge badge-neutral">Built with Rust + SvelteKit</span>
 		</div>
 
 		<h1 class="hero-title">
 			Authentication<br />
-			<span class="gradient-text">Without Compromise</span>
+			<span class="accent-text">Without Compromise</span>
 		</h1>
 
 		<p class="hero-description">
@@ -84,44 +84,44 @@
 <script lang="ts" module>
 	const features = [
 		{
-			icon: '⚡',
-			title: 'Blazing Fast',
+			icon: '01',
+			title: 'Low-Latency Core',
 			description: 'Rust-powered auth API with sub-millisecond token validation and async I/O.'
 		},
 		{
-			icon: '🔒',
+			icon: '02',
 			title: 'Security First',
-			description: 'Argon2 password hashing, short-lived JWTs, refresh token rotation, and rate limiting.'
+			description: 'Argon2id password hashing, ES256 JWKS signing, refresh rotation, and rate limiting.'
 		},
 		{
-			icon: '🌐',
-			title: 'OIDC / Social Login',
-			description: 'Login with Google or GitHub using the OpenID Connect protocol.'
+			icon: '03',
+			title: 'OIDC & Social SSO',
+			description: 'Centralized OIDC provider with PKCE S256 and upstream Google and GitHub login.'
 		},
 		{
-			icon: '📊',
-			title: 'Full Observability',
-			description: 'Distributed tracing (Tempo), metrics (Prometheus/Grafana), and logs (Loki).'
+			icon: '04',
+			title: 'Service Sync',
+			description: 'Transactional outbox, HMAC-signed webhooks, JIT claims, and cursor reconciliation.'
 		},
 		{
-			icon: '☸️',
+			icon: '05',
 			title: 'Kubernetes Native',
 			description: 'Kustomize overlays, HPA, PDB, and Argo CD GitOps deployment out of the box.'
 		},
 		{
-			icon: '🔄',
+			icon: '06',
 			title: 'Session Management',
-			description: 'Redis-backed sessions with refresh token rotation and device tracking.'
+			description: 'Environment-isolated sessions with refresh token rotation and instant revocation.'
 		}
 	];
 
 	const techStack = [
-		{ icon: '🦀', name: 'Rust / Axum' },
-		{ icon: '🔥', name: 'SvelteKit' },
-		{ icon: '🐘', name: 'PostgreSQL' },
-		{ icon: '⚡', name: 'Redis' },
-		{ icon: '☸️', name: 'Kubernetes' },
-		{ icon: '🔭', name: 'OpenTelemetry' }
+		{ icon: 'RS', name: 'Rust / Axum' },
+		{ icon: 'SK', name: 'SvelteKit 5' },
+		{ icon: 'PG', name: 'PostgreSQL' },
+		{ icon: 'RD', name: 'Redis' },
+		{ icon: 'K8', name: 'Kubernetes' },
+		{ icon: 'OT', name: 'OpenTelemetry' }
 	];
 </script>
 
@@ -147,11 +147,8 @@
 		margin-bottom: var(--space-6);
 	}
 
-	.gradient-text {
-		background: linear-gradient(135deg, var(--color-primary-light), var(--color-accent));
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
+	.accent-text {
+		color: #a1a1aa;
 	}
 
 	.hero-description {

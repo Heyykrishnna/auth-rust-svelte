@@ -110,13 +110,10 @@
 	</div>
 
 	{#if error}
-		<div class="admin-error-box" role="alert">
-			<span>⚠</span> {error}
-		</div>
+		<div class="admin-error-box" role="alert">{error}</div>
 	{/if}
 
 	<div class="search-bar">
-		<span class="search-icon">🔍</span>
 		<input
 			type="text"
 			placeholder="Search users by name, email, or UUID..."
@@ -281,17 +278,9 @@
 		align-items: center;
 	}
 
-	.search-icon {
-		position: absolute;
-		left: 1rem;
-		font-size: 0.95rem;
-		pointer-events: none;
-		opacity: 0.5;
-	}
-
 	.search-input {
 		width: 100%;
-		padding: 0.8rem 2.5rem 0.8rem 2.75rem;
+		padding: 0.8rem 2.5rem 0.8rem 1rem;
 		background: rgba(15, 23, 42, 0.6);
 		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: 10px;
@@ -357,12 +346,12 @@
 		width: 38px;
 		height: 38px;
 		border-radius: 50%;
-		background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+		background-color: #23262e;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		font-weight: 600;
-		font-size: 0.85rem;
+		font-size: 0.82rem;
 		color: #ffffff;
 		flex-shrink: 0;
 	}

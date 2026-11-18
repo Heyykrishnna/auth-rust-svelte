@@ -150,9 +150,7 @@
 		<Card title="Profile Information" subtitle="Update your public display identity">
 			<form onsubmit={handleUpdateProfile} class="settings-form">
 				{#if profileError}
-					<div class="form-error" role="alert">
-						<span>⚠</span> {profileError}
-					</div>
+					<div class="form-error" role="alert">{profileError}</div>
 				{/if}
 
 				<div class="form-group">
@@ -246,9 +244,7 @@
 					<div class="sessions-list">
 						{#each sessions as session (session.id)}
 							<div class="session-card" class:session-current={session.is_current}>
-								<div class="session-icon">
-									💻
-								</div>
+								<div class="session-icon">SES</div>
 								<div class="session-details">
 									<div class="session-title-line">
 										<span class="session-device">{parseDevice(session.user_agent)}</span>

@@ -87,7 +87,7 @@
 		<Card variant="glass">
 			<div class="stat-card-inner">
 				<div class="stat-icon-wrapper">
-					<span class="stat-icon">🛡️</span>
+					<span class="stat-icon">SEC</span>
 				</div>
 				<div class="stat-details">
 					<span class="stat-title">Security State</span>
@@ -100,7 +100,7 @@
 		<Card variant="glass">
 			<div class="stat-card-inner">
 				<div class="stat-icon-wrapper">
-					<span class="stat-icon">💻</span>
+					<span class="stat-icon">SES</span>
 				</div>
 				<div class="stat-details">
 					<span class="stat-title">Active Devices</span>
@@ -123,7 +123,7 @@
 		<Card variant="glass">
 			<div class="stat-card-inner">
 				<div class="stat-icon-wrapper">
-					<span class="stat-icon">👑</span>
+					<span class="stat-icon">RBAC</span>
 				</div>
 				<div class="stat-details">
 					<span class="stat-title">Assigned Roles</span>
@@ -138,7 +138,7 @@
 		<Card variant="glass">
 			<div class="stat-card-inner">
 				<div class="stat-icon-wrapper">
-					<span class="stat-icon">📅</span>
+					<span class="stat-icon">DATE</span>
 				</div>
 				<div class="stat-details">
 					<span class="stat-title">Member Since</span>
@@ -201,12 +201,12 @@
 				<div class="arch-arrow">↓ Internal Isolated Backing Services</div>
 				<div class="arch-backends">
 					<div class="backend-item">
-						<span class="backend-icon">🐘</span>
+						<span class="backend-icon">PG</span>
 						<span>PostgreSQL (Persistence)</span>
 					</div>
 					<div class="backend-item">
-						<span class="backend-icon">⚡</span>
-						<span>Redis (Session Store & Cache)</span>
+						<span class="backend-icon">RD</span>
+						<span>Redis (Session Store &amp; Cache)</span>
 					</div>
 				</div>
 			</div>
@@ -230,10 +230,9 @@
 		justify-content: space-between;
 		gap: 2rem;
 		padding: 2.5rem;
-		border-radius: var(--radius-xl, 24px);
-		background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+		border-radius: 12px;
+		background-color: #15171b;
+		border: 1px solid #23262e;
 		margin-bottom: 2rem;
 		flex-wrap: wrap;
 	}
@@ -245,17 +244,16 @@
 	}
 
 	.user-avatar-large {
-		width: 72px;
-		height: 72px;
+		width: 64px;
+		height: 64px;
 		border-radius: 50%;
-		background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+		background-color: #ffffff;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		font-weight: 700;
-		font-size: 1.75rem;
-		color: #ffffff;
-		box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+		font-size: 1.5rem;
+		color: #0b0c0e;
 		flex-shrink: 0;
 	}
 
