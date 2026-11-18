@@ -28,8 +28,13 @@
 <header class="navbar-wrapper">
 	<div class="navbar container">
 		<a href={authStore.isAuthenticated ? '/dashboard' : '/'} class="brand">
-			<span class="brand-icon" aria-hidden="true">🔐</span>
-			<span class="brand-text">Auth<span class="brand-accent">Platform</span></span>
+			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+				<line x1="12" y1="2" x2="12" y2="22" />
+				<line x1="2" y1="12" x2="22" y2="12" />
+				<line x1="5" y1="5" x2="19" y2="19" />
+				<line x1="19" y1="5" x2="5" y2="19" />
+			</svg>
+			<span class="brand-text">Secure Auth</span>
 		</a>
 
 		<nav class="nav-links" aria-label="Main Navigation">
@@ -44,22 +49,22 @@
 					Control Plane
 				</a>
 				{#if authStore.isAdmin}
-					<a href="/admin" class="nav-link nav-link-admin" class:active={isActive('/admin')}>
-						<span class="admin-indicator" aria-hidden="true">★</span> Admin
+					<a href="/admin" class="nav-link" class:active={isActive('/admin')}>
+						Admin
 					</a>
 				{/if}
 			{:else}
 				<a href="/" class="nav-link" class:active={page.url.pathname === '/'}>
-					Home
-				</a>
-				<a href="/login" class="nav-link" class:active={isActive('/login')}>
-					Sign In
+					Overview
 				</a>
 				<a href="/control" class="nav-link" class:active={isActive('/control')}>
 					Control Plane
 				</a>
+				<a href="/login" class="nav-link" class:active={isActive('/login')}>
+					Sign In
+				</a>
 				<a href="/register" class="nav-link" class:active={isActive('/register')}>
-					Register
+					Create Account
 				</a>
 			{/if}
 		</nav>
@@ -72,11 +77,7 @@
 					</div>
 					<div class="user-meta">
 						<span class="user-name">{formatUserDisplayName(authStore.user)}</span>
-						{#if authStore.isAdmin}
-							<Badge variant="purple" size="sm">Admin</Badge>
-						{:else}
-							<Badge variant="neutral" size="sm">User</Badge>
-						{/if}
+						<Badge variant="neutral" size="sm">{authStore.isAdmin ? 'Admin' : 'User'}</Badge>
 					</div>
 				</div>
 
@@ -90,8 +91,8 @@
 					Sign Out
 				</Button>
 			{:else}
-				<Button variant="primary" size="sm" href="/login">
-					Get Started
+				<Button variant="primary" size="sm" href="/control/login">
+					Console
 				</Button>
 			{/if}
 		</div>
@@ -103,14 +104,12 @@
 		position: sticky;
 		top: 0;
 		z-index: 50;
-		background: rgba(10, 14, 23, 0.75);
-		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
-		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+		background-color: var(--color-bg-sidebar);
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.container {
-		max-width: 1200px;
+		max-width: 1240px;
 		margin: 0 auto;
 		padding: 0 1.5rem;
 	}
@@ -119,7 +118,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 68px;
+		height: 60px;
 	}
 
 	.brand {
@@ -127,110 +126,78 @@
 		align-items: center;
 		gap: 0.6rem;
 		text-decoration: none;
-		font-weight: 700;
-		font-size: 1.25rem;
-		color: #ffffff;
+		font-weight: 600;
+		font-size: 1rem;
+		color: var(--color-text);
 		letter-spacing: -0.02em;
-	}
-
-	.brand-icon {
-		font-size: 1.4rem;
-	}
-
-	.brand-accent {
-		background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
-		-webkit-background-clip: text;
-		background-clip: text;
-		-webkit-text-fill-color: transparent;
 	}
 
 	.nav-links {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.35rem;
 	}
 
 	.nav-link {
-		color: #94a3b8;
+		color: var(--color-text-muted);
 		text-decoration: none;
 		font-weight: 500;
-		font-size: 0.92rem;
-		padding: 0.5rem 0.85rem;
-		border-radius: 8px;
-		transition: all 0.15s ease;
+		font-size: 0.875rem;
+		padding: 0.45rem 0.75rem;
+		border-radius: 6px;
+		border: 1px solid transparent;
 	}
 
 	.nav-link:hover {
-		color: #ffffff;
-		background: rgba(255, 255, 255, 0.05);
+		color: var(--color-text);
+		background-color: var(--color-bg-elevated);
 	}
 
 	.nav-link.active {
-		color: #ffffff;
-		background: rgba(99, 102, 241, 0.15);
-		border: 1px solid rgba(99, 102, 241, 0.3);
-	}
-
-	.nav-link-admin {
-		color: #c084fc;
-	}
-
-	.nav-link-admin:hover {
-		color: #e9d5ff;
-		background: rgba(168, 85, 247, 0.15);
-	}
-
-	.nav-link-admin.active {
-		color: #ffffff;
-		background: rgba(168, 85, 247, 0.2);
-		border: 1px solid rgba(168, 85, 247, 0.35);
-	}
-
-	.admin-indicator {
-		font-size: 0.75rem;
-		margin-right: 0.15rem;
+		color: var(--color-text);
+		background-color: var(--color-bg-elevated);
+		border-color: var(--color-border-hover);
 	}
 
 	.nav-actions {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: 0.75rem;
 	}
 
 	.user-profile-pill {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.35rem 0.75rem 0.35rem 0.4rem;
+		gap: 0.6rem;
+		padding: 0.25rem 0.65rem 0.25rem 0.3rem;
 		border-radius: 9999px;
-		background: rgba(255, 255, 255, 0.04);
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		background-color: var(--color-bg-surface);
+		border: 1px solid var(--color-border);
 	}
 
 	.avatar {
-		width: 32px;
-		height: 32px;
+		width: 28px;
+		height: 28px;
 		border-radius: 50%;
-		background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+		background-color: #ffffff;
+		color: #0b0c0e;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		font-weight: 600;
-		font-size: 0.8rem;
-		color: #ffffff;
-		box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+		font-size: 0.72rem;
 	}
 
 	.user-meta {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.45rem;
 	}
 
 	.user-name {
-		font-size: 0.875rem;
+		font-size: 0.82rem;
 		font-weight: 500;
-		color: #e2e8f0;
+		color: var(--color-text);
 		max-width: 140px;
 		overflow: hidden;
 		text-overflow: ellipsis;

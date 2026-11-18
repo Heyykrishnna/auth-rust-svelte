@@ -27,26 +27,21 @@
 	}
 </script>
 
-<script lang="ts">
-	const icons: Record<ToastType, string> = {
-		success: '✓',
-		error: '✕',
-		warning: '⚠',
-		info: 'ℹ'
-	};
-</script>
-
 <div class="toast-container" aria-live="polite" aria-atomic="false">
 	{#each toasts as toast (toast.id)}
 		<div class="toast toast-{toast.type}" role="status">
-			<span class="toast-icon" aria-hidden="true">{icons[toast.type]}</span>
+			<span class="toast-dot" aria-hidden="true"></span>
 			<span class="toast-message">{toast.message}</span>
 			<button
+				type="button"
 				class="toast-close"
 				onclick={() => removeToast(toast.id)}
 				aria-label="Dismiss notification"
 			>
-				✕
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+					<line x1="18" y1="6" x2="6" y2="18" />
+					<line x1="6" y1="6" x2="18" y2="18" />
+				</svg>
 			</button>
 		</div>
 	{/each}
@@ -60,7 +55,7 @@
 		z-index: 9999;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.65rem;
 		pointer-events: none;
 	}
 
@@ -68,69 +63,44 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 0.875rem 1rem;
-		border-radius: 0.75rem;
-		border: 1px solid;
-		backdrop-filter: blur(12px);
-		min-width: 300px;
+		padding: 0.8rem 1rem;
+		border-radius: 8px;
+		background-color: var(--color-bg-surface);
+		border: 1px solid var(--color-border-hover);
+		color: var(--color-text);
+		min-width: 280px;
 		max-width: 420px;
 		pointer-events: all;
-		animation: slideIn 0.3s ease both;
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 	}
 
-	@keyframes slideIn {
-		from { opacity: 0; transform: translateX(100%); }
-		to   { opacity: 1; transform: translateX(0); }
-	}
-
-	.toast-success {
-		background: rgba(16, 185, 129, 0.12);
-		border-color: rgba(16, 185, 129, 0.3);
-		color: #6ee7b7;
-	}
-
-	.toast-error {
-		background: rgba(239, 68, 68, 0.12);
-		border-color: rgba(239, 68, 68, 0.3);
-		color: #fca5a5;
-	}
-
-	.toast-warning {
-		background: rgba(245, 158, 11, 0.12);
-		border-color: rgba(245, 158, 11, 0.3);
-		color: #fcd34d;
-	}
-
-	.toast-info {
-		background: rgba(6, 182, 212, 0.12);
-		border-color: rgba(6, 182, 212, 0.3);
-		color: #67e8f9;
-	}
-
-	.toast-icon {
-		font-size: 1rem;
+	.toast-dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
 		flex-shrink: 0;
-		width: 1.5rem;
-		height: 1.5rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		background-color: var(--color-info);
 	}
 
-	.toast-message { flex: 1; font-size: 0.9375rem; font-weight: 500; }
+	.toast-success .toast-dot { background-color: var(--color-success); }
+	.toast-error .toast-dot { background-color: var(--color-error); }
+	.toast-warning .toast-dot { background-color: var(--color-warning); }
+
+	.toast-message {
+		flex: 1;
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
 
 	.toast-close {
 		background: none;
 		border: none;
-		color: inherit;
+		color: var(--color-text-muted);
 		cursor: pointer;
-		opacity: 0.6;
-		font-size: 0.875rem;
-		padding: 0.25rem;
-		transition: opacity 150ms ease;
-		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.2rem;
 	}
 
-	.toast-close:hover { opacity: 1; }
+	.toast-close:hover { color: var(--color-text); }
 </style>

@@ -54,6 +54,7 @@
 		}}
 		role="dialog"
 		aria-modal="true"
+		aria-label={title}
 		tabindex="-1"
 	>
 		<div class="modal-dialog">
@@ -66,7 +67,10 @@
 					disabled={loading}
 					aria-label="Close dialog"
 				>
-					✕
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+						<line x1="18" y1="6" x2="6" y2="18" />
+						<line x1="6" y1="6" x2="18" y2="18" />
+					</svg>
 				</button>
 			</div>
 
@@ -99,97 +103,74 @@
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.75);
-		backdrop-filter: blur(8px);
-		-webkit-backdrop-filter: blur(8px);
+		background-color: rgba(0, 0, 0, 0.78);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		z-index: 1000;
 		padding: 1rem;
-		animation: fadeIn 0.15s ease-out;
 	}
 
 	.modal-dialog {
-		background: #131927;
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-		border-radius: var(--radius-lg, 16px);
-		max-width: 480px;
+		background-color: var(--color-bg-surface);
+		border: 1px solid var(--color-border-hover);
+		border-radius: 12px;
+		max-width: 520px;
 		width: 100%;
 		overflow: hidden;
-		animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.modal-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1.25rem 1.5rem;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		padding: 1.15rem 1.35rem;
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.modal-title {
 		margin: 0;
-		font-size: 1.15rem;
+		font-size: 1.05rem;
 		font-weight: 600;
-		color: #f8fafc;
+		color: var(--color-text);
 	}
 
 	.modal-close {
 		background: transparent;
 		border: none;
-		color: #94a3b8;
-		font-size: 1.1rem;
+		color: var(--color-text-muted);
 		cursor: pointer;
 		padding: 0.25rem;
-		border-radius: 4px;
-		transition: color 0.15s ease;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 6px;
 	}
 
 	.modal-close:hover {
-		color: #ffffff;
+		color: var(--color-text);
+		background-color: var(--color-bg-elevated);
 	}
 
 	.modal-content {
-		padding: 1.5rem;
-		color: #cbd5e1;
-		font-size: 0.95rem;
+		padding: 1.35rem;
+		color: var(--color-text-muted);
+		font-size: 0.9rem;
 		line-height: 1.5;
 	}
 
 	.modal-desc {
 		margin: 0;
-		color: #94a3b8;
+		color: var(--color-text-muted);
 	}
 
 	.modal-footer {
 		display: flex;
 		align-items: center;
 		justify-content: flex-end;
-		gap: 0.75rem;
-		padding: 1rem 1.5rem;
-		border-top: 1px solid rgba(255, 255, 255, 0.06);
-		background: rgba(0, 0, 0, 0.15);
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	@keyframes scaleUp {
-		from {
-			opacity: 0;
-			transform: scale(0.95);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
+		gap: 0.65rem;
+		padding: 0.95rem 1.35rem;
+		border-top: 1px solid var(--color-border);
+		background-color: var(--color-bg-sidebar);
 	}
 </style>

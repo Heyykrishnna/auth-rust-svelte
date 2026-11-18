@@ -64,7 +64,18 @@
 				onclick={() => (showPassword = !showPassword)}
 				aria-label={showPassword ? 'Hide password' : 'Show password'}
 			>
-				{showPassword ? '🙈' : '👁️'}
+				{#if showPassword}
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+						<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.11 1 12c.74-1.76 1.94-3.36 3.47-4.66" />
+						<path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.89 11 8a11.05 11.05 0 0 1-2.16 3.19" />
+						<line x1="1" y1="1" x2="23" y2="23" />
+					</svg>
+				{:else}
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+						<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+						<circle cx="12" cy="12" r="3" />
+					</svg>
+				{/if}
 			</button>
 		{/if}
 	</div>
@@ -81,7 +92,7 @@
 
 	.required {
 		color: var(--color-error);
-		margin-left: 0.25rem;
+		margin-left: 0.2rem;
 	}
 
 	.input-wrapper {
@@ -90,26 +101,27 @@
 
 	.password-toggle {
 		position: absolute;
-		right: 0.75rem;
+		right: 0.7rem;
 		top: 50%;
 		transform: translateY(-50%);
 		background: none;
 		border: none;
+		color: var(--color-text-muted);
 		cursor: pointer;
-		font-size: 1rem;
-		line-height: 1;
-		opacity: 0.6;
-		transition: opacity 150ms ease;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		padding: 0.25rem;
+		transition: color 150ms ease;
 	}
 
-	.password-toggle:hover { opacity: 1; }
+	.password-toggle:hover { color: var(--color-text); }
 
 	.input-wrapper .input {
 		width: 100%;
 	}
 
 	.input-wrapper:has(.password-toggle) .input {
-		padding-right: 2.75rem;
+		padding-right: 2.5rem;
 	}
 </style>

@@ -4,7 +4,7 @@
 	interface Props {
 		title?: string;
 		subtitle?: string;
-		variant?: 'glass' | 'surface' | 'gradient';
+		variant?: 'glass' | 'surface' | 'gradient' | 'light';
 		class?: string;
 		headerActions?: Snippet;
 		footer?: Snippet;
@@ -14,7 +14,7 @@
 	let {
 		title,
 		subtitle,
-		variant = 'glass',
+		variant = 'surface',
 		class: className = '',
 		headerActions,
 		footer,
@@ -54,58 +54,58 @@
 
 <style>
 	.card {
-		border-radius: var(--radius-lg, 16px);
-		transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+		border-radius: 12px;
 		overflow: hidden;
 		position: relative;
+		background-color: var(--color-bg-surface);
+		border: 1px solid var(--color-border);
 	}
 
-	.card-glass {
-		background: rgba(18, 24, 38, 0.7);
-		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+	.card-light {
+		background-color: var(--color-bg-light);
+		border-color: #d4d4d8;
+		color: var(--color-text-dark);
 	}
 
-	.card-surface {
-		background: var(--color-surface, #161c2e);
-		border: 1px solid rgba(255, 255, 255, 0.06);
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+	.card-light .card-title {
+		color: var(--color-text-dark);
 	}
 
-	.card-gradient {
-		background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
-		border: 1px solid rgba(99, 102, 241, 0.2);
-		box-shadow: 0 10px 40px -10px rgba(99, 102, 241, 0.15);
+	.card-light .card-subtitle {
+		color: #52525b;
 	}
 
 	.card-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 1.5rem 1.75rem 1rem;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+		gap: 1rem;
+		padding: 1.15rem 1.35rem;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.card-light .card-header {
+		border-bottom-color: #e4e4e7;
 	}
 
 	.card-headings {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: 0.2rem;
 	}
 
 	.card-title {
 		margin: 0;
-		font-size: 1.15rem;
+		font-size: 0.98rem;
 		font-weight: 600;
-		color: #f8fafc;
+		color: var(--color-text);
 		letter-spacing: -0.01em;
 	}
 
 	.card-subtitle {
 		margin: 0;
-		font-size: 0.875rem;
-		color: #94a3b8;
+		font-size: 0.82rem;
+		color: var(--color-text-muted);
 	}
 
 	.card-actions {
@@ -115,13 +115,13 @@
 	}
 
 	.card-body {
-		padding: 1.75rem;
+		padding: 1.35rem;
 	}
 
 	.card-footer {
-		padding: 1.25rem 1.75rem;
-		background: rgba(0, 0, 0, 0.15);
-		border-top: 1px solid rgba(255, 255, 255, 0.05);
+		padding: 0.95rem 1.35rem;
+		background-color: var(--color-bg-sidebar);
+		border-top: 1px solid var(--color-border);
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
