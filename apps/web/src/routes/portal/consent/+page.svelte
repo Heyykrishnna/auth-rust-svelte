@@ -82,11 +82,11 @@
 			<div class="editorial-alert" role="alert">{errorMessage}</div>
 		{/if}
 
-		<ul class="scope-list">
+		<ul class="list-none p-0 m-0 border-t border-[#23262e]">
 			{#each scopeDescriptions as item}
-				<li class="scope-row">
-					<strong>{item.title}</strong>
-					<span>{item.description}</span>
+				<li class="flex flex-col gap-1 py-3.5 border-b border-[#23262e]">
+					<strong class="text-sm font-medium text-white">{item.title}</strong>
+					<span class="text-xs text-zinc-400">{item.description}</span>
 				</li>
 			{/each}
 		</ul>
@@ -112,31 +112,3 @@
 		</div>
 	{/if}
 </AuthSplitShell>
-
-<style>
-	.scope-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		border-top: 1px solid #23262e;
-	}
-
-	.scope-row {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		padding: 0.85rem 0;
-		border-bottom: 1px solid #23262e;
-	}
-
-	.scope-row strong {
-		font-size: 0.88rem;
-		font-weight: 500;
-		color: #ffffff;
-	}
-
-	.scope-row span {
-		font-size: 0.78rem;
-		color: #71717a;
-	}
-</style>
