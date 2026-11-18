@@ -38,7 +38,9 @@ deadpool-redis = { version = "0.15", features = ["rt_tokio_1"] }
 redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 
 argon2 = "0.5"
+base64 = "0.22"
 jsonwebtoken = "9"
+ring = "0.17"
 uuid = { version = "1", features = ["v4", "serde"] }
 rand = "0.8"
 rand_core = "0.6"
