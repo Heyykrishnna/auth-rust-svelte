@@ -1,0 +1,52 @@
+{
+  "name": "@secure-auth/svelte",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Svelte 5 and SvelteKit SSR SDK for Secure Auth Platform",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    },
+    "./components/AuthProvider.svelte": "./src/components/AuthProvider.svelte",
+    "./components/SignIn.svelte": "./src/components/SignIn.svelte",
+    "./components/SignUp.svelte": "./src/components/SignUp.svelte",
+    "./components/UserButton.svelte": "./src/components/UserButton.svelte",
+    "./components/SignedIn.svelte": "./src/components/SignedIn.svelte",
+    "./components/SignedOut.svelte": "./src/components/SignedOut.svelte",
+    "./components/ProtectedRoute.svelte": "./src/components/ProtectedRoute.svelte"
+  },
+  "files": [
+    "dist",
+    "src/components"
+  ],
+  "dependencies": {
+    "@secure-auth/core": "*"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0",
+    "@sveltejs/kit": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "svelte": {
+      "optional": true
+    },
+    "@sveltejs/kit": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  }
+}
+
