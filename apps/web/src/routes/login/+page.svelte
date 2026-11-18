@@ -1,6 +1,5 @@
 <script lang="ts">
-	import Input from '$lib/components/Input.svelte';
-	import Button from '$lib/components/Button.svelte';
+	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import { authApi } from '$lib/api/auth';
 	import { setAuth, authStore } from '$lib/stores/auth.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
@@ -15,15 +14,17 @@
 
 	let email = $state('');
 	let password = $state('');
+	let rememberMe = $state(true);
+	let showPassword = $state(false);
 	let loading = $state(false);
 	let errors = $state<{ email?: string; password?: string; form?: string }>({});
 
 	function validate(): boolean {
 		errors = {};
-		if (!email) errors.email = 'Email is required';
+		if (!email.trim()) errors.email = 'Email is required';
 		else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Invalid email address';
 		if (!password) errors.password = 'Password is required';
-		else if (password.length < 8) errors.password = 'Password must be at least 8 characters';
+		else if (password.length < 8) errors.password = 'Minimum 8 characters';
 		return Object.keys(errors).length === 0;
 	}
 
@@ -33,15 +34,13 @@
 
 		loading = true;
 		try {
-			const session = await authApi.login({ email, password });
+			const session = await authApi.login({ email: email.trim(), password });
 			setAuth(session.user);
-			addToast('Welcome back!', 'success');
+			addToast('Signed in successfully', 'success');
 			goto('/dashboard');
 		} catch (err) {
 			if (err instanceof ApiError) {
-				errors.form = err.status === 401
-					? 'Invalid email or password'
-					: err.message;
+				errors.form = err.status === 401 ? 'Invalid email or password' : err.message;
 			} else {
 				errors.form = 'An unexpected error occurred. Please try again.';
 			}
@@ -55,122 +54,115 @@
 			const { authorization_url } = await authApi.getOidcUrl(provider);
 			window.location.href = authorization_url;
 		} catch {
-			addToast('Failed to initiate login. Please try again.', 'error');
+			addToast('Failed to initiate OAuth sign-in', 'error');
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>Sign In — AuthApp</title>
-	<meta name="description" content="Sign in to your AuthApp account securely." />
+	<title>Login — Secure Auth</title>
+	<meta name="description" content="Sign in to your Secure Auth account." />
 </svelte:head>
 
-<div class="auth-layout">
-	<div class="auth-card glass-card">
-		<div class="auth-logo">
-			<div class="auth-logo-icon">🔐</div>
-			<span class="auth-logo-text">AuthApp</span>
-		</div>
+<AuthSplitShell
+	brandName="Secure Auth"
+	topActionLabel="Create an account"
+	topActionHref="/register"
+>
+	<h1 class="editorial-title">Login</h1>
+	<p class="editorial-subtitle">Authenticate with your credentials or connected provider.</p>
 
-		<h1 class="auth-title">Welcome back</h1>
-		<p class="auth-subtitle">Sign in to your account to continue</p>
+	{#if errors.form}
+		<div class="editorial-alert" role="alert">{errors.form}</div>
+	{/if}
 
-		<div class="social-buttons">
-			<button class="social-btn" onclick={() => loginWithOidc('google')} type="button">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-					<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-					<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-					<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-					<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-				</svg>
-				Continue with Google
-			</button>
-
-			<button class="social-btn" onclick={() => loginWithOidc('github')} type="button">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-					<path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-				</svg>
-				Continue with GitHub
-			</button>
-		</div>
-
-		<div class="divider">or</div>
-
-		<form class="auth-form" onsubmit={handleLogin} novalidate>
-			{#if errors.form}
-				<div class="form-error" role="alert">
-					<span>⚠</span> {errors.form}
+	<form onsubmit={handleLogin} novalidate>
+		<div class="editorial-grid-2">
+			<div class="editorial-field">
+				<label class="editorial-label" for="login-email">Email</label>
+				<div class="editorial-input-wrap">
+					<input
+						id="login-email"
+						type="email"
+						class="editorial-input"
+						class:has-error={Boolean(errors.email)}
+						bind:value={email}
+						placeholder="name@company.com"
+						autocomplete="email"
+						required
+					/>
 				</div>
-			{/if}
-
-			<Input
-				id="email"
-				label="Email address"
-				type="email"
-				placeholder="you@example.com"
-				bind:value={email}
-				error={errors.email}
-				autocomplete="email"
-				required
-			/>
-
-			<div class="password-field">
-				<Input
-					id="password"
-					label="Password"
-					type="password"
-					placeholder="••••••••"
-					bind:value={password}
-					error={errors.password}
-					autocomplete="current-password"
-					required
-				/>
-				<a href="/forgot-password" class="forgot-link">Forgot password?</a>
+				{#if errors.email}
+					<span class="editorial-field-error" role="alert">{errors.email}</span>
+				{/if}
 			</div>
 
-			<Button type="submit" variant="primary" full {loading}>
-				{loading ? 'Logging in…' : 'Login'}
-			</Button>
-		</form>
+			<div class="editorial-field">
+				<label class="editorial-label" for="login-password">Password</label>
+				<div class="editorial-input-wrap">
+					<input
+						id="login-password"
+						type={showPassword ? 'text' : 'password'}
+						class="editorial-input"
+						class:has-error={Boolean(errors.password)}
+						bind:value={password}
+						placeholder="••••••••••"
+						autocomplete="current-password"
+						required
+					/>
+					<button
+						type="button"
+						class="editorial-eye"
+						onclick={() => (showPassword = !showPassword)}
+						aria-label={showPassword ? 'Hide password' : 'Show password'}
+					>
+						{#if showPassword}
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+								<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.11 1 12c.74-1.76 1.94-3.36 3.47-4.66" />
+								<path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.89 11 8a11.05 11.05 0 0 1-2.16 3.19" />
+								<line x1="1" y1="1" x2="23" y2="23" />
+							</svg>
+						{:else}
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+								<circle cx="12" cy="12" r="3" />
+							</svg>
+						{/if}
+					</button>
+				</div>
+				{#if errors.password}
+					<span class="editorial-field-error" role="alert">{errors.password}</span>
+				{/if}
+			</div>
+		</div>
 
-		<p class="auth-footer">
-			Don't have an account? <a href="/register">Create one →</a>
-		</p>
-	</div>
-</div>
+		<div class="editorial-meta-row">
+			<label class="editorial-check">
+				<input type="checkbox" bind:checked={rememberMe} />
+				<span>Remember me</span>
+			</label>
+			<a href="/control/login" class="editorial-quiet-link">Developer Console</a>
+		</div>
 
-<style>
-	.social-buttons {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		margin-bottom: var(--space-6);
-	}
+		<div class="editorial-actions-footer">
+			<div class="editorial-oauth-group">
+				<button type="button" class="editorial-oauth-btn" onclick={() => loginWithOidc('google')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+						<path d="M21.8 12.23c0-.72-.06-1.41-.18-2.08H12v3.94h5.49a4.7 4.7 0 0 1-2.04 3.08v2.56h3.3c1.93-1.78 3.05-4.4 3.05-7.5zM12 22c2.76 0 5.07-.91 6.76-2.47l-3.3-2.56c-.91.61-2.08.98-3.46.98-2.66 0-4.91-1.8-5.72-4.21H2.87v2.64A10.21 10.21 0 0 0 12 22zM6.28 13.74A6.13 6.13 0 0 1 5.96 12c0-.6.11-1.19.32-1.74V7.62H2.87A10.21 10.21 0 0 0 1.8 12c0 1.65.4 3.21 1.07 4.38l3.41-2.64zM12 6.05c1.5 0 2.85.52 3.91 1.53l2.93-2.93C17.06 2.99 14.75 2 12 2A10.21 10.21 0 0 0 2.87 7.62l3.41 2.64c.81-2.41 3.06-4.21 5.72-4.21z" />
+					</svg>
+					Google
+				</button>
+				<button type="button" class="editorial-oauth-btn" onclick={() => loginWithOidc('github')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+						<path d="M12 2C6.48 2 2 6.48 2 12.02c0 4.42 2.87 8.18 6.84 9.5.5.09.68-.22.68-.48 0-.24-.01-.87-.01-1.7-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.03a9.56 9.56 0 0 1 5 0c1.91-1.3 2.75-1.03 2.75-1.03.55 1.38.2 2.4.1 2.65.64.7 1.03 1.6 1.03 2.69 0 3.85-2.34 4.7-4.57 4.94.36.31.68.92.68 1.86 0 1.34-.01 2.42-.01 2.75 0 .27.18.58.69.48A10.02 10.02 0 0 0 22 12.02C22 6.48 17.52 2 12 2z" />
+					</svg>
+					GitHub
+				</button>
+			</div>
 
-	.form-error {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: var(--space-3) var(--space-4);
-		background: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.25);
-		border-radius: var(--radius-md);
-		color: #fca5a5;
-		font-size: 0.9rem;
-	}
-
-	.password-field {
-		position: relative;
-	}
-
-	.forgot-link {
-		position: absolute;
-		top: 0;
-		right: 0;
-		font-size: 0.8125rem;
-		color: var(--color-primary-light);
-		line-height: 1;
-	}
-
-	.forgot-link:hover { color: var(--color-primary); }
-</style>
+			<button type="submit" class="editorial-circle-cta" disabled={loading}>
+				{loading ? '...' : 'SIGN IN'}
+			</button>
+		</div>
+	</form>
+</AuthSplitShell>

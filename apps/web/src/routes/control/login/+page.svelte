@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import Button from '$lib/components/Button.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import Input from '$lib/components/Input.svelte';
+	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
 	import { setApplications, setDeveloper, setWorkspaces } from '$lib/stores/control.svelte';
@@ -12,6 +10,8 @@
 	let password = $state('');
 	let displayName = $state('');
 	let workspaceName = $state('');
+	let showPassword = $state(false);
+	let rememberMe = $state(true);
 	let submitting = $state(false);
 	let errorMessage = $state('');
 
@@ -23,12 +23,12 @@
 			const res =
 				mode === 'signup'
 					? await controlApi.signUp({
-							email,
+							email: email.trim(),
 							password,
-							display_name: displayName,
-							workspace_name: workspaceName || undefined
+							display_name: displayName.trim(),
+							workspace_name: workspaceName.trim() || undefined
 						})
-					: await controlApi.signIn({ email, password });
+					: await controlApi.signIn({ email: email.trim(), password });
 
 			setDeveloper(res.developer);
 			const workspaces = await controlApi.listWorkspaces();
@@ -51,108 +51,123 @@
 </script>
 
 <svelte:head>
-	<title>Developer Sign In — Control Plane</title>
+	<title>{mode === 'signin' ? 'Developer Login' : 'Create Developer Account'} — Secure Auth</title>
 </svelte:head>
 
-<div class="auth-center">
-	<Card
-		title={mode === 'signin' ? 'Developer Control Plane Sign In' : 'Create Developer Account'}
-		subtitle="Manage applications, dev/prod environments, API keys, and dynamic domains."
-	>
-		<form class="auth-form" onsubmit={handleSubmit}>
-			{#if errorMessage}
-				<div class="form-error" role="alert">{errorMessage}</div>
-			{/if}
+<AuthSplitShell
+	brandName="Secure Auth"
+	footerText="Developer Control Plane · Multi-Tenant Identity Infrastructure"
+	topActionLabel={mode === 'signin' ? 'Create an account' : 'Sign in'}
+	onTopAction={() => {
+		mode = mode === 'signin' ? 'signup' : 'signin';
+		errorMessage = '';
+	}}
+>
+	<h1 class="editorial-title">{mode === 'signin' ? 'Login' : 'Create Account'}</h1>
+	<p class="editorial-subtitle">
+		{mode === 'signin'
+			? 'Access your developer workspaces, applications, keys, and webhooks.'
+			: 'Provision a new developer workspace with isolated dev and prod environments.'}
+	</p>
 
-			{#if mode === 'signup'}
-				<Input
-					id="dev-display-name"
-					label="Display Name"
-					bind:value={displayName}
-					placeholder="Ada Lovelace"
+	{#if errorMessage}
+		<div class="editorial-alert" role="alert">{errorMessage}</div>
+	{/if}
+
+	<form class="editorial-stack" onsubmit={handleSubmit}>
+		{#if mode === 'signup'}
+			<div class="editorial-grid-2">
+				<div class="editorial-field">
+					<label class="editorial-label" for="dev-display-name">Display Name</label>
+					<input
+						id="dev-display-name"
+						type="text"
+						class="editorial-input"
+						bind:value={displayName}
+						placeholder="Ada Lovelace"
+						required
+					/>
+				</div>
+
+				<div class="editorial-field">
+					<label class="editorial-label" for="dev-workspace-name">Workspace Name</label>
+					<input
+						id="dev-workspace-name"
+						type="text"
+						class="editorial-input"
+						bind:value={workspaceName}
+						placeholder="Acme Engineering"
+					/>
+				</div>
+			</div>
+		{/if}
+
+		<div class="editorial-grid-2">
+			<div class="editorial-field">
+				<label class="editorial-label" for="dev-email">Email</label>
+				<input
+					id="dev-email"
+					type="email"
+					class="editorial-input"
+					bind:value={email}
+					placeholder="dev@company.com"
+					autocomplete="email"
 					required
 				/>
-				<Input
-					id="dev-workspace-name"
-					label="Workspace Name (Optional)"
-					bind:value={workspaceName}
-					placeholder="Acme Engineering"
-				/>
-			{/if}
+			</div>
 
-			<Input
-				id="dev-email"
-				type="email"
-				label="Developer Email"
-				bind:value={email}
-				placeholder="dev@company.com"
-				required
-			/>
-			<Input
-				id="dev-password"
-				type="password"
-				label="Password"
-				bind:value={password}
-				placeholder="At least 8 characters"
-				required
-			/>
+			<div class="editorial-field">
+				<label class="editorial-label" for="dev-password">Password</label>
+				<div class="editorial-input-wrap">
+					<input
+						id="dev-password"
+						type={showPassword ? 'text' : 'password'}
+						class="editorial-input"
+						bind:value={password}
+						placeholder="••••••••••"
+						autocomplete={mode === 'signin' ? 'current-password' : 'new-password'}
+						required
+					/>
+					<button
+						type="button"
+						class="editorial-eye"
+						onclick={() => (showPassword = !showPassword)}
+						aria-label={showPassword ? 'Hide password' : 'Show password'}
+					>
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+							<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+							<circle cx="12" cy="12" r="3" />
+						</svg>
+					</button>
+				</div>
+			</div>
+		</div>
 
-			<Button type="submit" variant="primary" loading={submitting} disabled={submitting}>
-				{mode === 'signin' ? 'Sign In' : 'Create Developer Workspace'}
-			</Button>
-		</form>
+		{#if mode === 'signin'}
+			<div class="editorial-meta-row">
+				<label class="editorial-check">
+					<input type="checkbox" bind:checked={rememberMe} />
+					<span>Remember me</span>
+				</label>
+				<a href="/login" class="editorial-quiet-link">End-user sign in</a>
+			</div>
+		{/if}
 
-		{#snippet footer()}
+		<div class="editorial-actions-footer">
 			<button
 				type="button"
-				class="mode-switch"
+				class="editorial-quiet-link"
 				onclick={() => {
 					mode = mode === 'signin' ? 'signup' : 'signin';
 					errorMessage = '';
 				}}
 			>
-				{mode === 'signin'
-					? 'New developer? Create a Control Plane account'
-					: 'Already have a developer account? Sign in'}
+				{mode === 'signin' ? 'Need a workspace? Sign up' : 'Already registered? Sign in'}
 			</button>
-		{/snippet}
-	</Card>
-</div>
 
-<style>
-	.auth-center {
-		max-width: 480px;
-		width: 100%;
-		margin: 3.5rem auto;
-		padding: 0 1.25rem;
-	}
-
-	.auth-form {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.form-error {
-		padding: 0.75rem 1rem;
-		border-radius: 8px;
-		background: rgba(239, 68, 68, 0.12);
-		border: 1px solid rgba(239, 68, 68, 0.35);
-		color: #fca5a5;
-		font-size: 0.875rem;
-	}
-
-	.mode-switch {
-		background: transparent;
-		border: none;
-		color: #818cf8;
-		cursor: pointer;
-		font-size: 0.875rem;
-		padding: 0;
-	}
-
-	.mode-switch:hover {
-		text-decoration: underline;
-	}
-</style>
-
+			<button type="submit" class="editorial-circle-cta" disabled={submitting}>
+				{submitting ? '...' : mode === 'signin' ? 'SIGN IN' : 'CREATE'}
+			</button>
+		</div>
+	</form>
+</AuthSplitShell>
