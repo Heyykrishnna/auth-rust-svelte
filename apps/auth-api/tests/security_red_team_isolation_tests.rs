@@ -284,6 +284,14 @@ mod live_phase10_red_team_suite {
             .execute(&pool)
             .await
             .expect("reset signing key fixtures");
+        sqlx::query("DELETE FROM webhook_endpoints")
+            .execute(&pool)
+            .await
+            .expect("reset webhook fixtures");
+        sqlx::query("DELETE FROM outbox_events")
+            .execute(&pool)
+            .await
+            .expect("reset outbox fixtures");
 
         let cfg = red_team_config(db_url);
         let suffix = Uuid::new_v4().to_string()[..8].to_string();

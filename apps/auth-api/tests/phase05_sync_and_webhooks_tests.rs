@@ -327,6 +327,14 @@ mod live_postgres_phase05_tests {
             .execute(&db)
             .await
             .expect("reset signing_keys");
+        sqlx::query("DELETE FROM webhook_endpoints")
+            .execute(&db)
+            .await
+            .expect("reset webhook fixtures");
+        sqlx::query("DELETE FROM outbox_events")
+            .execute(&db)
+            .await
+            .expect("reset outbox fixtures");
 
         let redis_cfg = RedisConfig::from_url("redis://127.0.0.1:6399");
         let redis = redis_cfg

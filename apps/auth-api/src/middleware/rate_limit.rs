@@ -32,6 +32,10 @@ return 0
 
 pub fn trusted_proxy_ranges() -> Result<Vec<IpNet>, String> {
     let raw = std::env::var("TRUSTED_PROXY_CIDRS").unwrap_or_default();
+    parse_trusted_proxy_ranges(&raw)
+}
+
+pub fn parse_trusted_proxy_ranges(raw: &str) -> Result<Vec<IpNet>, String> {
     raw.split(',')
         .map(str::trim)
         .filter(|entry| !entry.is_empty())

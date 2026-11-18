@@ -1,5 +1,13 @@
 # CI repair and validation — 2026-11-18
 
+## Follow-up after the production audit
+
+The [Rust job reported during the audit remediation](https://github.com/Heyykrishnna/auth-rust-svelte/actions/runs/44331880797/job/134898360773) failed because two older configuration tests omitted the now-required `SIGNING_KEY_KEK`. Configuration parsing now accepts an explicit value map, so those tests exercise the real parser with independent values and cannot inherit a developer's `.env` or race over process environment variables. Production secret requirements remain enforced.
+
+The database run also exposed an outdated duplicate-registration expectation and webhook jobs left by another fixture. The registration regression now verifies the uniform accepted response and unchanged original identity. Worker fixtures reset their webhook/outbox state before testing delivery, preserving all isolation, retry, and SSRF assertions. Account-erasure queries now follow the actual transaction schema and event envelope rather than referencing a nonexistent `user_id` column or a duplicate payload field.
+
+Local validation passed: all 66 default Rust tests and all 26 explicitly ignored database tests, including the OTP, rate-limit, erasure, and retention regressions. Formatting, Clippy, actionlint, and full-history Gitleaks checks also passed. Database checks use isolated PostgreSQL 18 locally; the workflow runs PostgreSQL 16. GitHub validation is recorded below when its new run completes.
+
 ## Scope and original failures
 
 Reviewed all three workflows, their build inputs, dependency manifests and lockfiles, integration-test setup, container entry points, and GitOps configuration at commit `8b6df1a36d09305a19b085206c90c48dae5c8543`.

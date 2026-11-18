@@ -678,7 +678,31 @@ mod live_postgres_phase03_tests {
             ))
             .unwrap();
         let collision_res = send_request(&app, collision_req).await;
-        assert_eq!(collision_res.status(), StatusCode::CONFLICT);
+        assert_eq!(collision_res.status(), StatusCode::ACCEPTED);
+        let collision_body = read_json(collision_res).await;
+        assert_eq!(collision_body["status"], "pending_verification");
+        assert!(collision_body.get("access_token").is_none());
+        let (eligible_response, eligible_code) = client_auth::initiate_sign_up(
+            &state.db,
+            &state.config,
+            elysiar.env_id,
+            &format!("new-{}@example.test", Uuid::new_v4()),
+            "StrongEligiblePassword123!",
+            "Eligible User",
+        )
+        .await
+        .unwrap();
+        assert_eq!(collision_body["message"], eligible_response.message);
+        assert_eq!(collision_body["status"], eligible_response.status);
+        assert!(!eligible_code.is_empty());
+        let persisted: (Uuid, String) =
+            sqlx::query_as("SELECT id, display_name FROM users WHERE email = $1")
+                .bind(&alice_email)
+                .fetch_one(&state.db)
+                .await
+                .unwrap();
+        assert_eq!(persisted.0.to_string(), alice_sub);
+        assert_eq!(persisted.1, "Alice");
 
         let elysiar_signin_req = Request::builder()
             .method(Method::POST)

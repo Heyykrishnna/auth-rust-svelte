@@ -502,17 +502,15 @@ fn test_password_reset_token_entropy_and_request_validation() {
 fn test_app_config_redis_defaults() {
     use auth_api::config::AppConfig;
 
-    std::env::remove_var("LOGIN_MAX_ATTEMPTS");
-    std::env::remove_var("LOGIN_LOCKOUT_DURATION_SECS");
-    std::env::remove_var("VERIFICATION_CODE_EXPIRY_SECS");
-    std::env::remove_var("PASSWORD_RESET_EXPIRY_SECS");
-    std::env::set_var("DATABASE_URL", "postgres://localhost/testdb");
-    std::env::set_var(
-        "JWT_SECRET",
-        "super_secret_test_key_that_is_at_least_32_characters_long",
-    );
-
-    let cfg = AppConfig::from_env().expect("AppConfig should parse default values");
+    let values = std::collections::HashMap::from([
+        (
+            "DATABASE_URL".to_string(),
+            "postgres://localhost/testdb".to_string(),
+        ),
+        ("JWT_SECRET".to_string(), Uuid::new_v4().to_string()),
+        ("SIGNING_KEY_KEK".to_string(), Uuid::new_v4().to_string()),
+    ]);
+    let cfg = AppConfig::from_map(&values).expect("AppConfig should parse default values");
     assert_eq!(cfg.login_max_attempts, 5);
     assert_eq!(cfg.login_lockout_duration_secs, 900); // 15 mins
     assert_eq!(cfg.verification_code_expiry_secs, 900); // 15 mins
@@ -853,23 +851,28 @@ fn test_pending_registration_serde() {
 fn test_smtp_configuration_parsing() {
     use auth_api::config::AppConfig;
 
-    std::env::set_var("SMTP_HOST", "smtp.example.com");
-    std::env::set_var("SMTP_PORT", "587");
-    std::env::set_var("SMTP_USER", "test_smtp_user");
-    std::env::set_var("SMTP_PASS", "test_smtp_password");
-    std::env::set_var("SMTP_FROM", "SecureAuth <support@example.com>");
-    std::env::set_var("SMTP_FROM_NAME", "SecureAuth");
-    std::env::set_var("DATABASE_URL", "postgres://localhost/testdb");
-    std::env::set_var(
-        "JWT_SECRET",
-        "super_secret_test_key_that_is_at_least_32_characters_long",
-    );
-
-    let cfg = AppConfig::from_env().unwrap();
+    let values = std::collections::HashMap::from([
+        ("SMTP_HOST".to_string(), "smtp.example.com".to_string()),
+        ("SMTP_PORT".to_string(), "587".to_string()),
+        ("SMTP_USER".to_string(), "test_smtp_user".to_string()),
+        ("SMTP_PASS".to_string(), Uuid::new_v4().to_string()),
+        (
+            "SMTP_FROM".to_string(),
+            "SecureAuth <support@example.com>".to_string(),
+        ),
+        ("SMTP_FROM_NAME".to_string(), "SecureAuth".to_string()),
+        (
+            "DATABASE_URL".to_string(),
+            "postgres://localhost/testdb".to_string(),
+        ),
+        ("JWT_SECRET".to_string(), Uuid::new_v4().to_string()),
+        ("SIGNING_KEY_KEK".to_string(), Uuid::new_v4().to_string()),
+    ]);
+    let cfg = AppConfig::from_map(&values).unwrap();
     assert_eq!(cfg.smtp_host, Some("smtp.example.com".to_string()));
     assert_eq!(cfg.smtp_port, 587);
     assert_eq!(cfg.smtp_user, Some("test_smtp_user".to_string()));
-    assert_eq!(cfg.smtp_pass, Some("test_smtp_password".to_string()));
+    assert_eq!(cfg.smtp_pass.as_ref(), values.get("SMTP_PASS"));
     assert_eq!(cfg.smtp_from, "SecureAuth <support@example.com>");
     assert_eq!(cfg.smtp_from_name, "SecureAuth");
 }

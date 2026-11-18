@@ -44,29 +44,36 @@ impl AppConfig {
     pub fn from_env() -> Result<Self> {
         let _ = dotenvy::dotenv();
 
-        let host = env::var("AUTH_API_HOST")
-            .or_else(|_| env::var("HOST"))
+        Self::from_reader(|name| env::var(name))
+    }
+
+    pub fn from_map(values: &std::collections::HashMap<String, String>) -> Result<Self> {
+        Self::from_reader(|name| values.get(name).cloned().ok_or(env::VarError::NotPresent))
+    }
+
+    fn from_reader(read: impl Fn(&str) -> Result<String, env::VarError>) -> Result<Self> {
+        let host = read("AUTH_API_HOST")
+            .or_else(|_| read("HOST"))
             .unwrap_or_else(|_| "0.0.0.0".to_string());
-        let port = env::var("AUTH_API_PORT")
-            .or_else(|_| env::var("PORT"))
+        let port = read("AUTH_API_PORT")
+            .or_else(|_| read("PORT"))
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(8080);
 
-        let database_url = env::var("DATABASE_URL").context("DATABASE_URL must be specified")?;
+        let database_url = read("DATABASE_URL").context("DATABASE_URL must be specified")?;
         if !database_url.starts_with("postgres://") && !database_url.starts_with("postgresql://") {
             anyhow::bail!("DATABASE_URL must start with postgres:// or postgresql://");
         }
 
-        let db_max_connections = env::var("DATABASE_MAX_CONNECTIONS")
+        let db_max_connections = read("DATABASE_MAX_CONNECTIONS")
             .ok()
             .and_then(|v| v.parse::<u32>().ok())
             .unwrap_or(10);
 
-        let redis_url =
-            env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
+        let redis_url = read("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
 
-        let jwt_secret = required_secret("JWT_SECRET")?;
+        let jwt_secret = required_secret("JWT_SECRET", read("JWT_SECRET"))?;
 
         if jwt_secret.trim().len() < 32 {
             anyhow::bail!(
@@ -74,12 +81,12 @@ impl AppConfig {
             );
         }
 
-        let issuer_url = env::var("ISSUER_URL")
+        let issuer_url = read("ISSUER_URL")
             .unwrap_or_else(|_| "http://localhost:8080".to_string())
             .trim_end_matches('/')
             .to_string();
 
-        let signing_key_kek = required_secret("SIGNING_KEY_KEK")?;
+        let signing_key_kek = required_secret("SIGNING_KEY_KEK", read("SIGNING_KEY_KEK"))?;
         if signing_key_kek.trim().len() < 32 {
             anyhow::bail!(
                 "SIGNING_KEY_KEK must be at least 32 characters long for AES-256-GCM envelope encryption"
@@ -87,47 +94,50 @@ impl AppConfig {
         }
 
         let signing_key_kek_version =
-            env::var("SIGNING_KEY_KEK_VERSION").unwrap_or_else(|_| "v1".to_string());
+            read("SIGNING_KEY_KEK_VERSION").unwrap_or_else(|_| "v1".to_string());
 
-        let jwt_access_expiry_secs = env::var("JWT_ACCESS_EXPIRY_SECS")
+        let jwt_access_expiry_secs = read("JWT_ACCESS_EXPIRY_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(900);
 
-        let jwt_refresh_expiry_secs = env::var("JWT_REFRESH_EXPIRY_SECS")
+        let jwt_refresh_expiry_secs = read("JWT_REFRESH_EXPIRY_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(604_800);
 
-        let login_max_attempts = env::var("LOGIN_MAX_ATTEMPTS")
+        let login_max_attempts = read("LOGIN_MAX_ATTEMPTS")
             .ok()
             .and_then(|v| v.parse::<u32>().ok())
             .unwrap_or(5);
 
-        let login_lockout_duration_secs = env::var("LOGIN_LOCKOUT_DURATION_SECS")
+        let login_lockout_duration_secs = read("LOGIN_LOCKOUT_DURATION_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(900);
 
-        let verification_code_expiry_secs = env::var("VERIFICATION_CODE_EXPIRY_SECS")
+        let verification_code_expiry_secs = read("VERIFICATION_CODE_EXPIRY_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(900);
 
-        let password_reset_expiry_secs = env::var("PASSWORD_RESET_EXPIRY_SECS")
+        let password_reset_expiry_secs = read("PASSWORD_RESET_EXPIRY_SECS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
             .unwrap_or(900);
 
-        let cookie_secure = env::var("COOKIE_SECURE")
+        let cookie_secure = read("COOKIE_SECURE")
             .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
             .unwrap_or(false);
 
-        let cookie_domain = env::var("COOKIE_DOMAIN")
+        let cookie_domain = read("COOKIE_DOMAIN")
             .ok()
             .filter(|value| !value.trim().is_empty());
-        crate::middleware::rate_limit::trusted_proxy_ranges().map_err(anyhow::Error::msg)?;
-        let production = env::var("APP_ENV")
+        crate::middleware::rate_limit::parse_trusted_proxy_ranges(
+            &read("TRUSTED_PROXY_CIDRS").unwrap_or_default(),
+        )
+        .map_err(anyhow::Error::msg)?;
+        let production = read("APP_ENV")
             .map(|value| value.eq_ignore_ascii_case("production"))
             .unwrap_or(false);
         let issuer = url::Url::parse(&issuer_url).context("ISSUER_URL must be an absolute URL")?;
@@ -141,15 +151,15 @@ impl AppConfig {
             anyhow::bail!("Production requires COOKIE_SECURE=true and an HTTPS ISSUER_URL");
         }
 
-        let google_client_id = env::var("GOOGLE_CLIENT_ID").ok();
-        let google_client_secret = env::var("GOOGLE_CLIENT_SECRET").ok();
-        let google_redirect_uri = env::var("GOOGLE_REDIRECT_URI").ok();
+        let google_client_id = read("GOOGLE_CLIENT_ID").ok();
+        let google_client_secret = read("GOOGLE_CLIENT_SECRET").ok();
+        let google_redirect_uri = read("GOOGLE_REDIRECT_URI").ok();
 
-        let github_client_id = env::var("GITHUB_CLIENT_ID").ok();
-        let github_client_secret = env::var("GITHUB_CLIENT_SECRET").ok();
-        let github_redirect_uri = env::var("GITHUB_REDIRECT_URI").ok();
+        let github_client_id = read("GITHUB_CLIENT_ID").ok();
+        let github_client_secret = read("GITHUB_CLIENT_SECRET").ok();
+        let github_redirect_uri = read("GITHUB_REDIRECT_URI").ok();
 
-        let cors_origins = env::var("CORS_ORIGINS")
+        let cors_origins = read("CORS_ORIGINS")
             .map(|s| {
                 s.split(',')
                     .map(|item| item.trim().to_string())
@@ -158,33 +168,33 @@ impl AppConfig {
             })
             .unwrap_or_else(|_| vec!["http://localhost:3000".to_string()]);
 
-        let otel_exporter_otlp_endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+        let otel_exporter_otlp_endpoint = read("OTEL_EXPORTER_OTLP_ENDPOINT")
             .unwrap_or_else(|_| "http://localhost:4317".to_string());
 
         let otel_service_name =
-            env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "auth-api".to_string());
+            read("OTEL_SERVICE_NAME").unwrap_or_else(|_| "auth-api".to_string());
 
-        let otel_service_version = env::var("OTEL_SERVICE_VERSION")
-            .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_string());
+        let otel_service_version =
+            read("OTEL_SERVICE_VERSION").unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_string());
 
-        let smtp_host = env::var("SMTP_HOST").ok().filter(|s| !s.trim().is_empty());
-        let smtp_port = env::var("SMTP_PORT")
+        let smtp_host = read("SMTP_HOST").ok().filter(|s| !s.trim().is_empty());
+        let smtp_port = read("SMTP_PORT")
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(587);
-        let smtp_user = env::var("SMTP_USER")
-            .or_else(|_| env::var("SMTP_USERNAME"))
+        let smtp_user = read("SMTP_USER")
+            .or_else(|_| read("SMTP_USERNAME"))
             .ok()
             .filter(|s| !s.trim().is_empty());
-        let smtp_pass = env::var("SMTP_PASS")
-            .or_else(|_| env::var("SMTP_PASSWORD"))
+        let smtp_pass = read("SMTP_PASS")
+            .or_else(|_| read("SMTP_PASSWORD"))
             .ok()
             .filter(|s| !s.trim().is_empty());
-        let smtp_from = env::var("SMTP_FROM")
-            .or_else(|_| env::var("SMTP_FROM_EMAIL"))
-            .or_else(|_| env::var("SENDER_EMAIL"))
+        let smtp_from = read("SMTP_FROM")
+            .or_else(|_| read("SMTP_FROM_EMAIL"))
+            .or_else(|_| read("SENDER_EMAIL"))
             .unwrap_or_else(|_| "Dradix <support@dradix.dev>".to_string());
-        let smtp_from_name = env::var("SMTP_FROM_NAME").unwrap_or_else(|_| "Dradix".to_string());
+        let smtp_from_name = read("SMTP_FROM_NAME").unwrap_or_else(|_| "Dradix".to_string());
 
         Ok(Self {
             host,
@@ -245,8 +255,8 @@ impl AppConfig {
     }
 }
 
-fn required_secret(name: &str) -> Result<String> {
-    let value = env::var(name).with_context(|| format!("{name} must be explicitly specified"))?;
+fn required_secret(name: &str, value: Result<String, env::VarError>) -> Result<String> {
+    let value = value.with_context(|| format!("{name} must be explicitly specified"))?;
     let normalized = value.to_ascii_lowercase();
     if value.trim().len() < 32
         || [

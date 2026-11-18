@@ -690,26 +690,12 @@ pub async fn delete_user_account(db: &PgPool, user_id: UserId) -> Result<usize, 
         "DELETE FROM oidc_accounts WHERE user_id = $1",
         "DELETE FROM refresh_tokens WHERE user_id = $1",
         "DELETE FROM sessions WHERE user_id = $1",
-        "UPDATE audit_logs SET ip_address = NULL, user_agent = NULL, metadata = '{}'::jsonb WHERE user_id = $1 OR actor_id = $1",
-        "UPDATE sso_sessions SET ip_address = NULL, user_agent = NULL WHERE user_id = $1",
-        "UPDATE app_sessions SET ip_address = NULL, user_agent = NULL WHERE user_id = $1",
-        "DELETE FROM authentication_transactions WHERE user_id = $1",
-        "UPDATE outbox_events SET payload = jsonb_set(payload, '{payload}', jsonb_build_object('sub', $1::uuid, 'erased', true)) WHERE aggregate_id = $1 OR aggregate_id IN (SELECT id FROM application_users WHERE user_id = $1) OR payload->'payload'->>'sub' = $1::text",
-        "UPDATE webhook_deliveries SET response_body_excerpt = NULL, request_headers = '{}'::jsonb WHERE outbox_event_id IN (SELECT id FROM outbox_events WHERE aggregate_id = $1 OR aggregate_id IN (SELECT id FROM application_users WHERE user_id = $1))",
-    ] {
-        sqlx::query(statement).bind(user_id).execute(&mut *tx).await?;
-    }
-
-    for statement in [
-        "DELETE FROM user_emails WHERE user_id = $1",
-        "DELETE FROM oauth_accounts WHERE user_id = $1",
-        "DELETE FROM oidc_accounts WHERE user_id = $1",
-        "DELETE FROM refresh_tokens WHERE user_id = $1",
-        "UPDATE sessions SET revoked_at = NOW(), ip_address = NULL, user_agent = NULL WHERE user_id = $1",
+        "DELETE FROM authentication_transactions WHERE sso_session_id IN (SELECT id FROM sso_sessions WHERE user_id = $1)",
         "UPDATE sso_sessions SET ip_address = NULL, user_agent = NULL WHERE user_id = $1",
         "UPDATE app_sessions SET ip_address = NULL, user_agent = NULL WHERE user_id = $1",
         "UPDATE audit_logs SET ip_address = NULL, user_agent = NULL, metadata = '{}'::jsonb WHERE user_id = $1 OR actor_id = $1",
-        "UPDATE outbox_events SET payload = jsonb_set(payload, '{data}', jsonb_build_object('sub', $1::text, 'erased', true)) WHERE aggregate_id = $1 OR aggregate_id IN (SELECT id FROM application_users WHERE user_id = $1)",
+        "UPDATE outbox_events SET payload = jsonb_set(payload, '{data}', jsonb_build_object('sub', $1::text, 'erased', true)) WHERE aggregate_id = $1 OR aggregate_id IN (SELECT id FROM application_users WHERE user_id = $1) OR payload->'data'->>'sub' = $1::text",
+        "UPDATE webhook_deliveries SET response_body_excerpt = NULL, request_headers = '{}'::jsonb WHERE outbox_event_id IN (SELECT id FROM outbox_events WHERE aggregate_id = $1 OR aggregate_id IN (SELECT id FROM application_users WHERE user_id = $1) OR payload->'data'->>'sub' = $1::text)",
     ] {
         sqlx::query(statement).bind(user_id).execute(&mut *tx).await?;
     }
