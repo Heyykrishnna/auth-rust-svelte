@@ -1135,6 +1135,21 @@ pub async fn revoke_single_session(
     .execute(&mut *tx)
     .await?;
 
+    let evt = DomainEventEnvelope::new(
+        DomainEventType::SessionRevoked,
+        Some(environment_id.into_inner()),
+        AggregateType::AppSession,
+        target_session_id.into_inner(),
+        2,
+        serde_json::json!({
+            "session_id": target_session_id,
+            "sub": user_id,
+            "app_user_id": app_user_id,
+            "reason": "user_revoked"
+        }),
+    );
+    outbox::insert_outbox_event(&mut *tx, environment_id, &evt).await?;
+
     record_client_audit_log_in_tx(
         &mut tx,
         Some(environment_id),
@@ -1158,16 +1173,17 @@ pub async fn revoke_all_environment_sessions(
     user_id: UserId,
 ) -> Result<u64, AppError> {
     let mut tx = begin_tx(db).await?;
-    let res = sqlx::query(
+    let revoked_ids: Vec<Uuid> = sqlx::query_scalar(
         r#"
         UPDATE app_sessions
         SET revoked_at = NOW(), updated_at = NOW()
         WHERE environment_id = $1 AND application_user_id = $2 AND revoked_at IS NULL
+        RETURNING id
         "#,
     )
     .bind(environment_id)
     .bind(app_user_id)
-    .execute(&mut *tx)
+    .fetch_all(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -1182,8 +1198,25 @@ pub async fn revoke_all_environment_sessions(
     .execute(&mut *tx)
     .await?;
 
+    for sess_id in &revoked_ids {
+        let evt = DomainEventEnvelope::new(
+            DomainEventType::SessionRevoked,
+            Some(environment_id.into_inner()),
+            AggregateType::AppSession,
+            *sess_id,
+            2,
+            serde_json::json!({
+                "session_id": sess_id,
+                "sub": user_id,
+                "app_user_id": app_user_id,
+                "reason": "revoke_all"
+            }),
+        );
+        outbox::insert_outbox_event(&mut *tx, environment_id, &evt).await?;
+    }
+
     commit_tx(tx).await?;
-    Ok(res.rows_affected())
+    Ok(revoked_ids.len() as u64)
 }
 
 pub async fn request_password_reset(
@@ -1716,6 +1749,36 @@ pub async fn confirm_secondary_email_verification(
     .bind(&normalized)
     .execute(&mut *tx)
     .await?;
+
+    let memberships: Vec<(Uuid, Uuid, i64)> = sqlx::query_as(
+        r#"
+        UPDATE application_users
+        SET updated_at = NOW()
+        WHERE user_id = $1
+        RETURNING id, environment_id, version
+        "#,
+    )
+    .bind(user_id.into_inner())
+    .fetch_all(&mut *tx)
+    .await?;
+
+    for (app_user_uuid, env_uuid, version) in memberships {
+        let evt = DomainEventEnvelope::new(
+            DomainEventType::UserEmailVerified,
+            Some(env_uuid),
+            AggregateType::ApplicationUser,
+            app_user_uuid,
+            version,
+            serde_json::json!({
+                "sub": user_id,
+                "app_user_id": app_user_uuid,
+                "email": normalized,
+                "email_verified": true,
+                "version": version
+            }),
+        );
+        outbox::insert_outbox_event(&mut *tx, EnvironmentId::from_uuid(env_uuid), &evt).await?;
+    }
 
     record_client_audit_log_in_tx(
         &mut tx,
