@@ -19,7 +19,9 @@
     "./components/UserButton.svelte": "./src/components/UserButton.svelte",
     "./components/SignedIn.svelte": "./src/components/SignedIn.svelte",
     "./components/SignedOut.svelte": "./src/components/SignedOut.svelte",
-    "./components/ProtectedRoute.svelte": "./src/components/ProtectedRoute.svelte"
+    "./components/ProtectedRoute.svelte": "./src/components/ProtectedRoute.svelte",
+    "./components/OrganizationSwitcher.svelte": "./src/components/OrganizationSwitcher.svelte",
+    "./components/OrganizationProfile.svelte": "./src/components/OrganizationProfile.svelte"
   },
   "files": [
     "dist",

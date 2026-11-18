@@ -8,7 +8,12 @@ import {
 	type OidcTokenResponse,
 	type TenantAccessTokenClaims
 } from '@secure-auth/core';
-import { createAuthServer, type AuthServer } from '@secure-auth/core/server';
+import {
+	createAuthServer,
+	hasPermission as evaluateScopedPermission,
+	type AuthServer,
+	type PermissionCheckInput
+} from '@secure-auth/core/server';
 import {
 	createWebhookRouter,
 	type WebhookHandlersMap
@@ -35,10 +40,14 @@ export interface SvelteKitAuthLocals {
 	appUserId: string | null;
 	sessionId: string | null;
 	orgId: string | null;
+	orgSlug: string | null;
+	orgRole: string | null;
+	orgPermissions: string[];
 	roles: string[];
 	permissions: string[];
 	version: number | null;
 	claims: TenantAccessTokenClaims | null;
+	has(check: PermissionCheckInput): boolean;
 }
 
 export interface SvelteKitRequestEventLike {
@@ -93,10 +102,14 @@ function emptyAuthLocals(): SvelteKitAuthLocals {
 		appUserId: null,
 		sessionId: null,
 		orgId: null,
+		orgSlug: null,
+		orgRole: null,
+		orgPermissions: [],
 		roles: [],
 		permissions: [],
 		version: null,
-		claims: null
+		claims: null,
+		has: () => false
 	};
 }
 
@@ -107,10 +120,14 @@ function claimsToLocals(claims: TenantAccessTokenClaims): SvelteKitAuthLocals {
 		appUserId: claims.app_user_id,
 		sessionId: claims.sid,
 		orgId: claims.org_id ?? null,
+		orgSlug: claims.org_slug ?? null,
+		orgRole: claims.org_role ?? null,
+		orgPermissions: [...(claims.org_permissions ?? [])],
 		roles: [...claims.roles],
 		permissions: [...claims.permissions],
 		version: claims.ver,
-		claims
+		claims,
+		has: (check: PermissionCheckInput) => evaluateScopedPermission(claims, check)
 	};
 }
 
@@ -244,8 +261,22 @@ export function requirePermission(
 	permission: string
 ): SvelteKitAuthLocals {
 	const auth = requireAuth(locals);
-	if (!auth.permissions.includes(permission)) {
+	if (!auth.permissions.includes(permission) && !auth.orgPermissions.includes(permission)) {
 		throw new AuthSdkError('FORBIDDEN', `Missing required permission '${permission}'`);
+	}
+	return auth;
+}
+
+export function requireOrgPermission(
+	locals: { auth?: SvelteKitAuthLocals },
+	check: PermissionCheckInput
+): SvelteKitAuthLocals {
+	const auth = requireAuth(locals);
+	if (!auth.has(check)) {
+		throw new AuthSdkError(
+			'FORBIDDEN',
+			`Missing required scoped authorization (${check.permission ?? check.role ?? 'organization'})`
+		);
 	}
 	return auth;
 }
@@ -260,6 +291,11 @@ export function serializeClientAuthState(locals: {
 			isSignedIn: false,
 			user: null,
 			sessionId: null,
+			activeOrgId: null,
+			orgSlug: null,
+			orgRole: null,
+			orgPermissions: [],
+			organizations: [],
 			roles: [],
 			permissions: []
 		};
@@ -270,6 +306,11 @@ export function serializeClientAuthState(locals: {
 		isSignedIn: true,
 		user: null,
 		sessionId: auth.sessionId,
+		activeOrgId: auth.orgId,
+		orgSlug: auth.orgSlug,
+		orgRole: auth.orgRole,
+		orgPermissions: [...auth.orgPermissions],
+		organizations: [],
 		roles: [...auth.roles],
 		permissions: [...auth.permissions]
 	};

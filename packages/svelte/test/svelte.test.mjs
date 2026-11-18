@@ -11,6 +11,8 @@ import {
 	canAccessRoute,
 	createSvelteAuthContext,
 	useAuth,
+	useOrganization,
+	useOrganizationList,
 	usePermissions,
 	useSession,
 	useUser
@@ -20,6 +22,7 @@ import {
 	createOidcCallbackHandler,
 	createWebhookEndpointHandler,
 	requireAuth,
+	requireOrgPermission,
 	requirePermission,
 	serializeClientAuthState
 } from '../dist/server.js';
@@ -290,4 +293,98 @@ test('Svelte client context hooks and canAccessRoute enforce permissions reactiv
 	assert.equal(perms.hasRole('admin'), false);
 	assert.equal(canAccessRoute(ctx.getState(), { permission: 'posts:read' }), true);
 	assert.equal(canAccessRoute(ctx.getState(), { permission: 'billing:write' }), false);
+});
+
+test('Phase 08: Svelte organization hooks and requireOrgPermission enforce org context boundaries', async () => {
+	const ctx = createSvelteAuthContext(
+		{
+			issuerUrl: 'https://auth.example.test',
+			publishableKey: 'pub-ferrum',
+			fetch: async (input) => {
+				const url = String(input);
+				if (url.endsWith('/v1/client/organizations')) {
+					return new Response(
+						JSON.stringify([
+							{
+								organization: {
+									id: 'org_acme',
+									environment_id: 'env_1',
+									slug: 'acme',
+									name: 'Acme Inc',
+									logo_url: null,
+									status: 'active',
+									metadata: {},
+									version: 1,
+									member_count: 2,
+									created_at: '2026-01-01T00:00:00Z',
+									updated_at: '2026-01-01T00:00:00Z'
+								},
+								member_id: 'mem_1',
+								roles: ['org:owner'],
+								status: 'active',
+								joined_at: '2026-01-01T00:00:00Z'
+							}
+						]),
+						{ status: 200, headers: { 'content-type': 'application/json' } }
+					);
+				}
+				return new Response(
+					JSON.stringify({
+						access_token: 'org-jwt',
+						token_type: 'Bearer',
+						expires_in: 900,
+						active_organization_id: 'org_acme',
+						org_slug: 'acme',
+						org_role: 'org:owner',
+						org_permissions: ['org:billing:write']
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				);
+			}
+		},
+		{
+			isLoaded: true,
+			isSignedIn: true,
+			sessionId: 'sid_1',
+			roles: ['user'],
+			permissions: ['profile.read']
+		}
+	);
+	ctx.client.setSession({ accessToken: 'tok_1' });
+	await ctx.refreshOrganizations();
+	await ctx.setActiveOrganization('org_acme');
+
+	assert.equal(useOrganizationList(ctx).organizations.length, 1);
+	const org = useOrganization(ctx);
+	assert.equal(org.orgId, 'org_acme');
+	assert.equal(org.orgSlug, 'acme');
+	assert.equal(org.orgRole, 'org:owner');
+	assert.equal(ctx.has({ permission: 'org:billing:write', orgId: 'org_acme' }), true);
+	assert.equal(ctx.has({ permission: 'org:billing:write', orgId: 'org_other' }), false);
+
+	const mockLocals = {
+		auth: {
+			isAuthenticated: true,
+			userId: 'u_1',
+			appUserId: 'au_1',
+			sessionId: 'sid_1',
+			orgId: 'org_acme',
+			orgSlug: 'acme',
+			orgRole: 'org:owner',
+			orgPermissions: ['org:billing:write'],
+			roles: ['user'],
+			permissions: ['profile.read'],
+			version: 1,
+			claims: null,
+			has: (c) => ctx.has(c)
+		}
+	};
+	assert.equal(
+		requireOrgPermission(mockLocals, { permission: 'org:billing:write', orgId: 'org_acme' }).orgId,
+		'org_acme'
+	);
+	assert.throws(
+		() => requireOrgPermission(mockLocals, { permission: 'org:billing:write', orgId: 'org_other' }),
+		(err) => err instanceof AuthSdkError && err.code === 'FORBIDDEN'
+	);
 });
