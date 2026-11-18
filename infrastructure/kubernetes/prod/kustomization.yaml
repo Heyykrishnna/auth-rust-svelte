@@ -7,10 +7,10 @@ resources:
 images:
 - name: auth-api
   newName: ghcr.io/heyykrishnna/auth-api
-  newTag: sha-ae5dd3f8fa7c9504f9db294f67b43ad057286b94
+  newTag: sha-82f06b55bb2026b80325f9ef5a2904d17247f212
 - name: frontend
   newName: ghcr.io/heyykrishnna/web
-  newTag: sha-ae5dd3f8fa7c9504f9db294f67b43ad057286b94
+  newTag: sha-82f06b55bb2026b80325f9ef5a2904d17247f212
 
 
 
