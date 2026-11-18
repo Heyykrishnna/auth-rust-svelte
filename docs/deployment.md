@@ -8,8 +8,8 @@ This guide covers deploying `secure-auth-platform` across local development, Kub
 
 ### 1.1 Prerequisites
 - Docker Engine 24+ & Docker Compose v2+
-- Node.js 22+ & npm 10+
-- Rust 1.80+ (for local host compilation)
+- Node.js 24 LTS & npm 11+
+- Rust 1.96+ (for local host compilation)
 - GNU Make
 
 ### 1.2 Running the Full Stack
@@ -104,7 +104,36 @@ infrastructure/kubernetes/argocd/
 
 ```bash
 # Apply root App-of-Apps to your Argo CD cluster
+kubectl apply -f infrastructure/kubernetes/argocd/project.yaml
 kubectl apply -f infrastructure/kubernetes/argocd/app-of-apps.yaml
 ```
 
-Once applied, Argo CD continuously tracks the `main` branch. When CI triggers `.github/workflows/release.yml`, new container image digests are committed to `infrastructure/kubernetes/prod/kustomization.yaml`, and Argo CD reconciles the cluster automatically without manual intervention.
+Argo CD tracks `main` after bootstrap and repository access are configured. Image differences are reconciled; the worker runs `/app/webhook-worker` from the API image.
+
+## 5. GitHub Actions
+
+- `ci.yml` validates workflow syntax, Kustomize overlays, and Helm values; runs Rust formatting, Clippy, unit tests, and the explicitly ignored database integration suite; checks, lints, tests, and builds the web application; then builds both container images independently.
+- Successful pushes to `main` publish `ghcr.io/heyykrishnna/auth-api:sha-<full commit SHA>` and `ghcr.io/heyykrishnna/web:sha-<full commit SHA>`. Pull requests and manual CI runs build without publishing.
+- `security.yml` audits the complete dependency lockfiles, scans Git history, and builds and scans both images for HIGH/CRITICAL vulnerabilities. Scan reports and SPDX SBOMs are retained as artifacts. SARIF uploads are skipped for fork pull requests, whose tokens cannot write security events; vulnerability findings still fail the scan.
+- `release.yml` reacts to completed CI and security runs. Automatic deployment requires successful push runs of both workflows for the exact same commit, and that commit must still be the head of `main`. It checks both registry images before updating production image tags. Scheduled security scans and fork pull requests cannot trigger production updates.
+- Manual release dispatch on `main` accepts an existing image tag for rollback or promotion. It validates the tag and verifies both images exist. This is an explicit operator override of the automatic commit gate.
+- The GitOps commit uses `[skip ci]` to avoid another image build. A concurrent change to `main` causes the push to fail safely; it never force-pushes.
+
+Repository settings must permit the Actions token to publish GHCR packages and update the production manifest on `main`. Existing GHCR packages must grant this repository Actions access. If branch protection prohibits bot pushes, route the manifest change through the required review process. Configure registry pull credentials for private packages and replace example domains and production secrets before bootstrapping a cluster. A successful manifest update does not verify a cluster rollout; check Argo CD health and sync status separately.
+
+### Local checks
+
+```bash
+npm ci
+npm run check
+npm run lint
+npm test
+npm run build
+cargo fmt --manifest-path apps/auth-api/Cargo.toml --check
+cargo clippy --manifest-path apps/auth-api/Cargo.toml --locked --all-targets --all-features -- -D warnings
+cargo test --manifest-path apps/auth-api/Cargo.toml --locked --all-targets --all-features
+TEST_DATABASE_URL=postgres://authuser:authpassword@127.0.0.1:5432/authdb_test \
+  cargo test --manifest-path apps/auth-api/Cargo.toml --locked --all-targets --all-features -- --ignored --test-threads=1
+```
+
+The database suite requires an isolated PostgreSQL database and Redis at `127.0.0.1:6399`, matching CI. Tests apply migrations themselves. Run one integration suite at a time against a given database; concurrent runs can interfere with shared signing-key state.

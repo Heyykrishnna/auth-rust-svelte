@@ -6,17 +6,17 @@ This directory contains containerization definitions, guidelines, and production
 
 ### 1. `auth-api` (`docker/Dockerfile.api` & `apps/auth-api/Dockerfile`)
 
-- **Base image**: `rust:1.80-alpine` (builder) → `gcr.io/distroless/cc-debian12:nonroot` (runtime)
+- **Base image**: `rust:1.96.0-bookworm` (builder) → `debian:bookworm-slim` (runtime)
 - **Features**:
-  - Distroless minimal attack surface
-  - Multi-stage build with dependency layer caching
-  - Runs as non-root user (`nonroot:nonroot`)
-  - Bundled database migration files for startup validation
+  - Debian runtime matching the builder ABI, with CA certificates, OpenSSL, and curl for the Compose health check
+  - Multi-stage build with BuildKit Cargo cache mounts
+  - Runs as non-root user (`65534:65534`)
+  - Both `auth-api` and `webhook-worker` binaries plus database migrations are included
 - **Port**: `8080`
 
 ### 2. `web` (`docker/Dockerfile.web` & `apps/web/Dockerfile`)
 
-- **Base image**: `node:22-alpine`
+- **Base image**: `node:24-alpine`
 - **Features**:
   - Multi-stage build caching `npm ci`
   - Workspace integration with `@secure-auth/shared-types`

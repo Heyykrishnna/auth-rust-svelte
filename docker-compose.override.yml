@@ -1,7 +1,7 @@
 services:
   auth-api:
     build:
-      target: builder
+      target: development
     command: cargo watch -x run
     volumes:
       - ./apps/auth-api:/app
@@ -15,9 +15,12 @@ services:
     build:
       target: builder
     command: npm run dev -- --host 0.0.0.0
+    working_dir: /app/apps/web
     volumes:
-      - ./apps/web:/app
+      - ./apps/web:/app/apps/web
+      - ./packages/shared-types:/app/packages/shared-types
       - /app/node_modules
+      - /app/apps/web/node_modules
     environment:
       PUBLIC_API_BASE_URL: http://localhost:8080
 

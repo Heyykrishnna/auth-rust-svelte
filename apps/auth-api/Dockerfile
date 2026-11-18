@@ -1,27 +1,32 @@
-FROM rust:1.80-alpine AS builder
-
-RUN apk add --no-cache \
-    musl-dev \
-    pkgconfig \
-    openssl-dev \
-    openssl-libs-static \
-    protobuf-dev
+FROM rust:1.96.0-bookworm AS builder
 
 WORKDIR /app
 
-COPY Cargo.toml Cargo.lock* ./
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN cargo build --release 2>/dev/null || true
-RUN rm -f target/release/deps/auth_api*
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+COPY migrations ./migrations
 
-COPY . .
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo build --locked --release --bins && \
+    mkdir /app/bin && \
+    cp target/release/auth-api target/release/webhook-worker /app/bin/
 
-FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
+FROM builder AS development
+
+RUN cargo install cargo-watch --version 8.5.3 --locked
+
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl libssl3 && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/auth-api /app/auth-api
+COPY --from=builder /app/bin/auth-api /app/auth-api
+COPY --from=builder /app/bin/webhook-worker /app/webhook-worker
 COPY --from=builder /app/migrations /app/migrations
 
 EXPOSE 8080
@@ -29,6 +34,6 @@ EXPOSE 8080
 ENV HOST=0.0.0.0
 ENV PORT=8080
 
-USER nonroot:nonroot
+USER 65534:65534
 
 ENTRYPOINT ["/app/auth-api"]

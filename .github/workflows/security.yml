@@ -5,117 +5,129 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
   schedule:
     - cron: "0 4 * * 1"
 
 permissions:
   contents: read
-  security-events: write
+
+concurrency:
+  group: security-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 
 jobs:
   rust-audit:
     name: Rust — Cargo Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: apps/auth-api
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/auth-api
       - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+        run: cargo install cargo-audit --version 0.23.0 --locked
       - name: Run cargo audit
-        run: cargo audit
+        run: cargo audit --deny unsound
 
   node-audit:
     name: Node — Dependency Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
+          cache: npm
       - name: Run npm audit
         run: npm audit --workspaces --audit-level=high
 
   gitleaks:
     name: Secret Leak Detection
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_ENABLE_COMMENTS: "false"
 
   trivy-scan:
-    name: Container & Filesystem Vulnerability Scan
+    name: Container Scan — ${{ matrix.image }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: auth-api
+            dockerfile: docker/Dockerfile.api
+          - image: web
+            dockerfile: docker/Dockerfile.web
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build auth-api image for scanning
-        uses: docker/build-push-action@v6
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build image for scanning
+        uses: docker/build-push-action@v7
         with:
           context: .
-          file: docker/Dockerfile.api
+          file: ${{ matrix.dockerfile }}
           push: false
           load: true
-          tags: auth-api:scan
-
-      - name: Build web image for scanning
-        uses: docker/build-push-action@v6
+          tags: ${{ matrix.image }}:scan
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      - name: Scan container
+        id: scan
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          context: .
-          file: docker/Dockerfile.web
-          push: false
-          load: true
-          tags: web:scan
-
-      - name: Run Trivy on auth-api
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: auth-api:scan
+          image-ref: ${{ matrix.image }}:scan
           format: sarif
-          output: trivy-auth-api.sarif
+          output: trivy-${{ matrix.image }}.sarif
           severity: HIGH,CRITICAL
-
-      - name: Run Trivy on web
-        uses: aquasecurity/trivy-action@master
+          exit-code: "1"
+      - name: Upload scan artifact
+        if: always() && steps.scan.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
         with:
-          image-ref: web:scan
-          format: sarif
-          output: trivy-web.sarif
-          severity: HIGH,CRITICAL
-
-      - name: Upload auth-api scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        continue-on-error: true
+          name: trivy-${{ matrix.image }}
+          path: trivy-${{ matrix.image }}.sarif
+          if-no-files-found: error
+      - name: Upload scan results to GitHub Security
+        if: >-
+          always() && steps.scan.outcome != 'skipped' &&
+          (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: trivy-auth-api.sarif
-          category: trivy-auth-api
-
-      - name: Upload web scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        continue-on-error: true
+          sarif_file: trivy-${{ matrix.image }}.sarif
+          category: trivy-${{ matrix.image }}
+      - name: Generate SBOM
+        id: sbom
+        if: always() && steps.scan.outcome != 'skipped'
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          sarif_file: trivy-web.sarif
-          category: trivy-web
-
-      - name: Generate auth-api SBOM (SPDX)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: auth-api:scan
+          image-ref: ${{ matrix.image }}:scan
           format: spdx-json
-          output: sbom-auth-api.spdx.json
-
-      - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@v4
+          output: sbom-${{ matrix.image }}.spdx.json
+          exit-code: "0"
+      - name: Upload SBOM
+        if: always() && steps.sbom.outcome == 'success'
+        uses: actions/upload-artifact@v7
         with:
-          name: sbom-auth-api
-          path: sbom-auth-api.spdx.json
+          name: sbom-${{ matrix.image }}
+          path: sbom-${{ matrix.image }}.spdx.json
+          if-no-files-found: error
           retention-days: 90

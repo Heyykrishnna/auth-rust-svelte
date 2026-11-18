@@ -104,6 +104,7 @@ k8s-diff:
 
 ## argocd-bootstrap: Bootstrap Argo CD application of apps
 argocd-bootstrap:
+	kubectl apply -f infrastructure/kubernetes/argocd/project.yaml
 	kubectl apply -f infrastructure/kubernetes/argocd/app-of-apps.yaml
 
 ## audit: Run dependency security audits

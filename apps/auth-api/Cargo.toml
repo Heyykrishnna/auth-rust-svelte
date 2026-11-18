@@ -2,6 +2,8 @@
 name = "auth-api"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.96"
+default-run = "auth-api"
 authors = ["Your Name <you@example.com>"]
 description = "Production-grade Rust authentication API"
 
@@ -28,8 +30,9 @@ tower-http = { version = "0.5", features = ["cors", "trace", "request-id", "time
 tokio = { version = "1", features = ["full"] }
 hyper = { version = "1", features = ["full"] }
 
-sqlx = { version = "0.8", features = [
-    "runtime-tokio-rustls",
+sqlx = { version = "0.9.1", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls-ring",
     "postgres",
     "uuid",
     "chrono",
@@ -54,9 +57,7 @@ hex = "0.4"
 url = "2.5"
 urlencoding = "2.1"
 
-openidconnect = { version = "3", features = ["reqwest"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
-oauth2 = "4"
 lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
 
 
@@ -65,11 +66,10 @@ serde_json = "1"
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-opentelemetry = "0.23"
-opentelemetry = "0.22"
-opentelemetry_sdk = { version = "0.22", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.15", features = ["tonic", "grpc-tonic"] }
-opentelemetry-semantic-conventions = "0.14"
+tracing-opentelemetry = "0.25"
+opentelemetry = "0.24"
+opentelemetry_sdk = { version = "0.24", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.17", features = ["tonic", "grpc-tonic"] }
 axum-prometheus = "0.7"
 metrics = "0.23"
 metrics-exporter-prometheus = "0.15"
@@ -83,7 +83,7 @@ time = { version = "0.3", features = ["serde"] }
 thiserror = "1"
 anyhow = "1"
 
-validator = { version = "0.18", features = ["derive"] }
+validator = { version = "0.20", features = ["derive"] }
 
 tower_governor = { version = "0.4", features = ["axum"] }
 governor = "0.6"
@@ -99,6 +99,9 @@ codegen-units = 1
 panic = "abort"
 strip = true
 overflow-checks = true
+
+[profile.release.build-override]
+strip = false
 
 [profile.dev]
 opt-level = 1

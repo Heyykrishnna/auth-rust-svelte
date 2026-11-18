@@ -174,6 +174,11 @@ mod live_control_plane_http_suite {
             .await
             .expect("run migrations");
 
+        sqlx::query("DELETE FROM signing_keys")
+            .execute(&db)
+            .await
+            .expect("reset signing_keys for test KEK");
+
         let redis_cfg = RedisConfig::from_url("redis://127.0.0.1:6399");
         let redis = redis_cfg
             .create_pool(Some(RedisRuntime::Tokio1))

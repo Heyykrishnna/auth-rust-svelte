@@ -1,4 +1,4 @@
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 import { redirect } from '@sveltejs/kit';
 import type { AuthTokens, AuthUser } from '$lib/api/types';
 import { evaluateRouteAccess } from '$lib/auth/guards';

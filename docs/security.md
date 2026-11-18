@@ -103,8 +103,19 @@ CREATE TABLE audit_logs (
 
 The platform implements automated security verification on every pull request and weekly schedule via `.github/workflows/security.yml`:
 
-1. **Rust Audit**: `cargo audit` checks the Rust dependency graph against the RustSec Advisory Database.
-2. **Node Audit**: `npm audit --workspaces` verifies all frontend and shared package dependencies.
+1. **Rust Audit**: `cargo audit --deny unsound` checks the Rust dependency graph against the RustSec Advisory Database.
+2. **Node Audit**: `npm audit --workspaces --audit-level=high` verifies all frontend and shared package dependencies.
 3. **Secret Detection**: `gitleaks` scans git commits for accidentally committed secrets, API keys, or private certificates.
 4. **Container Image Scanning**: `trivy` inspects Docker images for OS-level and application vulnerabilities, publishing SARIF reports directly to GitHub Security.
 5. **SBOM**: Generates Software Bill of Materials in SPDX format with 90-day retention.
+
+
+### Test fixture findings
+
+`.gitleaksignore` lists exact commit/path/rule/line fingerprints for reviewed synthetic test data: test JWT/encryption keys, dummy token hashes, sample publishable keys, the frontend one-time-key test, and the historic CI test JWT. These exclusions do not allow entire paths or secret patterns. Full Git history remains scanned; a new finding at another fingerprint fails the job. Review any additional exclusion against its original source before adding it.
+
+### Outstanding upstream advisories
+
+As checked on 2026-11-18, [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) affects Picomatch through 4.0.7 and lists no patched release. It is pulled in by frontend development tooling. The full Node audit remains enforced and fails until an upstream fix is available; production-only auditing is a separate check and does not replace it.
+
+The Rust audit also reports [RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543), an unmaintained warning for Chrono. It is visible in audit output. Vulnerability and unsoundness findings remain blocking.

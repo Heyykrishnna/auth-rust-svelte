@@ -8,8 +8,8 @@ metadata:
 spec:
   project: auth-rust-svelte
   source:
-    repoURL: https://github.com/your-org/auth-rust-svelte
-    targetRevision: HEAD
+    repoURL: https://github.com/Heyykrishnna/auth-rust-svelte
+    targetRevision: main
     path: infrastructure/kubernetes/base/data
   destination:
     server: https://kubernetes.default.svc

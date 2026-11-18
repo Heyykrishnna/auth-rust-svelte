@@ -9,7 +9,7 @@ spec:
   description: Auth Rust + Svelte — all application workloads
 
   sourceRepos:
-    - https://github.com/your-org/auth-rust-svelte
+    - https://github.com/Heyykrishnna/auth-rust-svelte
 
   destinations:
     - server: https://kubernetes.default.svc
@@ -22,6 +22,8 @@ spec:
       namespace: argocd
 
   namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Application
     - group: ""
       kind: ConfigMap
     - group: ""

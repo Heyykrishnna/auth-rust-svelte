@@ -4,66 +4,127 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to deploy (e.g. sha-abcdef1 or v1.0.0)"
+        description: "Existing GHCR tag to deploy (sha-<full commit SHA> or v1.0.0)"
         required: true
         type: string
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["CI", "Security & Compliance"]
     types: [completed]
     branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-manifests
+  cancel-in-progress: false
 
 jobs:
   update-manifests:
     name: Update K8s Image Tags in Git
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    timeout-minutes: 15
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository))
     permissions:
+      actions: read
       contents: write
-
+      packages: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
           ref: main
-
-      - name: Install Kustomize
-        uses: imranismail/setup-kustomize@v2
-
-      - name: Derive image tag
-        id: image_tag
+          fetch-depth: 0
+      - name: Require CI and security success for the same commit
+        id: checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
-            echo "tag=sha-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-
-      - name: Update image tags in production overlay
+          if [[ "$(git rev-parse HEAD)" != "$SOURCE_SHA" ]]; then
+            echo "Skipping stale deployment: source commit is no longer the main branch head."
+            exit 0
+          fi
+          for workflow in ci.yml security.yml; do
+            conclusion=$(gh api "repos/$GH_REPO/actions/workflows/$workflow/runs?head_sha=$SOURCE_SHA&event=push&branch=main&per_page=1" --jq '.workflow_runs[0].conclusion')
+            if [[ "$conclusion" != success ]]; then
+              echo "$workflow has not succeeded for $SOURCE_SHA; waiting for its completion event."
+              exit 0
+            fi
+          done
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - uses: imranismail/setup-kustomize@v2
+        if: steps.checks.outputs.ready == 'true'
+      - uses: docker/setup-buildx-action@v4
+        if: steps.checks.outputs.ready == 'true'
+      - uses: docker/login-action@v4
+        if: steps.checks.outputs.ready == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate tag and verify both published images
+        if: steps.checks.outputs.ready == 'true'
+        id: images
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          cd infrastructure/kubernetes/prod
-          kustomize edit set image \
-            auth-api=ghcr.io/${{ github.repository_owner }}/auth-api:${{ steps.image_tag.outputs.tag }}
-          kustomize edit set image \
-            frontend=ghcr.io/${{ github.repository_owner }}/web:${{ steps.image_tag.outputs.tag }}
-
+          tag="$INPUT_TAG"
+          if [[ "$EVENT_NAME" != workflow_dispatch ]]; then
+            tag="sha-$SOURCE_SHA"
+          fi
+          if [[ ! "$tag" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
+            echo "Invalid container image tag."
+            exit 1
+          fi
+          prefix="ghcr.io/$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          docker buildx imagetools inspect "$prefix/auth-api:$tag" > /dev/null
+          docker buildx imagetools inspect "$prefix/web:$tag" > /dev/null
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+      - name: Update production image tags
+        if: steps.checks.outputs.ready == 'true'
+        env:
+          IMAGE_TAG: ${{ steps.images.outputs.tag }}
+          IMAGE_PREFIX: ${{ steps.images.outputs.prefix }}
+        working-directory: infrastructure/kubernetes/prod
+        run: |
+          kustomize edit set image "auth-api=$IMAGE_PREFIX/auth-api:$IMAGE_TAG" "frontend=$IMAGE_PREFIX/web:$IMAGE_TAG"
+          kustomize build . > /dev/null
       - name: Commit and push manifest update
+        if: steps.checks.outputs.ready == 'true'
+        env:
+          IMAGE_TAG: ${{ steps.images.outputs.tag }}
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add infrastructure/kubernetes/prod/kustomization.yaml
-          git diff --staged --quiet && echo "No manifest changes — skipping commit" && exit 0
-          git commit -m "chore(deploy): bump production images to ${{ steps.image_tag.outputs.tag }} [skip ci]"
-          git push
-
+          if git diff --staged --quiet; then
+            echo "No manifest changes."
+            exit 0
+          fi
+          git commit -m "chore(deploy): bump production images to $IMAGE_TAG [skip ci]"
+          git push origin HEAD:main
       - name: Deployment summary
+        if: steps.checks.outputs.ready == 'true'
+        env:
+          IMAGE_TAG: ${{ steps.images.outputs.tag }}
         run: |
-          echo "## GitOps Manifest Update" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Environment** | production |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Image tag** | \`${{ steps.image_tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Overlay** | \`infrastructure/kubernetes/prod\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Argo CD** | Watching repository — automated reconciliation active |" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## GitOps Manifest Update"
+            echo "Production manifest images updated to: $IMAGE_TAG"
+            echo "Cluster rollout must be verified in Argo CD."
+          } >> "$GITHUB_STEP_SUMMARY"

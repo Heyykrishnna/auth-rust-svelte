@@ -1,9 +1,9 @@
 # 🔐 Secure Auth Platform
 
-> Production-grade authentication and identity platform built with Rust (Axum), SvelteKit 5, PostgreSQL 16, Redis 7, Terraform, Kubernetes (Kustomize & Helm), Argo CD GitOps, and OpenTelemetry.
+> Production-grade authentication and identity platform built with Rust (Axum), SvelteKit 3 / Svelte 5, PostgreSQL 16, Redis 7, Terraform, Kubernetes (Kustomize & Helm), Argo CD GitOps, and OpenTelemetry.
 
-[![CI](https://github.com/your-org/auth-rust-svelte/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/auth-rust-svelte/actions/workflows/ci.yml)
-[![Security & Compliance](https://github.com/your-org/auth-rust-svelte/actions/workflows/security.yml/badge.svg)](https://github.com/your-org/auth-rust-svelte/actions/workflows/security.yml)
+[![CI](https://github.com/Heyykrishnna/auth-rust-svelte/actions/workflows/ci.yml/badge.svg)](https://github.com/Heyykrishnna/auth-rust-svelte/actions/workflows/ci.yml)
+[![Security & Compliance](https://github.com/Heyykrishnna/auth-rust-svelte/actions/workflows/security.yml/badge.svg)](https://github.com/Heyykrishnna/auth-rust-svelte/actions/workflows/security.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](LICENSE)
 
 ---
@@ -35,8 +35,8 @@ For in-depth architecture diagrams, sequence charts, and design details, see [do
 secure-auth-platform/
 │
 ├── apps/
-│   ├── auth-api/          # Rust 1.80 + Axum REST & Auth Service
-│   └── web/               # SvelteKit 5 + TypeScript Web Frontend
+│   ├── auth-api/          # Rust 1.96 + Axum REST & Auth Service
+│   └── web/               # SvelteKit 3 / Svelte 5 + TypeScript Web Frontend
 │
 ├── packages/
 │   └── shared-types/      # Canonical TypeScript DTOs & API Contracts
@@ -62,7 +62,7 @@ secure-auth-platform/
 │       └── release.yml    # GitOps production manifest tag bump
 │
 ├── docker/
-│   ├── Dockerfile.api     # Multi-stage distroless Rust build
+│   ├── Dockerfile.api     # Multi-stage Debian Rust build
 │   ├── Dockerfile.web     # Multi-stage Alpine Node.js build
 │   └── README.md
 │
@@ -82,8 +82,8 @@ secure-auth-platform/
 
 ### Prerequisites
 - [Docker Engine & Docker Compose](https://docs.docker.com/get-docker/)
-- [Node.js 22+](https://nodejs.org/) & `npm`
-- [Rust 1.80+](https://rustup.rs/) (optional for local host compilation)
+- [Node.js 24 LTS](https://nodejs.org/) & `npm`
+- [Rust 1.96+](https://rustup.rs/) (optional for local host compilation)
 - `make`
 
 ### 1. Launch Services

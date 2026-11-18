@@ -1,8 +1,8 @@
 use anyhow::Result;
-use opentelemetry::KeyValue;
+use opentelemetry::{trace::TracerProvider, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{
-    trace::{self, Sampler},
+    trace::{Config, Sampler},
     Resource,
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
@@ -10,7 +10,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 use crate::config::AppConfig;
 
 pub fn init_telemetry(config: &AppConfig) -> Result<()> {
-    let tracer = opentelemetry_otlp::new_pipeline()
+    let provider = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
             opentelemetry_otlp::new_exporter()
@@ -18,7 +18,7 @@ pub fn init_telemetry(config: &AppConfig) -> Result<()> {
                 .with_endpoint(&config.otel_exporter_otlp_endpoint),
         )
         .with_trace_config(
-            trace::config()
+            Config::default()
                 .with_sampler(Sampler::AlwaysOn)
                 .with_resource(Resource::new(vec![
                     KeyValue::new("service.name", config.otel_service_name.clone()),
@@ -27,6 +27,8 @@ pub fn init_telemetry(config: &AppConfig) -> Result<()> {
         )
         .install_batch(opentelemetry_sdk::runtime::Tokio)?;
 
+    let tracer = provider.tracer(config.otel_service_name.clone());
+    opentelemetry::global::set_tracer_provider(provider);
     let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
 
     let fmt_layer = fmt::layer()

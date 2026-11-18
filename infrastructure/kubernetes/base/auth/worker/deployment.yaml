@@ -31,7 +31,7 @@ spec:
       containers:
         - name: auth-worker
           image: auth-api:latest
-          args: ["--worker"]
+          command: ["/app/webhook-worker"]
           envFrom:
             - secretRef:
                 name: auth-api-secrets
