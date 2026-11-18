@@ -11,6 +11,9 @@ pub struct AppConfig {
     pub db_max_connections: u32,
     pub redis_url: String,
     pub jwt_secret: String,
+    pub issuer_url: String,
+    pub signing_key_kek: String,
+    pub signing_key_kek_version: String,
     pub jwt_access_expiry_secs: u64,
     pub jwt_refresh_expiry_secs: u64,
     pub login_max_attempts: u32,
@@ -71,6 +74,23 @@ impl AppConfig {
                 "JWT_SECRET must be at least 32 characters long for cryptographic security"
             );
         }
+
+        let issuer_url = env::var("ISSUER_URL")
+            .unwrap_or_else(|_| "http://localhost:8080".to_string())
+            .trim_end_matches('/')
+            .to_string();
+
+        let signing_key_kek = env::var("SIGNING_KEY_KEK").unwrap_or_else(|_| {
+            "dev_signing_key_kek_change_me_in_production_32_bytes_min".to_string()
+        });
+        if signing_key_kek.trim().len() < 32 {
+            anyhow::bail!(
+                "SIGNING_KEY_KEK must be at least 32 characters long for AES-256-GCM envelope encryption"
+            );
+        }
+
+        let signing_key_kek_version =
+            env::var("SIGNING_KEY_KEK_VERSION").unwrap_or_else(|_| "v1".to_string());
 
         let jwt_access_expiry_secs = env::var("JWT_ACCESS_EXPIRY_SECS")
             .ok()
@@ -160,6 +180,9 @@ impl AppConfig {
             db_max_connections,
             redis_url,
             jwt_secret,
+            issuer_url,
+            signing_key_kek,
+            signing_key_kek_version,
             jwt_access_expiry_secs,
             jwt_refresh_expiry_secs,
             login_max_attempts,
