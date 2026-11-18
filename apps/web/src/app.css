@@ -96,6 +96,16 @@
   }
 }
 
+@utility checkbox-circle-checked {
+  border: 1px solid rgb(255 255 255 / 40%);
+  background-color: #296ff0;
+  color: #ffffff;
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / 20%),
+    inset 0 0 4px 1.5px rgb(255 255 255 / 24%),
+    0 0 0 1px #296ff0;
+}
+
 @utility task-surface {
   border: 1px solid var(--color-brand-border-hover);
   border-radius: var(--radius-xl);

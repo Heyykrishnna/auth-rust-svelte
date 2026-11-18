@@ -264,7 +264,7 @@
 				{#if allowMutate}
 					<button
 						type="button"
-						class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md size-9 rounded-lg"
+						class="inline-grid size-9 shrink-0 place-items-center rounded-lg text-brand-text-secondary transition-colors hover:text-white hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-[#296FF0] cursor-pointer bg-transparent border-0 p-0 text-xl font-light leading-none"
 						title="Create application"
 						aria-label="Create application"
 						onclick={onCreateApplication}

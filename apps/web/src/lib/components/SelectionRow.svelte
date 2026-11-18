@@ -49,9 +49,9 @@
 			: 'min-h-11 gap-3.5 rounded-xl border border-brand-border bg-brand-surface-card px-3.5 py-2.5 text-brand-text-primary hover:border-brand-border-strong hover:bg-brand-surface-raised'}"
 	>
 		<span
-			class="grid shrink-0 place-items-center rounded-full border transition-all {compact ? 'size-4' : 'size-5'} {checked
-				? 'border-[#296FF0] bg-[#296FF0] text-white shadow-sm'
-				: 'border-zinc-600 bg-zinc-900/60 text-transparent group-hover:border-zinc-400'}"
+			class="grid shrink-0 place-items-center rounded-full transition-all {compact ? 'size-4' : 'size-5'} {checked
+				? 'checkbox-circle-checked'
+				: 'border border-zinc-600 bg-zinc-900/60 text-transparent group-hover:border-zinc-400'}"
 			aria-hidden="true"
 		>
 			<svg

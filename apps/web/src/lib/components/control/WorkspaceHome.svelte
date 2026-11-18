@@ -126,12 +126,12 @@
 				/>
 				<button
 					type="button"
-					class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md size-9 rounded-lg"
+					class="inline-grid size-9 shrink-0 place-items-center rounded-lg text-brand-text-secondary transition-colors hover:text-white hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-[#296FF0] cursor-pointer bg-transparent border-0 p-0 text-xl font-light leading-none"
 					aria-label="Create workspace"
 					title="Create workspace"
 					onclick={onCreateWorkspace}
 				>
-					<span class="text-lg leading-none" aria-hidden="true">+</span>
+					<span class="text-xl font-light leading-none" aria-hidden="true">+</span>
 				</button>
 			</div>
 		</div>

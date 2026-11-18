@@ -58,17 +58,18 @@
 		<div
 			class="w-full max-w-lg overflow-hidden rounded-xl border bg-brand-surface-card shadow-2xl {variant === 'danger' ? 'border-brand-danger-border' : 'border-brand-border-focus'}"
 		>
-			<div
-				class="flex items-center justify-between border-b border-brand-border px-5 py-4"
-			>
-				<h3
-					class="m-0 font-heading text-base font-semibold text-brand-text-primary"
-				>
-					{title}
-				</h3>
+			<div class="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
+				<div class="grid min-w-0 gap-1.5">
+					<h3 class="m-0 font-heading text-lg font-semibold text-brand-text-primary">
+						{title}
+					</h3>
+					{#if description}
+						<p class="m-0 text-sm leading-relaxed text-brand-text-secondary">{description}</p>
+					{/if}
+				</div>
 				<button
 					type="button"
-					class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md"
+					class="inline-grid size-8 shrink-0 place-items-center rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0 focus-visible:outline-2 focus-visible:outline-[#296FF0]"
 					onclick={oncancel}
 					disabled={loading}
 					aria-label="Close dialog"
@@ -88,22 +89,25 @@
 				</button>
 			</div>
 
-			<div class="p-5 text-sm leading-relaxed text-brand-text-secondary">
-				{#if description}
-					<p class="m-0 mb-3 text-brand-text-secondary">{description}</p>
-				{/if}
-				{#if children}
+			{#if children}
+				<div class="px-6 py-2 text-sm leading-relaxed text-brand-text-secondary">
 					{@render children()}
-				{/if}
-			</div>
+				</div>
+			{/if}
 
 			<div
-				class="flex items-center justify-end gap-2.5 border-t border-brand-border bg-brand-surface px-5 py-3.5"
+				class="flex items-center justify-end gap-3 px-6 pt-4 pb-6"
 			>
-				<Button onclick={oncancel} disabled={loading}>
+				<button
+					type="button"
+					class="inline-flex min-h-10 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer bg-transparent border-0"
+					onclick={oncancel}
+					disabled={loading}
+				>
 					{cancelText}
-				</Button>
+				</button>
 				<Button
+					{variant}
 					onclick={onconfirm}
 					disabled={loading}
 					{loading}
