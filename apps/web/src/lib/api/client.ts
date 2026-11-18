@@ -74,11 +74,15 @@ async function request<T>(
 	});
 
 	if (!response.ok) {
+		const rawBody = (await response.text()).trim();
+		const isHtml = response.headers.get('content-type')?.split(';', 1)[0].trim() === 'text/html';
 		let errorBody: unknown;
-		try {
-			errorBody = await response.json();
-		} catch {
-			errorBody = await response.text();
+		if (rawBody && !isHtml) {
+			try {
+				errorBody = JSON.parse(rawBody);
+			} catch {
+				errorBody = rawBody;
+			}
 		}
 
 		let message = `HTTP ${response.status} ${response.statusText}`;
