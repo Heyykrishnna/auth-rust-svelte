@@ -58,7 +58,7 @@ impl FromRequestParts<AppState> for AuthenticatedDeveloper {
             ));
         };
 
-        let claims = validate_developer_token(token, &state.config)?;
+        let claims = validate_developer_token(&state.db, token, &state.config).await?;
         let developer_id = claims
             .sub
             .parse::<DeveloperId>()
@@ -83,4 +83,3 @@ impl FromRequestParts<AppState> for AuthenticatedDeveloper {
         Ok(authenticated)
     }
 }
-

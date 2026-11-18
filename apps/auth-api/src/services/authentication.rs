@@ -15,8 +15,8 @@ use crate::repositories::sessions as session_repo;
 use crate::repositories::users as user_repo;
 use crate::services::sessions as session_service;
 use crate::services::tokens::{
-    generate_token_pair_with_roles_and_permissions, hash_token, validate_access_token,
-    validate_email_verification_token, validate_refresh_token,
+    hash_token, issue_legacy_es256_token_pair, validate_email_verification_token,
+    verify_legacy_es256_access_token, verify_legacy_es256_refresh_token,
 };
 use deadpool_redis::Pool as RedisPool;
 
@@ -169,17 +169,17 @@ pub async fn verify_registration_otp(
         crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
     let session_id = Uuid::new_v4();
-    let tokens = generate_token_pair_with_roles_and_permissions(
+    let tokens = issue_legacy_es256_token_pair(
+        ctx.db,
+        ctx.config,
         user.id,
         &user.email,
         &user.display_name,
         roles.into_iter().map(|r| r.to_string()).collect(),
         permissions.into_iter().map(|p| p.to_string()).collect(),
         session_id,
-        &ctx.config.jwt_secret,
-        ctx.config.jwt_access_expiry_secs,
-        ctx.config.jwt_refresh_expiry_secs,
-    )?;
+    )
+    .await?;
 
     session_service::create_session_with_id(
         ctx.db,
@@ -282,17 +282,17 @@ pub async fn register(
         crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
     let session_id = Uuid::new_v4();
-    let tokens = generate_token_pair_with_roles_and_permissions(
+    let tokens = issue_legacy_es256_token_pair(
+        ctx.db,
+        ctx.config,
         user.id,
         &user.email,
         &user.display_name,
         roles.into_iter().map(|r| r.to_string()).collect(),
         permissions.into_iter().map(|p| p.to_string()).collect(),
         session_id,
-        &ctx.config.jwt_secret,
-        ctx.config.jwt_access_expiry_secs,
-        ctx.config.jwt_refresh_expiry_secs,
-    )?;
+    )
+    .await?;
 
     session_service::create_session_with_id(
         ctx.db,
@@ -476,17 +476,17 @@ pub async fn login(
         crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
     let session_id = Uuid::new_v4();
-    let tokens = generate_token_pair_with_roles_and_permissions(
+    let tokens = issue_legacy_es256_token_pair(
+        ctx.db,
+        ctx.config,
         user.id,
         &user.email,
         &user.display_name,
         roles.into_iter().map(|r| r.to_string()).collect(),
         permissions.into_iter().map(|p| p.to_string()).collect(),
         session_id,
-        &ctx.config.jwt_secret,
-        ctx.config.jwt_access_expiry_secs,
-        ctx.config.jwt_refresh_expiry_secs,
-    )?;
+    )
+    .await?;
 
     session_service::create_session_with_id(
         ctx.db,
@@ -515,7 +515,7 @@ pub async fn login(
 }
 
 pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenPair, AppError> {
-    let claims = validate_refresh_token(refresh_token, &ctx.config.jwt_secret)?;
+    let claims = verify_legacy_es256_refresh_token(ctx.db, refresh_token).await?;
 
     let user_id = Uuid::parse_str(&claims.sub)
         .map_err(|_| AppError::InvalidToken("Invalid user ID in refresh token".to_string()))?;
@@ -563,17 +563,17 @@ pub async fn refresh(ctx: AuthContext<'_>, refresh_token: &str) -> Result<TokenP
         crate::services::authorization::resolve_user_roles_and_permissions(ctx.db, user.id).await?;
 
     let new_session_id = Uuid::new_v4();
-    let tokens = generate_token_pair_with_roles_and_permissions(
+    let tokens = issue_legacy_es256_token_pair(
+        ctx.db,
+        ctx.config,
         user.id,
         &user.email,
         &user.display_name,
         roles.into_iter().map(|r| r.to_string()).collect(),
         permissions.into_iter().map(|p| p.to_string()).collect(),
         new_session_id,
-        &ctx.config.jwt_secret,
-        ctx.config.jwt_access_expiry_secs,
-        ctx.config.jwt_refresh_expiry_secs,
-    )?;
+    )
+    .await?;
 
     let mut tx = begin_tx(ctx.db).await?;
     session_repo::revoke_pg_session(&mut *tx, session_id).await?;
@@ -605,7 +605,7 @@ pub async fn logout(
     refresh_token: Option<&str>,
 ) -> Result<(), AppError> {
     if let Some(token) = access_token {
-        if let Ok(claims) = validate_access_token(token, &ctx.config.jwt_secret) {
+        if let Ok(claims) = verify_legacy_es256_access_token(ctx.db, token).await {
             let ttl_secs = (claims.exp - chrono::Utc::now().timestamp()).max(0) as u64;
             let _ = session_repo::blacklist_token(ctx.redis, &claims.jti, ttl_secs).await;
 
@@ -624,7 +624,7 @@ pub async fn logout(
     }
 
     if let Some(token) = refresh_token {
-        if let Ok(claims) = validate_refresh_token(token, &ctx.config.jwt_secret) {
+        if let Ok(claims) = verify_legacy_es256_refresh_token(ctx.db, token).await {
             if let Ok(session_id) = Uuid::parse_str(&claims.session_id) {
                 let _ = session_service::invalidate_session(ctx.db, ctx.redis, session_id).await;
             }

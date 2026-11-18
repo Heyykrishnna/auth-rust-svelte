@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::errors::AppError;
 use crate::models::{Permission, Role};
 use crate::repositories::sessions as session_repo;
-use crate::services::tokens::validate_access_token;
+use crate::services::tokens::verify_legacy_es256_access_token;
 use crate::AppState;
 
 #[derive(Debug, Clone)]
@@ -81,7 +81,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
             ));
         };
 
-        let claims = validate_access_token(token, &state.config.jwt_secret)?;
+        let claims = verify_legacy_es256_access_token(&state.db, token).await?;
 
         let is_blacklisted = session_repo::is_token_blacklisted(&state.redis, &claims.jti)
             .await
@@ -94,28 +94,12 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
         let user_id = Uuid::parse_str(&claims.sub)
             .map_err(|_| AppError::Unauthorized("Invalid subject in token".to_string()))?;
 
-        let roles: HashSet<Role> = if claims.roles.is_empty() {
-            let mut set = HashSet::new();
-            set.insert(Role::User);
-            set
-        } else {
-            claims.roles.into_iter().map(Role::from).collect()
-        };
-
-        let permissions: HashSet<Permission> = if claims.permissions.is_empty() {
-            let mut set = HashSet::new();
-            set.insert(Permission::ProfileRead);
-            set.insert(Permission::ProfileWrite);
-            set.insert(Permission::SessionsRead);
-            set.insert(Permission::SessionsDelete);
-            set
-        } else {
-            claims
-                .permissions
-                .into_iter()
-                .map(Permission::from)
-                .collect()
-        };
+        let roles: HashSet<Role> = claims.roles.into_iter().map(Role::from).collect();
+        let permissions: HashSet<Permission> = claims
+            .permissions
+            .into_iter()
+            .map(Permission::from)
+            .collect();
 
         let authenticated_user = Self {
             user_id,

@@ -4,7 +4,8 @@ use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use chrono::Utc;
 use deadpool_redis::Pool as RedisPool;
 use jsonwebtoken::{
-    decode, encode, Algorithm as JwtAlgorithm, DecodingKey, EncodingKey, Header, Validation,
+    decode, decode_header, encode, Algorithm as JwtAlgorithm, DecodingKey, EncodingKey, Header,
+    Validation,
 };
 use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
@@ -15,13 +16,18 @@ use crate::config::AppConfig;
 use crate::errors::AppError;
 use crate::models::{Developer, DeveloperId, WorkspaceRole};
 use crate::repositories::db::{begin_tx, commit_tx};
-use crate::repositories::{redis_ephemeral, redis_keys, tenants as tenant_repo};
+use crate::repositories::{
+    redis_ephemeral, redis_keys, signing_keys as key_repo, tenants as tenant_repo,
+};
+use crate::services::signing_keys::{self, EcPublicJwk};
 
 pub const DEV_SESSION_COOKIE: &str = "dev_session_token";
 pub const CONTROL_PLANE_AUDIENCE: &str = "control-plane";
+pub const DEVELOPER_TOKEN_TYP: &str = "dev+jwt";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeveloperTokenClaims {
+    pub iss: String,
     pub sub: String,
     pub email: String,
     pub display_name: String,
@@ -58,12 +64,16 @@ fn create_argon2id() -> Argon2<'static> {
     Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default())
 }
 
-pub fn issue_developer_token(
+pub async fn issue_developer_token(
+    db: &PgPool,
     developer: &Developer,
     config: &AppConfig,
 ) -> Result<String, AppError> {
+    let active_key = signing_keys::ensure_active_signing_key(db, config).await?;
+    let pkcs8_der = signing_keys::decrypt_signing_key_pkcs8(&active_key, config)?;
     let now = Utc::now().timestamp();
     let claims = DeveloperTokenClaims {
+        iss: config.issuer_url.clone(),
         sub: developer.id.to_string(),
         email: developer.email.clone(),
         display_name: developer.display_name.clone(),
@@ -73,18 +83,47 @@ pub fn issue_developer_token(
         jti: Uuid::new_v4().to_string(),
     };
 
-    let key = EncodingKey::from_secret(config.jwt_secret.as_bytes());
-    encode(&Header::new(JwtAlgorithm::HS256), &claims, &key)
-        .map_err(|e| AppError::TokenCreation(e.to_string()))
+    let mut header = Header::new(JwtAlgorithm::ES256);
+    header.kid = Some(active_key.kid);
+    header.typ = Some(DEVELOPER_TOKEN_TYP.to_string());
+
+    let key = EncodingKey::from_ec_der(&pkcs8_der);
+    encode(&header, &claims, &key).map_err(|e| AppError::TokenCreation(e.to_string()))
 }
 
-pub fn validate_developer_token(
+pub async fn validate_developer_token(
+    db: &PgPool,
     token: &str,
     config: &AppConfig,
 ) -> Result<DeveloperTokenClaims, AppError> {
-    let key = DecodingKey::from_secret(config.jwt_secret.as_bytes());
-    let mut validation = Validation::new(JwtAlgorithm::HS256);
+    let header = decode_header(token)
+        .map_err(|e| AppError::Unauthorized(format!("Invalid developer token header: {e}")))?;
+    if header.alg != JwtAlgorithm::ES256 {
+        return Err(AppError::Unauthorized(
+            "Unsupported developer token algorithm".to_string(),
+        ));
+    }
+    if header.typ.as_deref() != Some(DEVELOPER_TOKEN_TYP) {
+        return Err(AppError::Unauthorized(
+            "Invalid developer token type".to_string(),
+        ));
+    }
+    let kid = header
+        .kid
+        .as_deref()
+        .ok_or_else(|| AppError::Unauthorized("Missing kid in developer token".to_string()))?;
+
+    let key_record = key_repo::find_verifiable_signing_key_by_kid(db, kid)
+        .await?
+        .ok_or_else(|| AppError::Unauthorized("Unknown or revoked signing key".to_string()))?;
+    let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
+        .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
+
+    let key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
+        .map_err(|e| AppError::Unauthorized(format!("Invalid JWK components: {e}")))?;
+    let mut validation = Validation::new(JwtAlgorithm::ES256);
     validation.validate_exp = true;
+    validation.set_issuer(&[config.issuer_url.as_str()]);
     validation.set_audience(&[CONTROL_PLANE_AUDIENCE]);
 
     decode::<DeveloperTokenClaims>(token, &key, &validation)
@@ -201,7 +240,7 @@ pub async fn register_developer(
     .await?;
     commit_tx(tx).await?;
 
-    let token = issue_developer_token(&developer, config)?;
+    let token = issue_developer_token(db, &developer, config).await?;
     Ok((DeveloperProfileResponse::from(developer), token))
 }
 
@@ -267,7 +306,7 @@ pub async fn login_developer(
             .await;
     }
 
-    let token = issue_developer_token(&developer, config)?;
+    let token = issue_developer_token(db, &developer, config).await?;
     Ok((DeveloperProfileResponse::from(developer), token))
 }
 
