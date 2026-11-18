@@ -47,7 +47,7 @@ The [latest original CI run](https://github.com/Heyykrishnna/auth-rust-svelte/ac
 | Docker Compose configuration | Passed with `config --quiet` |
 | Dockerfile pair synchronization and `git diff --check` | Passed |
 
-Database tests used isolated host PostgreSQL 18 and Redis because local Docker storage is read-only. CI retains PostgreSQL 16. Full Linux container builds and Trivy scans could not execute locally; a new GitHub run is required for those checks. The isolated host web build verifies the Dockerfile's dependency/layout/lifecycle sequence, not its Alpine image.
+Database tests used isolated host PostgreSQL 18 and Redis because local Docker storage is read-only. CI retains PostgreSQL 16. Full Linux container builds and Trivy scans could not execute locally; the new GitHub runs are being checked for those results. The isolated host web build verifies the Dockerfile's dependency/layout/lifecycle sequence, not its Alpine image.
 
 SvelteKit currently prints a deprecation notice for the preserved `$lib` and other configured import aliases. They continue to pass type checking, builds, and runtime smoke tests. Kustomize also prints existing `commonLabels` deprecation notices; rendering succeeds.
 
@@ -57,4 +57,4 @@ The [Picomatch advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) list
 
 The README also has a pre-existing link to a missing `LICENSE` file. No legal license text was invented or changed as part of the workflow repair.
 
-Changes are local and uncommitted. No new GitHub workflow run, registry publication, manifest push, or cluster rollout has been verified. GHCR access, main-branch bot-write policy, real production domains/secrets, and Argo CD cluster health require the configured repository and deployment environment; see [deployment.md](deployment.md).
+The implementation was committed as `7a2a52fa03a55ddb0536c636ec6cde3127e5668c` and the local `origin/main` points to that commit. GitHub verification is being checked separately; registry publication, manifest push, and cluster rollout have not yet been verified. GHCR access, main-branch bot-write policy, real production domains/secrets, and Argo CD cluster health require the configured repository and deployment environment; see [deployment.md](deployment.md).
