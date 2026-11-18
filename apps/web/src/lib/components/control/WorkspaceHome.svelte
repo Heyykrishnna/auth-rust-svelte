@@ -95,6 +95,7 @@
 			{#if controlStore.developer}
 				<div class="lg:hidden">
 					<Button
+						variant="danger"
 						size="sm"
 						disabled={signingOut}
 						onclick={onSignOut}
@@ -192,6 +193,7 @@
 					</span>
 				</a>
 				<Button
+					variant="danger"
 					size="sm"
 					disabled={signingOut}
 					onclick={onSignOut}

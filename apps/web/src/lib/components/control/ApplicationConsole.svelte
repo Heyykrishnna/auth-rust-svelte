@@ -570,7 +570,7 @@
 						<span>{controlStore.developer.email}</span>
 					</div>
 				</div>
-				<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={onSignOut}>
+				<button type="button" class="danger-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={onSignOut}>
 					Sign out
 				</button>
 			{/if}

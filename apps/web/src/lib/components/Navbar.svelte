@@ -114,6 +114,7 @@
         </div>
 
         <Button
+          variant="danger"
           size="sm"
           onclick={handleLogout}
           loading={loggingOut}

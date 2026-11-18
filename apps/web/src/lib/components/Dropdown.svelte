@@ -138,7 +138,7 @@
 		disabled={unavailable}
 		popovertarget={id}
 		onkeydown={onKeydown}
-		class="inline-flex h-9 w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-brand-border-hover bg-brand-surface-input px-3 text-left text-sm text-brand-text-primary transition-colors [anchor-name:--dropdown] hover:border-brand-border-strong hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime disabled:cursor-not-allowed disabled:opacity-50"
+		class="inline-flex h-9 w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-brand-border-hover bg-brand-surface-input px-3 text-left text-sm text-brand-text-primary transition-colors [anchor-name:--dropdown] hover:border-brand-border-strong hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#296FF0] disabled:cursor-not-allowed disabled:opacity-50"
 	>
 		<span class="min-w-0 truncate">
 			{options[selection]?.label ?? placeholder}
@@ -184,7 +184,7 @@
 				<span>{option.label}</span>
 				{#if option.value === value}
 					<svg
-						class="size-4 shrink-0 text-brand-lime"
+						class="size-4 shrink-0 text-[#296FF0]"
 						viewBox="0 0 16 16"
 						fill="none"
 						aria-hidden="true"

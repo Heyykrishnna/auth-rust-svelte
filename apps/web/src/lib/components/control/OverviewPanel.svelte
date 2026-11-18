@@ -57,13 +57,13 @@
 		<div class="empty-surface">Select an application and environment to view overview metrics.</div>
 	{:else}
 		<div class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr]">
-			<article class="flex min-w-0 flex-col justify-between gap-5 rounded-xl bg-brand-lime-soft p-5 text-brand-lime-ink sm:col-span-2 xl:col-span-1">
-				<h2 class="m-0 text-sm font-semibold text-brand-lime-ink">Users in this environment</h2>
+			<article class="flex min-w-0 flex-col justify-between gap-5 rounded-xl bg-[#296FF0] p-5 text-white sm:col-span-2 xl:col-span-1 shadow-sm">
+				<h2 class="m-0 text-sm font-semibold text-white">Users in this environment</h2>
 				<div>
-					<p class="m-0 font-heading text-5xl font-bold leading-none tracking-tight text-brand-lime-ink tabular-nums">{overview.total_users.toLocaleString()}</p>
-					<p class="mt-3 text-sm text-brand-lime-ink">{overview.active_users} active · {overview.suspended_users} suspended · {overview.unverified_users} unverified</p>
+					<p class="m-0 font-heading text-5xl font-bold leading-none tracking-tight text-white tabular-nums">{overview.total_users.toLocaleString()}</p>
+					<p class="mt-3 text-sm text-white/85">{overview.active_users} active · {overview.suspended_users} suspended · {overview.unverified_users} unverified</p>
 				</div>
-				<p class="m-0 border-t border-brand-lime-ink/15 pt-3 text-sm font-medium text-brand-lime-ink">{overview.active_sessions.toLocaleString()} active sessions</p>
+				<p class="m-0 border-t border-white/20 pt-3 text-sm font-medium text-white">{overview.active_sessions.toLocaleString()} active sessions</p>
 			</article>
 
 			<article class="grid min-w-0 content-start gap-3 task-surface p-5">
