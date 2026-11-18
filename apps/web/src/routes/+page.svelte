@@ -88,10 +88,10 @@
     </p>
 
     <div class="flex flex-wrap justify-center gap-4 mb-12">
-      <Button href="/register" variant="primary" size="lg">
+      <Button href="/register" size="lg">
         Get Started with Signet →
       </Button>
-      <Button href="/login" variant="outline" size="lg">Sign In</Button>
+      <Button href="/login" size="lg">Sign In</Button>
     </div>
 
     <div class="inline-flex items-center gap-6 sm:gap-8 bg-brand-surface-card/80 border border-brand-border rounded-full px-6 sm:px-8 py-3 backdrop-blur-md">
@@ -111,7 +111,7 @@
       </div>
     </div>
 
-    <div class="max-w-5xl mx-auto mt-12 p-2 rounded-xl border border-brand-border bg-brand-surface-card shadow-2xl overflow-hidden">
+    <div class="max-w-5xl mx-auto mt-12 p-2 task-surface shadow-2xl overflow-hidden">
       <img
         src="/brand/signet-platform.webp"
         alt="Signet authentication infrastructure platform overview"
@@ -123,7 +123,7 @@
 
   <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
     {#each features as feature}
-      <div class="p-6 rounded-xl border border-brand-border bg-brand-surface-card hover:border-brand-border-hover hover:-translate-y-1 transition-all duration-200">
+      <div class="p-6 task-surface hover:border-brand-border-hover hover:-translate-y-1 transition-all duration-200">
         <div class="text-2xl font-mono font-bold text-brand-lime mb-4">{feature.icon}</div>
         <h3 class="text-lg font-semibold font-heading text-brand-text-primary mb-2">{feature.title}</h3>
         <p class="text-sm text-brand-text-secondary leading-relaxed m-0">{feature.description}</p>

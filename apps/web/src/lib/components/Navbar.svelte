@@ -114,7 +114,6 @@
         </div>
 
         <Button
-          variant="ghost"
           size="sm"
           onclick={handleLogout}
           loading={loggingOut}
@@ -123,7 +122,7 @@
           Sign Out
         </Button>
       {:else}
-        <Button variant="primary" size="sm" href="/control/login">
+        <Button size="sm" href="/control/login">
           Console
         </Button>
       {/if}

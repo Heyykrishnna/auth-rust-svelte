@@ -185,7 +185,7 @@
         />
 
         <div class="pt-2">
-          <Button type="submit" variant="primary" loading={profileLoading}>
+          <Button type="submit" loading={profileLoading}>
             Save Changes
           </Button>
         </div>
@@ -205,7 +205,6 @@
             >
           </div>
           <Button
-            variant="outline"
             size="sm"
             onclick={handleSendPasswordReset}
             loading={sendingReset}
@@ -249,7 +248,6 @@
       >
         {#snippet headerActions()}
           <Button
-            variant="ghost"
             size="sm"
             onclick={loadSessions}
             loading={sessionsLoading}
@@ -294,7 +292,6 @@
                 <div>
                   {#if !session.is_current}
                     <Button
-                      variant="danger"
                       size="sm"
                       onclick={() => confirmRevokeSession(session)}
                     >

@@ -59,7 +59,7 @@
 		{#if type === 'password'}
 			<button
 				type="button"
-				class="absolute right-2.5 top-1/2 -translate-y-1/2 bg-transparent border-none text-brand-text-muted hover:text-brand-text-primary cursor-pointer inline-flex items-center justify-center p-1 transition-colors"
+				class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute top-1/2 right-2.5 -translate-y-1/2"
 				onclick={() => (showPassword = !showPassword)}
 				aria-label={showPassword ? 'Hide password' : 'Show password'}
 			>

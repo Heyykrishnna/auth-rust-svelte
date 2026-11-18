@@ -47,7 +47,7 @@
 
 <section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Environment overview">
 	<SectionHeader title="Overview" description={`${appName} · ${environmentKind === 'production' ? 'Production' : 'Development'}`}>
-		<Button variant="outline" size="sm" onclick={onRefresh} disabled={loading}>
+		<Button size="sm" onclick={onRefresh} disabled={loading}>
 			{loading ? 'Refreshing...' : 'Refresh'}
 		</Button>
 	</SectionHeader>
@@ -67,7 +67,7 @@
 				<p class="m-0 border-t border-brand-lime-ink/15 pt-3 text-sm font-medium text-brand-lime-ink">{overview.active_sessions.toLocaleString()} active sessions</p>
 			</article>
 
-			<article class="grid min-w-0 content-start gap-3 rounded-xl border border-brand-border bg-brand-surface-card p-5">
+			<article class="grid min-w-0 content-start gap-3 task-surface p-5">
 				<h2 class="m-0 text-sm font-semibold text-brand-text-primary">Authentication</h2>
 				<dl class="grid gap-2.5 border-t border-brand-border pt-3 text-sm">
 					{#each [
@@ -84,7 +84,7 @@
 				</dl>
 			</article>
 
-			<article class="grid min-w-0 content-start gap-3 rounded-xl border border-brand-border bg-brand-surface-card p-5">
+			<article class="grid min-w-0 content-start gap-3 task-surface p-5">
 				<h2 class="m-0 text-sm font-semibold text-brand-text-primary">Webhooks &amp; API</h2>
 				<dl class="grid gap-2.5 border-t border-brand-border pt-3 text-sm">
 					{#each [
@@ -104,7 +104,7 @@
 		</div>
 
 		<div class="grid min-w-0 grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-			<div class="surface-box min-w-0">
+			<div class="surface-box task-surface min-w-0">
 				<div class="box-header">
 					<div>
 						<h2 class="box-title">Quick Integration</h2>
@@ -121,31 +121,31 @@
 					<div class="kv-row">
 						<span class="kv-label">Issuer URL</span>
 						<code class="kv-code">{overview.issuer_url}</code>
-						<button type="button" class="copy-btn" onclick={() => copyValue(overview.issuer_url, 'Issuer URL')}>Copy</button>
+						<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyValue(overview.issuer_url, 'Issuer URL')}>Copy</button>
 					</div>
 					<div class="kv-row">
 						<span class="kv-label">JWKS URI</span>
 						<code class="kv-code">{overview.jwks_uri}</code>
-						<button type="button" class="copy-btn" onclick={() => copyValue(overview.jwks_uri, 'JWKS URI')}>Copy</button>
+						<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyValue(overview.jwks_uri, 'JWKS URI')}>Copy</button>
 					</div>
 					<div class="kv-row">
 						<span class="kv-label">Publishable Key</span>
 						<code class="kv-code">{overview.publishable_key ?? 'None active'}</code>
 						{#if overview.publishable_key}
-							<button type="button" class="copy-btn" onclick={() => copyValue(overview.publishable_key ?? '', 'Publishable key')}>Copy</button>
+							<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyValue(overview.publishable_key ?? '', 'Publishable key')}>Copy</button>
 						{/if}
 					</div>
 				</div>
 
 				<div class="code-panel">
 					<pre><code>{snippetText}</code></pre>
-					<button type="button" class="copy-snippet" onclick={() => copyValue(snippetText, 'Integration snippet')}>
+					<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold absolute right-3 top-3" onclick={() => copyValue(snippetText, 'Integration snippet')}>
 						Copy snippet
 					</button>
 				</div>
 			</div>
 
-			<div class="surface-box min-w-0">
+			<div class="surface-box task-surface min-w-0">
 				<div class="box-header">
 					<div>
 						<h2 class="box-title">Recent Security &amp; Audit Feed</h2>
@@ -175,9 +175,6 @@
 
 <style>
 	.surface-box {
-		background-color: var(--color-brand-surface-card);
-		border: 1px solid var(--color-brand-border);
-		border-radius: 12px;
 		padding: 1.35rem;
 		display: flex;
 		flex-direction: column;
@@ -259,20 +256,7 @@
 		white-space: nowrap;
 	}
 
-	.copy-btn {
-		background: transparent;
-		border: 1px solid var(--color-brand-border-hover);
-		color: #d4d4d4;
-		font-size: 0.72rem;
-		padding: 0.2rem 0.5rem;
-		border-radius: 4px;
-		cursor: pointer;
-	}
 
-	.copy-btn:hover {
-		border-color: #ffffff;
-		color: #ffffff;
-	}
 
 	.code-panel {
 		position: relative;
@@ -290,18 +274,6 @@
 		line-height: 1.55;
 	}
 
-	.copy-snippet {
-		position: absolute;
-		top: 0.6rem;
-		right: 0.6rem;
-		background-color: var(--color-brand-surface-card);
-		border: 1px solid var(--color-brand-border-hover);
-		color: #d4d4d4;
-		font-size: 0.7rem;
-		padding: 0.25rem 0.55rem;
-		border-radius: 4px;
-		cursor: pointer;
-	}
 
 	.feed-list {
 		display: flex;

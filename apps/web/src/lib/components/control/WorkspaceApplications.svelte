@@ -95,7 +95,7 @@
 		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-danger-border bg-brand-danger-soft p-4"
 	>
 		<p role="alert" class="text-sm text-brand-danger-text">{error}</p>
-		<Button size="sm" variant="outline" onclick={onRetry}>Retry</Button>
+		<Button size="sm" onclick={onRetry}>Retry</Button>
 	</div>
 {/if}
 
@@ -104,7 +104,7 @@
 		<span class="sr-only">Loading applications…</span>
 		{#each [1, 2, 3] as placeholder (placeholder)}
 			<div
-				class="h-48 rounded-xl border border-brand-border bg-brand-surface-card motion-safe:animate-pulse"
+				class="h-48 task-surface motion-safe:animate-pulse"
 				aria-hidden="true"
 			></div>
 		{/each}
@@ -128,7 +128,7 @@
 				<li class="min-w-0">
 					<a
 						href={workspaceHref(workspace.id, 'applications', application.id)}
-						class="group flex h-full min-w-0 flex-col rounded-xl border border-brand-border bg-brand-surface-card p-5 text-brand-text-primary no-underline transition-colors hover:border-brand-border-strong hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime"
+						class="group flex h-full min-w-0 flex-col task-surface p-5 text-brand-text-primary no-underline transition-colors hover:border-brand-border-strong hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime"
 					>
 						<div class="flex items-start justify-between gap-3">
 							<span
@@ -193,7 +193,7 @@
 			<p class="text-sm text-brand-text-secondary">
 				No applications match your search.
 			</p>
-			<Button size="sm" variant="outline" onclick={() => (search = '')}>
+			<Button size="sm" onclick={() => (search = '')}>
 				Clear search
 			</Button>
 		</div>
@@ -216,7 +216,7 @@
 				: 'Applications will appear here when a workspace developer creates one.'}
 		</p>
 		{#if canCreate}
-			<Button variant="outline" onclick={onCreate}>
+			<Button onclick={onCreate}>
 				Create your first application
 			</Button>
 		{/if}

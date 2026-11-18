@@ -206,7 +206,7 @@
 			<button
 				type="button"
 				bind:this={mobileCloseButton}
-				class="rounded-md border border-brand-border-hover px-2.5 py-1.5 text-xs text-brand-text-primary focus-visible:outline-2 focus-visible:outline-brand-lime min-[961px]:hidden"
+				class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold min-[961px]:hidden"
 				onclick={closeSidebar}
 				aria-label="Close sidebar"
 			>
@@ -264,7 +264,7 @@
 				{#if allowMutate}
 					<button
 						type="button"
-						class="grid size-9 shrink-0 place-items-center rounded-lg border border-brand-border-hover bg-brand-surface-input text-lg text-brand-text-primary hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime"
+						class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md size-9 rounded-lg"
 						title="Create application"
 						aria-label="Create application"
 						onclick={onCreateApplication}
@@ -570,7 +570,7 @@
 						<span>{controlStore.developer.email}</span>
 					</div>
 				</div>
-				<button type="button" class="signout-btn" onclick={onSignOut}>
+				<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={onSignOut}>
 					Sign out
 				</button>
 			{/if}
@@ -588,7 +588,7 @@
 					<button
 						bind:this={mobileMenuButton}
 						type="button"
-						class="shrink-0 rounded-md border border-brand-border-hover px-2.5 py-1.5 text-xs text-brand-text-primary focus-visible:outline-2 focus-visible:outline-brand-lime min-[961px]:hidden"
+						class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold min-[961px]:hidden"
 						onclick={openSidebar}
 						aria-label="Open navigation menu"
 						aria-expanded={mobileSidebarOpen}
@@ -889,20 +889,7 @@
 		white-space: nowrap;
 	}
 
-	.signout-btn {
-		background-color: var(--color-brand-surface-card);
-		border: 1px solid var(--color-brand-border);
-		color: var(--color-brand-text-secondary);
-		border-radius: 6px;
-		padding: 0.4rem 0.6rem;
-		font-size: 0.76rem;
-		cursor: pointer;
-	}
 
-	.signout-btn:hover {
-		color: #ffffff;
-		border-color: var(--color-brand-border-strong);
-	}
 
 	.readonly-banner {
 		padding: 0.7rem 1rem;

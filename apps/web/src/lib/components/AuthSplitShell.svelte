@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import Button from "./Button.svelte";
   import SignetLogo from "./SignetLogo.svelte";
   import SignetMark from "./SignetMark.svelte";
 
@@ -45,7 +46,7 @@
       <div class="absolute w-px h-[200%] left-1/2 -top-1/2 bg-[#1a1e16] pointer-events-none"></div>
       <div class="absolute h-px w-[200%] top-1/2 -left-1/2 bg-[#1a1e16] pointer-events-none"></div>
       <div class="relative z-10 flex flex-col items-center text-center gap-5 max-w-xs">
-        <div class="text-white drop-shadow-[0_4px_20px_rgba(230,241,140,0.22)] transition-transform duration-200 hover:scale-105">
+        <div class="text-white">
           <SignetMark size={compact ? 76 : 116} />
         </div>
         <p class="font-heading text-sm font-medium leading-snug text-[#d8decf] tracking-tight m-0">
@@ -62,17 +63,9 @@
   <section class="bg-[#111113] flex flex-col justify-between relative {compact ? 'p-6 lg:p-8' : 'p-6 sm:p-10 lg:p-14'}">
     <div class="flex justify-end min-h-[1.5rem]">
       {#if topActionLabel && topActionHref}
-        <a href={topActionHref} class="bg-transparent border-none text-zinc-400 hover:text-white text-xs font-normal cursor-pointer no-underline p-0 transition-colors">
-          {topActionLabel}
-        </a>
+        <Button size="sm" href={topActionHref}>{topActionLabel}</Button>
       {:else if topActionLabel && onTopAction}
-        <button
-          type="button"
-          class="bg-transparent border-none text-zinc-400 hover:text-white text-xs font-normal cursor-pointer p-0 transition-colors"
-          onclick={onTopAction}
-        >
-          {topActionLabel}
-        </button>
+        <Button size="sm" onclick={onTopAction}>{topActionLabel}</Button>
       {/if}
     </div>
 

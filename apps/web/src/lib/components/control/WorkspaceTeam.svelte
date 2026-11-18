@@ -180,18 +180,18 @@
 		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-danger-border bg-brand-danger-soft p-4"
 	>
 		<p role="alert" class="text-sm text-brand-danger-text">{loadError}</p>
-		<Button variant="outline" size="sm" onclick={loadMembers}>Retry</Button>
+		<Button size="sm" onclick={loadMembers}>Retry</Button>
 	</div>
 {:else if loading}
 	<p
 		role="status"
-		class="rounded-xl border border-brand-border bg-brand-surface-card p-5 text-sm text-brand-text-secondary"
+		class="task-surface p-5 text-sm text-brand-text-secondary"
 	>
 		Loading team members…
 	</p>
 {:else}
 	<section
-		class="min-w-0 overflow-hidden rounded-xl border border-brand-border bg-brand-surface-card"
+		class="min-w-0 overflow-hidden task-surface"
 		aria-label="Workspace members"
 	>
 		<div
@@ -262,7 +262,6 @@
 							{#if editable && !self}
 								<Button
 									size="sm"
-									variant="ghost"
 									disabled={busy}
 									onclick={() => {
 										error = '';

@@ -123,7 +123,7 @@
             </div>
             <button
               type="button"
-              class="bg-transparent border border-rose-900/60 text-rose-400 hover:border-rose-600 rounded px-2.5 py-1 text-xs cursor-pointer transition-colors"
+              class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
               disabled={busy}
               onclick={() => handleRevokeSso(sess.id)}
             >
@@ -138,7 +138,7 @@
       <span class="text-xs text-zinc-400">Global sign-out revokes all app sessions</span>
       <button
         type="button"
-        class="editorial-circle-cta"
+        class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
         disabled={busy}
         onclick={() => handleSignOut(true)}
       >

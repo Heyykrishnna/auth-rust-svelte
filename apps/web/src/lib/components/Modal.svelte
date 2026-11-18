@@ -56,7 +56,7 @@
 >
 	{#if open}
 		<div
-			class="w-full max-w-lg overflow-hidden rounded-xl border border-brand-border-focus bg-brand-surface-card shadow-2xl"
+			class="w-full max-w-lg overflow-hidden rounded-xl border bg-brand-surface-card shadow-2xl {variant === 'danger' ? 'border-brand-danger-border' : 'border-brand-border-focus'}"
 		>
 			<div
 				class="flex items-center justify-between border-b border-brand-border px-5 py-4"
@@ -68,7 +68,7 @@
 				</h3>
 				<button
 					type="button"
-					class="inline-flex cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-1 text-brand-text-muted transition-colors hover:bg-brand-surface-raised hover:text-brand-text-primary"
+					class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md"
 					onclick={oncancel}
 					disabled={loading}
 					aria-label="Close dialog"
@@ -100,11 +100,10 @@
 			<div
 				class="flex items-center justify-end gap-2.5 border-t border-brand-border bg-brand-surface px-5 py-3.5"
 			>
-				<Button variant="ghost" onclick={oncancel} disabled={loading}>
+				<Button onclick={oncancel} disabled={loading}>
 					{cancelText}
 				</Button>
 				<Button
-					variant={variant === 'danger' ? 'danger' : 'primary'}
 					onclick={onconfirm}
 					disabled={loading}
 					{loading}

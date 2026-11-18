@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
+	import AccessRequest from '$lib/components/AccessRequest.svelte';
 	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import { portalApi, type PortalTransactionContext } from '$lib/api/portal';
 	import { describeOidcScopes, resolvePortalBrandTheme } from '$lib/portal/state';
@@ -34,7 +35,7 @@
 	});
 
 	async function decide(approved: boolean) {
-		if (!txContext) return;
+		if (!txContext || submitting) return;
 		errorMessage = '';
 		submitting = true;
 		try {
@@ -70,45 +71,19 @@
 		<h1 class="editorial-title">Authorize</h1>
 		<div class="editorial-alert" role="alert">{errorMessage || 'Invalid consent link.'}</div>
 	{:else}
-		<h1 class="editorial-title">Authorize</h1>
-		<p class="editorial-subtitle">
-			{brand.appName} requests access
-			{#if txContext.active_user}
-				for <strong>{txContext.active_user.email}</strong>
-			{/if}
-		</p>
+		<h1 class="editorial-title">Review access</h1>
+		<p class="editorial-subtitle">Review what this application can access before continuing.</p>
 
 		{#if errorMessage}
 			<div class="editorial-alert" role="alert">{errorMessage}</div>
 		{/if}
 
-		<ul class="list-none p-0 m-0 border-t border-[#23262e]">
-			{#each scopeDescriptions as item}
-				<li class="flex flex-col gap-1 py-3.5 border-b border-[#23262e]">
-					<strong class="text-sm font-medium text-white">{item.title}</strong>
-					<span class="text-xs text-zinc-400">{item.description}</span>
-				</li>
-			{/each}
-		</ul>
-
-		<div class="editorial-actions-footer">
-			<button
-				type="button"
-				class="editorial-oauth-btn"
-				disabled={submitting}
-				onclick={() => decide(false)}
-			>
-				Deny access
-			</button>
-
-			<button
-				type="button"
-				class="editorial-circle-cta"
-				disabled={submitting}
-				onclick={() => decide(true)}
-			>
-				{submitting ? '...' : 'ALLOW'}
-			</button>
-		</div>
+		<AccessRequest
+			application={brand.appName}
+			account={txContext.active_user?.email}
+			scopes={scopeDescriptions}
+			pending={submitting}
+			onDecision={decide}
+		/>
 	{/if}
 </AuthSplitShell>

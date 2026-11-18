@@ -1,18 +1,7 @@
 <script lang="ts">
-	interface Props {
-		variant?: 'primary' | 'outline' | 'ghost' | 'danger';
-		size?: 'sm' | 'md' | 'lg';
-		type?: 'button' | 'submit' | 'reset';
-		disabled?: boolean;
-		loading?: boolean;
-		full?: boolean;
-		href?: string;
-		onclick?: () => void;
-		children: import('svelte').Snippet;
-	}
+	import type { Snippet } from 'svelte';
 
 	let {
-		variant = 'primary',
 		size = 'md',
 		type = 'button',
 		disabled = false,
@@ -21,51 +10,41 @@
 		href,
 		onclick,
 		children
-	}: Props = $props();
+	}: {
+		size?: 'sm' | 'md' | 'lg';
+		type?: 'button' | 'submit' | 'reset';
+		disabled?: boolean;
+		loading?: boolean;
+		full?: boolean;
+		href?: string;
+		onclick?: () => void;
+		children: Snippet;
+	} = $props();
 
-	const baseClasses =
-		'inline-flex items-center justify-center gap-2 rounded-md font-sans font-medium transition-colors select-none whitespace-nowrap border cursor-pointer no-underline disabled:opacity-45 disabled:cursor-not-allowed disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-lime';
-
-	const variantClasses: Record<string, string> = {
-		primary:
-			'bg-brand-lime text-brand-lime-ink border-brand-lime hover:bg-brand-lime-hover hover:border-brand-lime-hover',
-		outline:
-			'bg-transparent border-brand-border-hover text-brand-text-primary hover:bg-brand-surface-raised hover:border-brand-border-strong',
-		ghost:
-			'bg-transparent border-transparent text-brand-text-muted hover:bg-brand-surface-raised hover:text-brand-text-primary',
-		danger:
-			'bg-brand-danger-soft text-brand-danger-text border-brand-danger-border hover:bg-rose-950/70 hover:border-brand-danger'
+	const sizes = {
+		sm: 'min-h-8 px-3 py-1.5 text-xs',
+		md: 'min-h-10 px-4 py-2 text-sm',
+		lg: 'min-h-11 px-6 py-2.5 text-base'
 	};
-
-	const sizeClasses: Record<string, string> = {
-		sm: 'px-3 py-1.5 text-xs',
-		md: 'px-4 py-2 text-sm',
-		lg: 'px-6 py-3 text-base'
-	};
-
 	const classes = $derived(
-		`${baseClasses} ${variantClasses[variant] ?? variantClasses.primary} ${sizeClasses[size] ?? sizeClasses.md} ${full ? 'w-full' : ''}`
+		`action-button inline-flex items-center justify-center gap-2 rounded-lg text-center font-semibold no-underline select-none ${sizes[size]} ${full ? 'w-full' : ''}`
 	);
+	const unavailable = $derived(disabled || loading);
 </script>
 
+{#snippet content()}
+	{#if loading}
+		<span class="size-4 shrink-0 rounded-full border-2 border-current border-r-transparent motion-safe:animate-spin" aria-hidden="true"></span>
+	{/if}
+	{@render children()}
+{/snippet}
+
 {#if href}
-	<a {href} class={classes}>
-		{#if loading}
-			<span
-				class="w-4 h-4 border-2 border-current border-r-transparent rounded-full animate-spin"
-				aria-hidden="true"
-			></span>
-		{/if}
-		{@render children()}
-	</a>
+	{#if unavailable}
+		<span class={classes} role="link" aria-busy={loading} aria-disabled="true">{@render content()}</span>
+	{:else}
+		<a {href} class={classes} {onclick}>{@render content()}</a>
+	{/if}
 {:else}
-	<button {type} {disabled} {onclick} class={classes} aria-busy={loading}>
-		{#if loading}
-			<span
-				class="w-4 h-4 border-2 border-current border-r-transparent rounded-full animate-spin"
-				aria-hidden="true"
-			></span>
-		{/if}
-		{@render children()}
-	</button>
+	<button {type} disabled={unavailable} {onclick} class={classes} aria-busy={loading}>{@render content()}</button>
 {/if}

@@ -103,7 +103,7 @@
 		</div>
 
 		<div class="flex items-center gap-3">
-			<Button variant="outline" onclick={loadUsers} {loading}>
+			<Button onclick={loadUsers} {loading}>
 				Refresh Users
 			</Button>
 		</div>
@@ -121,13 +121,13 @@
 			class="w-full pl-4 pr-10 py-3 bg-brand-surface-card border border-brand-border rounded-xl text-brand-text-primary text-sm outline-none placeholder:text-brand-text-subtle focus:border-brand-lime transition-colors"
 		/>
 		{#if searchQuery}
-			<button class="absolute right-3.5 bg-transparent border-none text-brand-text-muted hover:text-brand-text-primary cursor-pointer text-sm p-1" onclick={() => (searchQuery = '')} aria-label="Clear search">
+			<button class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute top-1/2 right-3 -translate-y-1/2" onclick={() => (searchQuery = '')} aria-label="Clear search">
 				✕
 			</button>
 		{/if}
 	</div>
 
-	<Card variant="glass">
+	<Card>
 		{#if loading && users.length === 0}
 			<div class="text-center py-12 px-4 text-brand-text-muted flex flex-col items-center gap-3">
 				<div class="w-6 h-6 border-2 border-brand-lime border-r-transparent rounded-full animate-spin"></div>
@@ -189,7 +189,6 @@
 								<td class="px-4 py-3.5 border-b border-white/5 text-sm align-middle text-right">
 									{#if user.id !== authStore.user?.id}
 										<Button
-											variant="danger"
 											size="sm"
 											onclick={() => confirmDelete(user)}
 										>

@@ -48,7 +48,7 @@
 />
 
 <section
-	class="grid max-w-lg gap-4 rounded-xl border border-brand-border bg-brand-surface-card p-5 sm:p-6"
+	class="grid max-w-lg gap-4 task-surface p-5 sm:p-6"
 	aria-label="Change password"
 >
 	<h2 class="font-heading text-lg font-bold">Change password</h2>

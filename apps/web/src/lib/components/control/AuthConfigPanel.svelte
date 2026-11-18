@@ -1,5 +1,6 @@
 <script lang="ts">
 	import SectionHeader from './SectionHeader.svelte';
+	import SelectionRow from '$lib/components/SelectionRow.svelte';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import Badge from '$lib/components/Badge.svelte';
@@ -181,33 +182,15 @@
 	</SectionHeader>
 
 	<form class="two-col" onsubmit={saveAuthAndBranding}>
-		<div class="surface-box">
+		<div class="surface-box task-surface">
 			<h2 class="box-title">Methods &amp; OIDC Policy</h2>
 
 			<div class="toggle-list">
-				<label class="toggle-row">
-					<div>
-						<strong>Email &amp; Password Authentication</strong>
-						<span>Allow password sign-in and self-service registration</span>
-					</div>
-					<input type="checkbox" bind:checked={passwordLoginEnabled} disabled={!canEditPolicies} />
-				</label>
+				<SelectionRow label="Email &amp; Password Authentication" description="Allow password sign-in and self-service registration" bind:checked={passwordLoginEnabled} disabled={!canEditPolicies} />
 
-				<label class="toggle-row">
-					<div>
-						<strong>Require Email OTP Verification</strong>
-						<span>Verify email ownership before issuing active sessions</span>
-					</div>
-					<input type="checkbox" bind:checked={requireEmailVerification} disabled={!canEditPolicies} />
-				</label>
+				<SelectionRow label="Require Email OTP Verification" description="Verify email ownership before issuing active sessions" bind:checked={requireEmailVerification} disabled={!canEditPolicies} />
 
-				<label class="toggle-row">
-					<div>
-						<strong>Require Multi-Factor Authentication</strong>
-						<span>Enforce MFA policy flag for sensitive tenant sessions</span>
-					</div>
-					<input type="checkbox" bind:checked={requireMfa} disabled={!canEditPolicies} />
-				</label>
+				<SelectionRow label="Require Multi-Factor Authentication" description="Enforce MFA policy flag for sensitive tenant sessions" bind:checked={requireMfa} disabled={!canEditPolicies} />
 			</div>
 
 			<div class="grid-3">
@@ -243,25 +226,19 @@
 					<input type="number" min="8" max="64" bind:value={minPasswordLength} disabled={!canEditPolicies} />
 				</label>
 
-				<label class="check-inline">
-					<input type="checkbox" bind:checked={requireUppercase} disabled={!canEditPolicies} />
-					<span>Require uppercase</span>
-				</label>
+				<SelectionRow label="Require uppercase" bind:checked={requireUppercase} disabled={!canEditPolicies} />
 
-				<label class="check-inline">
-					<input type="checkbox" bind:checked={requireNumber} disabled={!canEditPolicies} />
-					<span>Require number</span>
-				</label>
+				<SelectionRow label="Require number" bind:checked={requireNumber} disabled={!canEditPolicies} />
 			</div>
 
 			<div class="form-actions">
-				<Button type="submit" variant="primary" size="sm" loading={savingPolicy} disabled={!canEditPolicies || savingPolicy}>
+				<Button type="submit" size="sm" loading={savingPolicy} disabled={!canEditPolicies || savingPolicy}>
 					Save Auth &amp; Branding
 				</Button>
 			</div>
 		</div>
 
-		<div class="surface-box">
+		<div class="surface-box task-surface">
 			<div class="box-header">
 				<div>
 					<h2 class="box-title">Hosted Portal Branding</h2>
@@ -323,7 +300,7 @@
 		</div>
 	</form>
 
-	<div class="surface-box">
+	<div class="surface-box task-surface">
 		<div class="box-header">
 			<div>
 				<h2 class="box-title">Social OAuth Providers</h2>
@@ -335,7 +312,7 @@
 			{#each providers as p}
 				{@const draft = providerDrafts[p.provider]}
 				{#if draft}
-					<div class="provider-card">
+					<div class="provider-card task-surface">
 						<div class="provider-head">
 							<div>
 								<strong>{p.provider === 'google' ? 'Google' : 'GitHub'}</strong>
@@ -343,22 +320,16 @@
 									{draft.enabled ? 'Enabled' : 'Disabled'}
 								</Badge>
 							</div>
-							<label class="switch-label">
-								<input type="checkbox" bind:checked={draft.enabled} disabled={!canEditProviders} />
-								<span>Active</span>
-							</label>
+							<SelectionRow label="Active" bind:checked={draft.enabled} disabled={!canEditProviders} />
 						</div>
 
 						<div class="callback-row">
 							<span class="cb-label">Callback URL</span>
 							<code>{p.callback_url}</code>
-							<button type="button" class="copy-btn" onclick={() => copyText(p.callback_url, 'Callback URL')}>Copy</button>
+							<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyText(p.callback_url, 'Callback URL')}>Copy</button>
 						</div>
 
-						<label class="check-inline">
-							<input type="checkbox" bind:checked={draft.use_platform_credentials} disabled={!canEditProviders} />
-							<span>Use platform-managed OAuth credentials</span>
-						</label>
+						<SelectionRow label="Use platform-managed OAuth credentials" bind:checked={draft.use_platform_credentials} disabled={!canEditProviders} />
 
 						{#if !draft.use_platform_credentials}
 							<div class="grid-2">
@@ -380,7 +351,6 @@
 
 						<div class="form-actions">
 							<Button
-								variant="outline"
 								size="sm"
 								loading={savingProvider === p.provider}
 								disabled={!canEditProviders || savingProvider === p.provider}
@@ -398,24 +368,24 @@
 
 <style>
 	.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-	.surface-box { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1.1rem; }
+	.surface-box { padding: 1.35rem; display: flex; flex-direction: column; gap: 1.1rem; }
 	.box-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 	.box-title { font-size: 0.98rem; font-weight: 600; color: var(--color-brand-text-primary); margin: 0; }
 	.box-sub { font-size: 0.78rem; color: var(--color-brand-text-secondary); margin: 0.2rem 0 0; }
 	.toggle-list { display: flex; flex-direction: column; border-top: 1px solid var(--color-brand-border); }
-	.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--color-brand-border); cursor: pointer; }
-	.toggle-row div { display: flex; flex-direction: column; gap: 0.15rem; }
-	.toggle-row strong { font-size: 0.85rem; color: var(--color-brand-text-primary); font-weight: 500; }
-	.toggle-row span { font-size: 0.76rem; color: var(--color-brand-text-secondary); }
-	.toggle-row input { accent-color: #ffffff; width: 16px; height: 16px; }
+
+
+
+
+
 	.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
 	.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; align-items: end; }
 	.field { display: flex; flex-direction: column; gap: 0.35rem; }
 	.field span { font-size: 0.74rem; color: var(--color-brand-text-secondary); font-weight: 500; }
 	.field input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.84rem; outline: none; }
 	.field input:focus { border-color: #ffffff; }
-	.check-inline { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #d4d4d4; cursor: pointer; padding-bottom: 0.35rem; }
-	.check-inline input { accent-color: #ffffff; width: 15px; height: 15px; }
+
+
 	.form-actions { display: flex; justify-content: flex-end; }
 	.seg-tabs { display: inline-flex; background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 2px; }
 	.seg-tabs button { background: transparent; border: none; color: var(--color-brand-text-secondary); font-size: 0.74rem; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; }
@@ -432,15 +402,15 @@
 	.preview-meta { font-size: 0.72rem; color: var(--color-brand-text-secondary); }
 	.preview-circle { width: 58px; height: 58px; border-radius: 9999px; background-color: #ffffff; color: #000000; font-size: 0.62rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0.06em; }
 	.providers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-	.provider-card { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 10px; padding: 1.1rem; display: flex; flex-direction: column; gap: 0.85rem; }
+	.provider-card { padding: 1.1rem; display: flex; flex-direction: column; gap: 0.85rem; }
 	.provider-head { display: flex; align-items: center; justify-content: space-between; }
 	.provider-head div { display: flex; align-items: center; gap: 0.55rem; }
-	.switch-label { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--color-brand-text-secondary); cursor: pointer; }
-	.switch-label input { accent-color: #ffffff; }
+
+
 	.callback-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.55rem; padding: 0.45rem 0.6rem; background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 6px; }
 	.cb-label { font-size: 0.7rem; color: var(--color-brand-text-secondary); }
 	.callback-row code { font-size: 0.72rem; color: #d4d4d4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.copy-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; font-size: 0.7rem; padding: 0.2rem 0.45rem; border-radius: 4px; cursor: pointer; }
+
 	@media (max-width: 1080px) {
 		.two-col, .providers-grid, .grid-3, .grid-2 { grid-template-columns: 1fr; }
 	}

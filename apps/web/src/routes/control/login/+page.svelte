@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
+	import SelectionRow from '$lib/components/SelectionRow.svelte';
+  import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
 	import { setDeveloper, setWorkspaces } from '$lib/stores/control.svelte';
@@ -126,7 +127,7 @@
 					/>
 					<button
 						type="button"
-						class="editorial-eye"
+						class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-0 top-1/2 -translate-y-1/2"
 						onclick={() => (showPassword = !showPassword)}
 						aria-label={showPassword ? 'Hide password' : 'Show password'}
 					>
@@ -141,10 +142,7 @@
 
 		{#if mode === 'signin'}
 			<div class="editorial-meta-row">
-				<label class="editorial-check">
-					<input type="checkbox" bind:checked={rememberMe} />
-					<span>Remember me</span>
-				</label>
+				<SelectionRow label="Remember me" bind:checked={rememberMe} />
 				<a href="/login" class="editorial-quiet-link">End-user sign in</a>
 			</div>
 		{/if}
@@ -152,7 +150,7 @@
 		<div class="editorial-actions-footer">
 			<button
 				type="button"
-				class="editorial-quiet-link"
+				class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
 				onclick={() => {
 					mode = mode === 'signin' ? 'signup' : 'signin';
 					errorMessage = '';
@@ -161,7 +159,7 @@
 				{mode === 'signin' ? 'Need a workspace? Sign up' : 'Already registered? Sign in'}
 			</button>
 
-			<button type="submit" class="editorial-circle-cta" disabled={submitting}>
+			<button type="submit" class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold" disabled={submitting}>
 				{submitting ? '...' : mode === 'signin' ? 'SIGN IN' : 'CREATE'}
 			</button>
 		</div>

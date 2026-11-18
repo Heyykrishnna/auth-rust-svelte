@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SectionHeader from './SectionHeader.svelte';
 	import Badge from '$lib/components/Badge.svelte';
+	import SelectionRow from '$lib/components/SelectionRow.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
@@ -213,7 +214,7 @@
 <section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Webhooks and sync operations">
 	<SectionHeader title="Webhooks &amp; Sync" description="Manage signed webhook endpoints, rotate HMAC secrets, inspect delivery attempts, and replay dead-letter queues." />
 
-	<div class="surface-box">
+	<div class="surface-box task-surface">
 		<h2 class="box-title">Register Webhook Endpoint</h2>
 		<form class="create-form" onsubmit={handleCreateEndpoint}>
 			<div class="grid-2">
@@ -229,27 +230,19 @@
 
 			<div class="events-selector">
 				{#each ALL_EVENTS as evt}
-					<button
-						type="button"
-						class="event-chip"
-						class:selected={selectedEvents.includes(evt)}
-						disabled={!canMutate}
-						onclick={() => toggleSubscribedEvent(evt)}
-					>
-						{evt}
-					</button>
+					<SelectionRow label={evt} checked={selectedEvents.includes(evt)} disabled={!canMutate} onchange={() => toggleSubscribedEvent(evt)} />
 				{/each}
 			</div>
 
 			<div class="form-actions">
-				<Button type="submit" variant="primary" size="sm" loading={creating} disabled={!canMutate || creating}>
+				<Button type="submit" size="sm" loading={creating} disabled={!canMutate || creating}>
 					Add Endpoint
 				</Button>
 			</div>
 		</form>
 	</div>
 
-	<div class="surface-box">
+	<div class="surface-box task-surface">
 		<h2 class="box-title">Configured Endpoints ({endpoints.length})</h2>
 		{#if loading && endpoints.length === 0}
 			<p class="muted">Loading webhook endpoints...</p>
@@ -258,7 +251,7 @@
 		{:else}
 			<div class="endpoint-list">
 				{#each endpoints as ep}
-					<div class="endpoint-card" class:selected={selectedEndpointId === ep.id}>
+					<div class="endpoint-card task-surface" class:selected={selectedEndpointId === ep.id}>
 						<div class="ep-top">
 							<button
 								type="button"
@@ -291,12 +284,12 @@
 						</div>
 
 						<div class="ep-actions">
-							<Button variant="outline" size="sm" disabled={!canMutate} onclick={() => handleTestPing(ep)}>Send Test Event</Button>
-							<Button variant="outline" size="sm" disabled={!canMutate} onclick={() => handleRotateSecret(ep)}>Rotate Secret</Button>
-							<Button variant="ghost" size="sm" disabled={!canMutate} onclick={() => handleTogglePause(ep)}>
+							<Button size="sm" disabled={!canMutate} onclick={() => handleTestPing(ep)}>Send Test Event</Button>
+							<Button size="sm" disabled={!canMutate} onclick={() => handleRotateSecret(ep)}>Rotate Secret</Button>
+							<Button size="sm" disabled={!canMutate} onclick={() => handleTogglePause(ep)}>
 								{ep.status === 'active' ? 'Pause' : 'Resume'}
 							</Button>
-							<Button variant="danger" size="sm" disabled={!canMutate} onclick={() => handleDelete(ep)}>Delete</Button>
+							<Button size="sm" disabled={!canMutate} onclick={() => handleDelete(ep)}>Delete</Button>
 						</div>
 					</div>
 				{/each}
@@ -305,7 +298,7 @@
 	</div>
 
 	{#if selectedEndpointId}
-		<div class="surface-box">
+		<div class="surface-box task-surface">
 			<div class="box-header">
 				<div>
 					<h2 class="box-title">Delivery Log &amp; Recovery</h2>
@@ -334,7 +327,7 @@
 					<span>Bulk Replay To</span>
 					<input type="datetime-local" bind:value={replayTo} disabled={!canMutate} required />
 				</label>
-				<Button type="submit" variant="outline" size="sm" loading={replaying} disabled={!canMutate || replaying}>
+				<Button type="submit" size="sm" loading={replaying} disabled={!canMutate || replaying}>
 					Replay Time Window
 				</Button>
 			</form>
@@ -377,14 +370,14 @@
 									<td class="row-actions">
 										<button
 											type="button"
-											class="inspect-btn"
+											class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
 											onclick={() => (expandedDeliveryId = expandedDeliveryId === d.id ? null : d.id)}
 										>
 											{expandedDeliveryId === d.id ? 'Hide' : 'Inspect'}
 										</button>
 										<button
 											type="button"
-											class="inspect-btn"
+											class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
 											disabled={!canMutate}
 											onclick={() => handleReplayOne(d)}
 										>
@@ -418,7 +411,7 @@
 </section>
 
 <style>
-	.surface-box { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
+	.surface-box { padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
 	.box-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 	.box-title { font-size: 0.98rem; font-weight: 600; color: var(--color-brand-text-primary); margin: 0; }
 	.box-sub { font-size: 0.78rem; color: var(--color-brand-text-secondary); margin: 0.2rem 0 0; }
@@ -428,11 +421,9 @@
 	.field span { font-size: 0.74rem; color: var(--color-brand-text-secondary); }
 	.field input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.84rem; outline: none; }
 	.events-selector { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-	.event-chip { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); color: var(--color-brand-text-secondary); font-family: var(--font-mono); font-size: 0.72rem; padding: 0.28rem 0.55rem; border-radius: 6px; cursor: pointer; }
-	.event-chip.selected { background-color: #ffffff; color: var(--color-brand-surface); border-color: #ffffff; font-weight: 600; }
 	.form-actions { display: flex; justify-content: flex-end; }
 	.endpoint-list { display: flex; flex-direction: column; gap: 0.75rem; }
-	.endpoint-card { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 10px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+	.endpoint-card { padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
 	.endpoint-card.selected { border-color: #ffffff; }
 	.ep-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 	.ep-select { background: transparent; border: none; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 0.2rem; padding: 0; }
@@ -453,8 +444,8 @@
 	.mono { font-family: var(--font-mono); font-size: 0.76rem; }
 	.muted { color: var(--color-brand-text-secondary); font-size: 0.8rem; }
 	.row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
-	.inspect-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; border-radius: 4px; padding: 0.22rem 0.5rem; font-size: 0.72rem; cursor: pointer; }
-	.inspect-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+
 	.inspect-row td { background-color: var(--color-brand-surface); }
 	.inspect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 	.inspect-label { display: block; font-size: 0.7rem; color: var(--color-brand-text-secondary); margin-bottom: 0.35rem; text-transform: uppercase; }

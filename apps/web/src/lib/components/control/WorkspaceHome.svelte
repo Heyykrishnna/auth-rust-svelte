@@ -96,7 +96,6 @@
 				<div class="lg:hidden">
 					<Button
 						size="sm"
-						variant="outline"
 						disabled={signingOut}
 						onclick={onSignOut}
 					>
@@ -126,7 +125,7 @@
 				/>
 				<button
 					type="button"
-					class="grid size-9 shrink-0 place-items-center rounded-lg border border-brand-border-hover text-brand-text-secondary transition-colors hover:border-brand-border-strong hover:bg-brand-surface-raised hover:text-brand-lime focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-lime"
+					class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md size-9 rounded-lg"
 					aria-label="Create workspace"
 					title="Create workspace"
 					onclick={onCreateWorkspace}
@@ -194,7 +193,6 @@
 				</a>
 				<Button
 					size="sm"
-					variant="outline"
 					disabled={signingOut}
 					onclick={onSignOut}
 					full
@@ -266,7 +264,7 @@
 				{/key}
 			{:else}
 				<div
-					class="grid justify-items-start gap-3 rounded-xl border border-brand-border bg-brand-surface-card p-6 sm:p-8"
+					class="grid justify-items-start gap-3 task-surface p-6 sm:p-8"
 				>
 					<h1 class="font-heading text-2xl font-bold">
 						{missingWorkspace ? 'Workspace unavailable' : 'Create a workspace'}
@@ -277,7 +275,7 @@
 							: 'A workspace brings your applications and team together.'}
 					</p>
 					{#if missingWorkspace && controlStore.workspaces.length > 0}
-						<Button href="/control" variant="outline">
+						<Button href="/control">
 							Go to my workspace
 						</Button>
 					{:else}

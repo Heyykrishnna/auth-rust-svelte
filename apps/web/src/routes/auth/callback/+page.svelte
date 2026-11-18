@@ -70,7 +70,7 @@
 			<p class="text-sm text-brand-text-secondary mb-6">{errorMessage}</p>
 			<a
 				href="/login"
-				class="inline-flex items-center justify-center px-5 py-2.5 rounded-md font-sans text-sm font-medium bg-brand-lime text-brand-lime-ink hover:bg-brand-lime-hover no-underline transition-colors"
+				class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold no-underline"
 			>
 				Try Again
 			</a>

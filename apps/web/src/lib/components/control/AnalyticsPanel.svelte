@@ -128,7 +128,7 @@
 					</button>
 				{/each}
 			</div>
-			<Button variant="outline" size="sm" disabled={refreshing || loading} onclick={handleRefreshRollups}>
+			<Button size="sm" disabled={refreshing || loading} onclick={handleRefreshRollups}>
 				{refreshing ? 'Refreshing...' : 'Refresh'}
 			</Button>
 		</div>
@@ -138,29 +138,29 @@
 		<div class="empty-box">Loading environment analytics...</div>
 	{:else if report}
 		<div class="kpi-grid">
-			<article class="kpi-card highlight">
+			<article class="kpi-card task-surface highlight">
 				<span class="kpi-label">Daily Active Users</span>
 				<strong class="kpi-value">{report.summary.dau.toLocaleString()}</strong>
 				<span class="kpi-sub">MAU: {report.summary.mau.toLocaleString()}</span>
 			</article>
-			<article class="kpi-card">
+			<article class="kpi-card task-surface">
 				<span class="kpi-label">New Registrations</span>
 				<strong class="kpi-value">{report.summary.registrations.toLocaleString()}</strong>
 				<span class="kpi-sub">Window: {report.window}</span>
 			</article>
-			<article class="kpi-card">
+			<article class="kpi-card task-surface">
 				<span class="kpi-label">Sign-In Success Rate</span>
 				<strong class="kpi-value">{signInSuccessRate}%</strong>
 				<span class="kpi-sub">
 					{report.summary.sign_in_success} ok / {report.summary.sign_in_failure} failed
 				</span>
 			</article>
-			<article class="kpi-card">
+			<article class="kpi-card task-surface">
 				<span class="kpi-label">Active Sessions</span>
 				<strong class="kpi-value">{report.summary.active_sessions.toLocaleString()}</strong>
 				<span class="kpi-sub">Lockouts: {report.summary.lockouts}</span>
 			</article>
-			<article class="kpi-card">
+			<article class="kpi-card task-surface">
 				<span class="kpi-label">API Requests</span>
 				<strong class="kpi-value">
 					{(report.summary.client_api_requests + report.summary.backend_api_requests).toLocaleString()}
@@ -169,7 +169,7 @@
 					Client {report.summary.client_api_requests} · Backend {report.summary.backend_api_requests}
 				</span>
 			</article>
-			<article class="kpi-card">
+			<article class="kpi-card task-surface">
 				<span class="kpi-label">Webhook Reliability</span>
 				<strong class="kpi-value">{report.summary.webhook_success_rate}%</strong>
 				<span class="kpi-sub">
@@ -179,7 +179,7 @@
 		</div>
 
 		<div class="charts-grid">
-			<div class="chart-card">
+			<div class="chart-card task-surface">
 				<div class="chart-head">
 					<div>
 						<h2>Authentication Activity</h2>
@@ -239,7 +239,7 @@
 				{/if}
 			</div>
 
-			<div class="chart-card">
+			<div class="chart-card task-surface">
 				<div class="chart-head">
 					<div>
 						<h2>API Request Volume</h2>
@@ -279,13 +279,13 @@
 				</div>
 
 				<div class="drilldown-row">
-					<Button variant="outline" size="sm" onclick={() => onNavigate?.('audit')}>
+					<Button size="sm" onclick={() => onNavigate?.('audit')}>
 						Inspect Audit Logs
 					</Button>
-					<Button variant="outline" size="sm" onclick={() => onNavigate?.('webhooks')}>
+					<Button size="sm" onclick={() => onNavigate?.('webhooks')}>
 						Inspect Webhook Deliveries
 					</Button>
-					<Button variant="outline" size="sm" onclick={() => onNavigate?.('users')}>
+					<Button size="sm" onclick={() => onNavigate?.('users')}>
 						Browse Users
 					</Button>
 				</div>
@@ -293,7 +293,7 @@
 		</div>
 
 		<div class="bottom-grid">
-			<div class="chart-card">
+			<div class="chart-card task-surface">
 				<div class="chart-head">
 					<div>
 						<h2>Authentication Provider Breakdown</h2>
@@ -315,7 +315,7 @@
 				</div>
 			</div>
 
-			<div class="chart-card">
+			<div class="chart-card task-surface">
 				<div class="chart-head">
 					<div>
 						<h2>Security &amp; Failure Breakdown</h2>
@@ -385,9 +385,6 @@
 	}
 
 	.kpi-card {
-		background: var(--color-brand-surface-card);
-		border: 1px solid var(--color-brand-border);
-		border-radius: 8px;
 		padding: 1rem;
 		display: flex;
 		flex-direction: column;
@@ -443,9 +440,6 @@
 	}
 
 	.chart-card {
-		background: var(--color-brand-surface-card);
-		border: 1px solid var(--color-brand-border);
-		border-radius: 8px;
 		padding: 1.1rem;
 		display: flex;
 		flex-direction: column;

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import SectionHeader from './SectionHeader.svelte';
+	import SelectionRow from '$lib/components/SelectionRow.svelte';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -179,14 +180,14 @@
 <section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Custom roles and permissions">
 	<SectionHeader title="Roles &amp; Permissions" description="Define custom environment permissions and assign them to application-wide or organization-scoped roles.">
 		{#if canMutate}
-			<Button variant="primary" size="sm" onclick={openCreateRoleModal}>
+			<Button size="sm" onclick={openCreateRoleModal}>
 				Create Custom Role
 			</Button>
 		{/if}
 	</SectionHeader>
 
 	<div class="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-		<div class="card min-w-0">
+		<div class="card task-surface min-w-0">
 			<div class="card-head">
 				<div>
 					<h2>Roles ({filteredRoles.length})</h2>
@@ -245,11 +246,10 @@
 							</div>
 							<div class="role-actions flex-wrap">
 								{#if canMutate && !role.is_system}
-									<Button variant="outline" size="sm" onclick={() => openEditRoleModal(role)}>
+									<Button size="sm" onclick={() => openEditRoleModal(role)}>
 										Edit
 									</Button>
 									<Button
-										variant="danger"
 										size="sm"
 										disabled={busy}
 										onclick={() => handleDeleteRole(role)}
@@ -264,7 +264,7 @@
 			{/if}
 		</div>
 
-		<div class="card min-w-0">
+		<div class="card task-surface min-w-0">
 			<div class="card-head">
 				<div>
 					<h2>Permissions ({permissions.length})</h2>
@@ -289,7 +289,7 @@
 						disabled={busy}
 						aria-label="Permission description"
 					/>
-					<Button variant="primary" size="sm" type="submit" disabled={busy}>Add</Button>
+					<Button size="sm" type="submit" disabled={busy}>Add</Button>
 				</form>
 			{/if}
 
@@ -304,7 +304,6 @@
 						</div>
 						{#if canMutate}
 							<Button
-								variant="outline"
 								size="sm"
 								disabled={busy}
 								onclick={() => handleDeletePermission(perm.id)}
@@ -363,14 +362,9 @@
 			<span>Attached Permissions ({selectedPerms.length})</span>
 			<div class="perm-check-grid">
 				{#each permissions as perm (perm.id)}
-					<label class="perm-check-item">
-						<input
-							type="checkbox"
-							checked={selectedPerms.includes(perm.slug)}
-							onchange={() => togglePermissionSelection(perm.slug)}
-						/>
+					<SelectionRow label={perm.slug} checked={selectedPerms.includes(perm.slug)} onchange={() => togglePermissionSelection(perm.slug)}>
 						<code class="wrap-anywhere">{perm.slug}</code>
-					</label>
+					</SelectionRow>
 				{/each}
 			</div>
 		</div>
@@ -381,9 +375,6 @@
 
 
 	.card {
-		background: var(--color-brand-surface-card);
-		border: 1px solid var(--color-brand-border);
-		border-radius: 8px;
 		padding: 1.1rem;
 		display: flex;
 		flex-direction: column;
@@ -537,14 +528,6 @@
 		border-radius: 6px;
 	}
 
-	.perm-check-item {
-		display: flex;
-		align-items: center;
-		gap: 0.45rem;
-		font-size: 0.78rem;
-		color: var(--color-brand-text-primary);
-		cursor: pointer;
-	}
 
 	.error-text {
 		color: var(--color-brand-danger-text);

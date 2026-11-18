@@ -72,11 +72,11 @@
 		</div>
 
 		<div class="flex items-center gap-3">
-			<Button variant="outline" href="/settings">
+			<Button href="/settings">
 				Manage Settings
 			</Button>
 			{#if authStore.isAdmin}
-				<Button variant="primary" href="/admin">
+				<Button href="/admin">
 					Admin Console →
 				</Button>
 			{/if}
@@ -84,7 +84,7 @@
 	</div>
 
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-		<Card variant="glass">
+		<Card>
 			<div class="flex items-start gap-4">
 				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
 					<span class="text-xs font-mono font-bold text-brand-lime">SEC</span>
@@ -97,7 +97,7 @@
 			</div>
 		</Card>
 
-		<Card variant="glass">
+		<Card>
 			<div class="flex items-start gap-4">
 				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
 					<span class="text-xs font-mono font-bold text-brand-lime">SES</span>
@@ -120,7 +120,7 @@
 			</div>
 		</Card>
 
-		<Card variant="glass">
+		<Card>
 			<div class="flex items-start gap-4">
 				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
 					<span class="text-xs font-mono font-bold text-brand-lime">RBAC</span>
@@ -135,7 +135,7 @@
 			</div>
 		</Card>
 
-		<Card variant="glass">
+		<Card>
 			<div class="flex items-start gap-4">
 				<div class="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
 					<span class="text-xs font-mono font-bold text-brand-lime">DATE</span>
@@ -182,7 +182,7 @@
 				</div>
 				{#snippet footer()}
 					<span class="text-xs text-brand-text-muted">Need to update your credentials?</span>
-					<Button variant="ghost" size="sm" href="/settings">
+					<Button size="sm" href="/settings">
 						Edit Profile in Settings →
 					</Button>
 				{/snippet}

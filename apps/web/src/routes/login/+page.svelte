@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SelectionRow from '$lib/components/SelectionRow.svelte';
   import AuthSplitShell from "$lib/components/AuthSplitShell.svelte";
   import { authApi } from "$lib/api/auth";
   import { setAuth, authStore } from "$lib/stores/auth.svelte";
@@ -116,7 +117,7 @@
           />
           <button
             type="button"
-            class="editorial-eye"
+            class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-0 top-1/2 -translate-y-1/2"
             onclick={() => (showPassword = !showPassword)}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
@@ -163,10 +164,7 @@
     </div>
 
     <div class="editorial-meta-row">
-      <label class="editorial-check">
-        <input type="checkbox" bind:checked={rememberMe} />
-        <span>Remember me</span>
-      </label>
+      <SelectionRow label="Remember me" bind:checked={rememberMe} />
       <a href="/control/login" class="editorial-quiet-link">Developer Console</a
       >
     </div>
@@ -175,7 +173,7 @@
       <div class="editorial-oauth-group">
         <button
           type="button"
-          class="editorial-oauth-btn"
+          class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
           onclick={() => loginWithOidc("google")}
         >
           <svg
@@ -193,7 +191,7 @@
         </button>
         <button
           type="button"
-          class="editorial-oauth-btn"
+          class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
           onclick={() => loginWithOidc("github")}
         >
           <svg
@@ -211,7 +209,7 @@
         </button>
       </div>
 
-      <button type="submit" class="editorial-circle-cta" disabled={loading}>
+      <button type="submit" class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold" disabled={loading}>
         {loading ? "..." : "SIGN IN"}
       </button>
     </div>

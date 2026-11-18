@@ -93,8 +93,8 @@
 <section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Audit log explorer">
 	<SectionHeader title="Audit Logs" description="Immutable environment-scoped trail of authentication, credential, webhook, and role mutations.">
 		<div class="export-group">
-			<Button variant="outline" size="sm" disabled={logs.length === 0} onclick={handleExportCsv}>Export CSV</Button>
-			<Button variant="outline" size="sm" disabled={logs.length === 0} onclick={handleExportJson}>Export JSON</Button>
+			<Button size="sm" disabled={logs.length === 0} onclick={handleExportCsv}>Export CSV</Button>
+			<Button size="sm" disabled={logs.length === 0} onclick={handleExportJson}>Export JSON</Button>
 		</div>
 	</SectionHeader>
 
@@ -120,7 +120,7 @@
 		<input class="control-input" type="text" bind:value={resourceType} placeholder="Resource type" aria-label="Resource type" />
 		<input class="control-input" type="datetime-local" bind:value={fromDate} aria-label="From date" />
 		<input class="control-input" type="datetime-local" bind:value={toDate} aria-label="To date" />
-		<Button type="submit" variant="primary" size="sm">Apply</Button>
+		<Button type="submit" size="sm">Apply</Button>
 	</form>
 
 	{#if loading && logs.length === 0}
@@ -151,7 +151,7 @@
 							<td class="row-actions">
 								<button
 									type="button"
-									class="mini-btn"
+									class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
 									onclick={() => (expandedId = expandedId === log.id ? null : log.id)}
 								>
 									{expandedId === log.id ? 'Hide' : 'Metadata'}
@@ -174,8 +174,8 @@
 	<div class="pagination-row">
 		<span class="muted">Showing {total === 0 ? 0 : offset + 1}–{Math.min(offset + limit, total)} of {total}</span>
 		<div class="page-btns">
-			<Button variant="outline" size="sm" disabled={offset === 0} onclick={() => (offset = Math.max(0, offset - limit))}>Previous</Button>
-			<Button variant="outline" size="sm" disabled={offset + limit >= total} onclick={() => (offset = offset + limit)}>Next</Button>
+			<Button size="sm" disabled={offset === 0} onclick={() => (offset = Math.max(0, offset - limit))}>Previous</Button>
+			<Button size="sm" disabled={offset + limit >= total} onclick={() => (offset = offset + limit)}>Next</Button>
 		</div>
 	</div>
 </section>
@@ -192,7 +192,7 @@
 	.strong { color: #ffffff; }
 	.muted { color: var(--color-brand-text-secondary); font-size: 0.78rem; }
 	.row-actions { text-align: right; }
-	.mini-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; border-radius: 4px; padding: 0.22rem 0.55rem; font-size: 0.72rem; cursor: pointer; }
+
 	.meta-row td { background-color: var(--color-brand-surface); }
 	.meta-row pre { margin: 0; font-size: 0.74rem; color: var(--color-brand-text-secondary); white-space: pre-wrap; }
 	.empty-surface { padding: 2.5rem; text-align: center; color: var(--color-brand-text-secondary); background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; font-size: 0.85rem; }

@@ -196,7 +196,7 @@
 <section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="API keys and domains">
 	<SectionHeader title="API Keys &amp; Domains" description="Manage environment credentials, allowed CORS origins, and OIDC redirect URIs." />
 
-	<div class="surface-box">
+	<div class="surface-box task-surface">
 		<div class="box-header">
 			<div>
 				<h2 class="box-title">API Credentials ({credentials.length})</h2>
@@ -215,7 +215,7 @@
 				]}
 				/>
 			<input class="control-input" type="text" bind:value={credName} placeholder="Key label (e.g. Backend Sync Worker)" disabled={!canMutate} required />
-			<Button type="submit" variant="primary" size="sm" loading={creatingCred} disabled={!canMutate || creatingCred}>
+			<Button type="submit" size="sm" loading={creatingCred} disabled={!canMutate || creatingCred}>
 				Create Key
 			</Button>
 		</form>
@@ -239,7 +239,7 @@
 							<td class="mono">
 								{#if c.public_key}
 									<span>{c.public_key}</span>
-									<button type="button" class="mini-btn" onclick={() => copyText(c.public_key ?? '', 'Publishable key')}>Copy</button>
+									<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyText(c.public_key ?? '', 'Publishable key')}>Copy</button>
 								{:else}
 									<span>{c.key_prefix}••••••••</span>
 								{/if}
@@ -251,8 +251,8 @@
 							</td>
 							<td class="row-actions">
 								{#if !c.revoked_at}
-									<button type="button" class="mini-btn" disabled={!canMutate} onclick={() => handleRotateCredential(c.id)}>Rotate</button>
-									<button type="button" class="mini-btn mini-btn-danger" disabled={!canMutate} onclick={() => handleRevokeCredential(c.id)}>Revoke</button>
+									<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" disabled={!canMutate} onclick={() => handleRotateCredential(c.id)}>Rotate</button>
+									<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" disabled={!canMutate} onclick={() => handleRevokeCredential(c.id)}>Revoke</button>
 								{/if}
 							</td>
 						</tr>
@@ -262,7 +262,7 @@
 		</div>
 	</div>
 
-	<div class="surface-box">
+	<div class="surface-box task-surface">
 		<div class="box-header">
 			<div>
 				<h2 class="box-title">Allowed Domains, Origins &amp; Redirect URIs ({domains.length})</h2>
@@ -294,7 +294,7 @@
 				</label>
 			</div>
 			<div class="form-actions">
-				<Button type="submit" variant="primary" size="sm" loading={addingDomain} disabled={!canMutate || addingDomain}>
+				<Button type="submit" size="sm" loading={addingDomain} disabled={!canMutate || addingDomain}>
 					Register Domain
 				</Button>
 			</div>
@@ -303,7 +303,7 @@
 		{#if domains.length > 0}
 			<div class="domain-list">
 				{#each domains as d}
-					<div class="domain-card">
+					<div class="domain-card task-surface">
 						<div class="domain-top">
 							<div class="domain-head">
 								<code>{d.domain}</code>
@@ -311,7 +311,7 @@
 									{d.is_verified ? 'Verified' : 'Pending DNS'}
 								</Badge>
 							</div>
-							<Button variant="danger" size="sm" disabled={!canMutate} onclick={() => handleDeleteDomain(d.id)}>Remove</Button>
+							<Button size="sm" disabled={!canMutate} onclick={() => handleDeleteDomain(d.id)}>Remove</Button>
 						</div>
 						<div class="domain-meta">
 							<span>Origins: {d.allowed_origins.join(', ') || 'None'}</span>
@@ -329,7 +329,7 @@
 				<strong>Delete Application</strong>
 				<p>Soft-deletes '{appName}' and revokes all development and production credentials immediately.</p>
 			</div>
-			<Button variant="danger" size="sm" loading={deletingApp} disabled={deletingApp} onclick={handleDeleteApplication}>
+			<Button size="sm" loading={deletingApp} disabled={deletingApp} onclick={handleDeleteApplication}>
 				Delete Application
 			</Button>
 		</div>
@@ -337,7 +337,7 @@
 </section>
 
 <style>
-	.surface-box { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
+	.surface-box { padding: 1.35rem; display: flex; flex-direction: column; gap: 1rem; }
 	.box-title { font-size: 0.98rem; font-weight: 600; color: var(--color-brand-text-primary); margin: 0; }
 	.box-sub { font-size: 0.78rem; color: var(--color-brand-text-secondary); margin: 0.2rem 0 0; }
 	.control-input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.5rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.84rem; outline: none; }
@@ -348,9 +348,8 @@
 	.data-table td { padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--color-brand-border); font-size: 0.82rem; color: #d4d4d4; }
 	.mono { font-family: var(--font-mono); font-size: 0.76rem; }
 	.row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
-	.mini-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; border-radius: 4px; padding: 0.22rem 0.5rem; font-size: 0.72rem; cursor: pointer; margin-left: 0.35rem; }
-	.mini-btn-danger { border-color: #2e2e2e; color: #8e8e8e; }
-	.mini-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+
 	.domain-form { display: flex; flex-direction: column; gap: 0.85rem; }
 	.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
 	.field { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -358,7 +357,7 @@
 	.field input, .field textarea { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.55rem 0.7rem; color: var(--color-brand-text-primary); font-size: 0.8rem; font-family: var(--font-mono); outline: none; }
 	.form-actions { display: flex; justify-content: flex-end; }
 	.domain-list { display: flex; flex-direction: column; gap: 0.65rem; }
-	.domain-card { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 8px; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; }
+	.domain-card { padding: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; }
 	.domain-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 	.domain-head { display: flex; align-items: center; gap: 0.6rem; }
 	.domain-head code { color: #ffffff; font-size: 0.86rem; }

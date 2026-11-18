@@ -294,7 +294,6 @@
 			</div>
 			{#if canMutate}
 				<Button
-					variant="primary"
 					size="sm"
 					onclick={() => {
 						createError = '';
@@ -354,7 +353,7 @@
 							<td><code>v{org.version}</code></td>
 							<td>{formatRelativeTimestamp(org.updated_at)}</td>
 							<td class="cell-right">
-								<Button variant="outline" size="sm" onclick={() => openOrgDetail(org)}>
+								<Button size="sm" onclick={() => openOrgDetail(org)}>
 									Manage
 								</Button>
 							</td>
@@ -366,7 +365,7 @@
 	{:else}
 		<div class="cards-grid">
 			{#each organizations as org (org.id)}
-				<article class="org-card">
+				<article class="org-card task-surface">
 					<div class="org-card-top">
 						<div>
 							<h3>{org.name}</h3>
@@ -381,7 +380,7 @@
 						<span>v{org.version}</span>
 						<span>{formatRelativeTimestamp(org.updated_at)}</span>
 					</div>
-					<Button variant="outline" size="sm" onclick={() => openOrgDetail(org)}>
+					<Button size="sm" onclick={() => openOrgDetail(org)}>
 						Inspect &amp; Invite
 					</Button>
 				</article>
@@ -438,13 +437,12 @@
 					<h2>{selectedOrg.name}</h2>
 					<p class="drawer-sub">{selectedOrg.slug} · v{selectedOrg.version} · {selectedOrg.status}</p>
 				</div>
-				<button type="button" class="close-btn" onclick={() => (drawerOpen = false)}>Close</button>
+				<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => (drawerOpen = false)}>Close</button>
 			</div>
 
 			<div class="drawer-body">
 				<div class="drawer-actions">
 					<Button
-						variant={selectedOrg.status === 'suspended' ? 'primary' : 'outline'}
 						size="sm"
 						disabled={!canMutate || busyAction}
 						onclick={toggleOrgStatus}
@@ -452,7 +450,6 @@
 						{selectedOrg.status === 'suspended' ? 'Restore Organization' : 'Suspend Organization'}
 					</Button>
 					<Button
-						variant="danger"
 						size="sm"
 						disabled={!canMutate || busyAction}
 						onclick={handleDeleteOrg}
@@ -481,7 +478,6 @@
 						<textarea rows="4" bind:value={editMetadata} disabled={!canMutate}></textarea>
 					</label>
 					<Button
-						variant="primary"
 						size="sm"
 						disabled={!canMutate || busyAction}
 						onclick={saveOrgSettings}
@@ -513,7 +509,6 @@
 											onchange={(role) => handleMemberRoleChange(member.id, role)}
 										/>
 										<Button
-											variant="outline"
 											size="sm"
 											disabled={!canMutate || busyAction}
 											onclick={() => handleRemoveMember(member.id)}
@@ -551,7 +546,7 @@
 							disabled={!canMutate || busyAction}
 							aria-label="Expiry days"
 						/>
-						<Button variant="primary" size="sm" type="submit" disabled={!canMutate || busyAction}>
+						<Button size="sm" type="submit" disabled={!canMutate || busyAction}>
 							Issue Invite
 						</Button>
 					</form>
@@ -562,7 +557,7 @@
 								<strong>One-time Invitation Token</strong>
 								<code>{lastIssuedToken}</code>
 							</div>
-							<Button variant="outline" size="sm" onclick={() => copyToken(lastIssuedToken!)}>
+							<Button size="sm" onclick={() => copyToken(lastIssuedToken!)}>
 								Copy
 							</Button>
 						</div>
@@ -585,7 +580,6 @@
 									</div>
 									{#if inv.status === 'pending'}
 										<Button
-											variant="outline"
 											size="sm"
 											disabled={!canMutate || busyAction}
 											onclick={() => handleRevokeInvitation(inv.id)}
@@ -716,9 +710,6 @@
 	}
 
 	.org-card {
-		background: var(--color-brand-surface-card);
-		border: 1px solid var(--color-brand-border);
-		border-radius: 8px;
 		padding: 1rem;
 		display: flex;
 		flex-direction: column;
@@ -822,15 +813,6 @@
 		color: var(--color-brand-text-muted);
 	}
 
-	.close-btn {
-		background: var(--color-brand-surface-card);
-		border: 1px solid var(--color-brand-border);
-		color: var(--color-brand-text-secondary);
-		padding: 0.35rem 0.7rem;
-		border-radius: 6px;
-		cursor: pointer;
-		font-size: 0.8rem;
-	}
 
 	.drawer-body {
 		padding: 1.25rem;

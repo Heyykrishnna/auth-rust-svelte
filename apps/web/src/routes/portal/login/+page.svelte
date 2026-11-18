@@ -122,7 +122,7 @@
             />
             <button
               type="button"
-              class="editorial-eye"
+              class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-0 top-1/2 -translate-y-1/2"
               onclick={() => (showPassword = !showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
@@ -164,7 +164,7 @@
 
         <button
           type="submit"
-          class="editorial-circle-cta"
+          class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
           disabled={submitting}
         >
           {submitting ? "..." : "SIGN IN"}

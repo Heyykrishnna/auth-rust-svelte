@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
+  import OtpInput from "$lib/components/OtpInput.svelte";
   import AuthSplitShell from "$lib/components/AuthSplitShell.svelte";
   import { portalApi, type PortalTransactionContext } from "$lib/api/portal";
   import {
@@ -19,6 +20,7 @@
   let email = $state("");
   let password = $state("");
   let otpCode = $state("");
+  let otpInput = $state<ReturnType<typeof OtpInput>>();
 
   const txId = $derived(page.url.searchParams.get("tx") ?? "");
   const brand = $derived(
@@ -47,7 +49,7 @@
 
   async function handleSignUp(e: SubmitEvent) {
     e.preventDefault();
-    if (!txContext) return;
+    if (!txContext || submitting) return;
     errorMessage = "";
     emailCollision = false;
     submitting = true;
@@ -58,7 +60,10 @@
         email,
         password,
       });
+      otpCode = "";
       step = "otp";
+      await tick();
+      otpInput?.focus();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Registration failed.";
       errorMessage = msg;
@@ -70,7 +75,7 @@
 
   async function handleVerifyOtp(e: SubmitEvent) {
     e.preventDefault();
-    if (!txContext) return;
+    if (!txContext || submitting) return;
     errorMessage = "";
     submitting = true;
     try {
@@ -188,7 +193,7 @@
           </a>
           <button
             type="submit"
-            class="editorial-circle-cta"
+            class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
             disabled={submitting}
           >
             {submitting ? "..." : "CONTINUE"}
@@ -197,26 +202,12 @@
       </form>
     {:else}
       <form class="editorial-stack" onsubmit={handleVerifyOtp}>
-        <div class="editorial-field">
-          <label class="editorial-label" for="ps-otp"
-            >6-Digit Verification Code</label
-          >
-          <input
-            id="ps-otp"
-            type="text"
-            class="editorial-input"
-            bind:value={otpCode}
-            required
-            maxlength="6"
-            inputmode="numeric"
-            placeholder="000000"
-          />
-        </div>
+        <OtpInput bind:this={otpInput} bind:value={otpCode} disabled={submitting} invalid={Boolean(errorMessage)} />
 
         <div class="editorial-actions-footer">
           <button
             type="button"
-            class="editorial-quiet-link"
+            class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
             onclick={() => {
               step = "form";
               errorMessage = "";
@@ -226,7 +217,7 @@
           </button>
           <button
             type="submit"
-            class="editorial-circle-cta"
+            class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
             disabled={submitting}
           >
             {submitting ? "..." : "VERIFY"}

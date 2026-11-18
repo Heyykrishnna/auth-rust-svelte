@@ -5,7 +5,8 @@
   import { addToast } from "$lib/components/Toast.svelte";
   import { ApiError } from "$lib/api/client";
   import { goto } from "$app/navigation";
-  import { onDestroy } from "svelte";
+  import { onDestroy, tick } from "svelte";
+  import OtpInput from "$lib/components/OtpInput.svelte";
 
   $effect(() => {
     if (authStore.initialized && authStore.isAuthenticated) {
@@ -24,8 +25,8 @@
   let resending = $state(false);
   let errors = $state<Record<string, string>>({});
 
-  let otpDigits = $state<string[]>(["", "", "", "", "", ""]);
-  let otpInputRefs: (HTMLInputElement | null)[] = [];
+  let otpCode = $state("");
+  let otpInput = $state<ReturnType<typeof OtpInput>>();
   let resendCooldown = $state(60);
   let timerInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -68,8 +69,6 @@
     return Object.keys(errors).length === 0;
   }
 
-  let fullOtp = $derived(otpDigits.join(""));
-
   async function handleInitiateRegister(e: SubmitEvent) {
     e.preventDefault();
     if (!validate()) return;
@@ -82,9 +81,11 @@
         password,
         display_name: displayName.trim(),
       });
+      otpCode = "";
       step = "otp";
       startResendTimer();
-      setTimeout(() => otpInputRefs[0]?.focus(), 80);
+      await tick();
+      otpInput?.focus();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409)
@@ -98,10 +99,9 @@
     }
   }
 
-  async function handleVerifyOtp(e?: SubmitEvent) {
-    if (e) e.preventDefault();
+  async function handleVerifyOtp(code = otpCode) {
     if (verifyLoading || resending) return;
-    if (fullOtp.length !== 6) {
+    if (code.length !== 6) {
       errors.otp = "Enter all 6 verification digits";
       return;
     }
@@ -111,7 +111,7 @@
     try {
       const session = await authApi.verifyRegisterOtp({
         email: email.trim().toLowerCase(),
-        code: fullOtp,
+        code,
       });
       setAuth(session.user);
       addToast("Account verified and created", "success");
@@ -121,6 +121,10 @@
         err instanceof ApiError ? err.message : "Verification failed";
     } finally {
       verifyLoading = false;
+      if (errors.otp) {
+        await tick();
+        otpInput?.focus();
+      }
     }
   }
 
@@ -131,51 +135,19 @@
     try {
       await authApi.resendRegisterOtp({ email: email.trim().toLowerCase() });
       addToast("Verification code resent", "info");
-      otpDigits = ["", "", "", "", "", ""];
+      otpCode = "";
       startResendTimer();
-      otpInputRefs[0]?.focus();
+      await tick();
     } catch (err) {
       errors.otp =
         err instanceof ApiError ? err.message : "Failed to resend code";
     } finally {
       resending = false;
+      await tick();
+      otpInput?.focus();
     }
   }
 
-  function handleOtpInput(index: number, e: Event) {
-    const target = e.target as HTMLInputElement;
-    const val = target.value.replace(/\D/g, "");
-    otpDigits[index] = val ? val.slice(-1) : "";
-    if (val && index < 5) otpInputRefs[index + 1]?.focus();
-    if (otpDigits.every((d) => d.length === 1)) handleVerifyOtp();
-  }
-
-  function handleOtpKeyDown(index: number, e: KeyboardEvent) {
-    if (e.key === "Backspace") {
-      if (!otpDigits[index] && index > 0) {
-        otpDigits[index - 1] = "";
-        otpInputRefs[index - 1]?.focus();
-      } else {
-        otpDigits[index] = "";
-      }
-    } else if (e.key === "ArrowLeft" && index > 0) {
-      otpInputRefs[index - 1]?.focus();
-    } else if (e.key === "ArrowRight" && index < 5) {
-      otpInputRefs[index + 1]?.focus();
-    }
-  }
-
-  function handleOtpPaste(e: ClipboardEvent) {
-    e.preventDefault();
-    const digits = (e.clipboardData?.getData("text") || "")
-      .replace(/\D/g, "")
-      .slice(0, 6)
-      .split("");
-    if (digits.length === 0) return;
-    for (let i = 0; i < 6; i++) otpDigits[i] = digits[i] || "";
-    otpInputRefs[Math.min(digits.length, 5)]?.focus();
-    if (digits.length === 6) handleVerifyOtp();
-  }
 </script>
 
 <svelte:head>
@@ -254,7 +226,7 @@
             />
             <button
               type="button"
-              class="editorial-eye"
+              class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md absolute right-0 top-1/2 -translate-y-1/2"
               onclick={() => (showPassword = !showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
@@ -305,7 +277,7 @@
         <span class="editorial-quiet-link"
           >6-digit email OTP verification required</span
         >
-        <button type="submit" class="editorial-circle-cta" disabled={loading}>
+        <button type="submit" class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold" disabled={loading}>
           {loading ? "..." : "CONTINUE"}
         </button>
       </div>
@@ -318,22 +290,8 @@
       <div class="editorial-alert" role="alert">{errors.otp}</div>
     {/if}
 
-    <form onsubmit={handleVerifyOtp} novalidate>
-      <div class="grid grid-cols-6 gap-2.5 mb-6" onpaste={handleOtpPaste}>
-        {#each [0, 1, 2, 3, 4, 5] as idx}
-          <input
-            bind:this={otpInputRefs[idx]}
-            type="text"
-            inputmode="numeric"
-            maxlength="1"
-            class="h-14 text-center font-mono text-xl font-semibold text-white bg-[#161619] border border-[#2e2e34] rounded-md outline-none focus:border-white transition-colors"
-            value={otpDigits[idx]}
-            oninput={(e) => handleOtpInput(idx, e)}
-            onkeydown={(e) => handleOtpKeyDown(idx, e)}
-            aria-label={`Digit ${idx + 1}`}
-          />
-        {/each}
-      </div>
+    <form onsubmit={(event) => { event.preventDefault(); void handleVerifyOtp(); }} novalidate>
+      <OtpInput bind:this={otpInput} bind:value={otpCode} disabled={verifyLoading || resending} invalid={Boolean(errors.otp)} oncomplete={handleVerifyOtp} />
 
       <div class="editorial-actions-footer">
         <div class="flex flex-col gap-1.5">
@@ -346,7 +304,7 @@
           {:else}
             <button
               type="button"
-              class="editorial-quiet-link"
+              class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
               onclick={handleResendOtp}
               disabled={resending}
             >
@@ -355,10 +313,11 @@
           {/if}
           <button
             type="button"
-            class="editorial-quiet-link"
+            class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
             onclick={() => {
               step = "form";
               errors = {};
+              otpCode = "";
             }}
           >
             Edit details
@@ -367,8 +326,8 @@
 
         <button
           type="submit"
-          class="editorial-circle-cta"
-          disabled={verifyLoading}
+          class="action-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold"
+          disabled={verifyLoading || resending}
         >
           {verifyLoading ? "..." : "VERIFY"}
         </button>

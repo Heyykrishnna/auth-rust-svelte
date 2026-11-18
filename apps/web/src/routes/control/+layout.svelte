@@ -103,7 +103,6 @@
 								{controlStore.revealedSecret.publishableKey}
 							</code>
 							<Button
-								variant="outline"
 								size="sm"
 								onclick={() =>
 									copyText(
@@ -130,7 +129,6 @@
 							{controlStore.revealedSecret.secretKey}
 						</code>
 						<Button
-							variant="primary"
 							size="sm"
 							onclick={() =>
 								copyText(

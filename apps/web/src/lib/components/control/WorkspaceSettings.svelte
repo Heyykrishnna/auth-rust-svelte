@@ -115,7 +115,7 @@
 </header>
 
 <section
-	class="min-w-0 rounded-xl border border-brand-border bg-brand-surface-card"
+	class="min-w-0 task-surface"
 	aria-labelledby="workspace-profile-heading"
 >
 	<header
@@ -167,7 +167,6 @@
 							/>
 							<Button
 								size="sm"
-								variant="outline"
 								onclick={() => fileInput?.click()}
 								disabled={Boolean(pending)}
 								loading={pending === 'logo'}
@@ -193,7 +192,6 @@
 							{#if workspace.logo_version}
 								<Button
 									size="sm"
-									variant="ghost"
 									onclick={removeLogo}
 									disabled={Boolean(pending)}
 									loading={pending === 'remove'}
@@ -238,7 +236,6 @@
 					<div class="flex flex-wrap justify-end gap-2">
 						<Button
 							size="sm"
-							variant="ghost"
 							disabled={Boolean(pending)}
 							onclick={() => {
 								draft = undefined;
@@ -280,7 +277,7 @@
 					</code>
 					<button
 						type="button"
-						class="grid min-h-10 w-11 shrink-0 place-items-center rounded-r-lg border-l border-brand-border text-brand-text-secondary transition-colors hover:bg-brand-surface-raised hover:text-brand-lime focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-lime"
+						class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md mr-1.5"
 						aria-label="Copy workspace ID"
 						title="Copy workspace ID"
 						onclick={copyId}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SectionHeader from './SectionHeader.svelte';
 	import Badge from '$lib/components/Badge.svelte';
+	import SelectionRow from '$lib/components/SelectionRow.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
@@ -334,7 +335,7 @@
 							<td class="mono">v{u.version}</td>
 							<td class="muted">{formatRelativeTimestamp(u.last_active_at ?? u.updated_at)}</td>
 							<td class="row-action">
-								<button type="button" class="inspect-btn" onclick={(e) => { e.stopPropagation(); openUserDetail(u.app_user_id); }}>
+								<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={(e) => { e.stopPropagation(); openUserDetail(u.app_user_id); }}>
 									Inspect
 								</button>
 							</td>
@@ -346,7 +347,7 @@
 	{:else}
 		<div class="cards-grid">
 			{#each users as u}
-				<div class="user-card">
+				<div class="user-card task-surface">
 					<div class="card-top">
 						<div class="user-cell">
 							<span class="avatar-chip">{getInitials(u.display_name, u.email)}</span>
@@ -355,7 +356,7 @@
 								<span>{u.email}</span>
 							</div>
 						</div>
-						<button type="button" class="inspect-btn" onclick={() => openUserDetail(u.app_user_id)}>Inspect</button>
+						<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => openUserDetail(u.app_user_id)}>Inspect</button>
 					</div>
 					<div class="card-badges">
 						{#each u.roles as r}
@@ -377,10 +378,10 @@
 			Showing {total === 0 ? 0 : offset + 1}–{Math.min(offset + limit, total)} of {total}
 		</span>
 		<div class="page-btns">
-			<Button variant="outline" size="sm" disabled={offset === 0} onclick={() => (offset = Math.max(0, offset - limit))}>
+			<Button size="sm" disabled={offset === 0} onclick={() => (offset = Math.max(0, offset - limit))}>
 				Previous
 			</Button>
-			<Button variant="outline" size="sm" disabled={offset + limit >= total} onclick={() => (offset = offset + limit)}>
+			<Button size="sm" disabled={offset + limit >= total} onclick={() => (offset = offset + limit)}>
 				Next
 			</Button>
 		</div>
@@ -409,7 +410,7 @@
 						<p class="drawer-sub">{selectedUser.email} · v{selectedUser.version}</p>
 					{/if}
 				</div>
-				<button type="button" class="close-btn" onclick={() => (drawerOpen = false)} aria-label="Close user drawer">
+				<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => (drawerOpen = false)} aria-label="Close user drawer">
 					Close
 				</button>
 			</div>
@@ -426,13 +427,13 @@
 					</div>
 
 					<div class="drawer-actions">
-						<Button variant={selectedUser.status === 'suspended' ? 'primary' : 'danger'} size="sm" disabled={!canMutate || busyAction} onclick={toggleSuspend}>
+						<Button size="sm" disabled={!canMutate || busyAction} onclick={toggleSuspend}>
 							{selectedUser.status === 'suspended' ? 'Restore User' : 'Suspend User'}
 						</Button>
-						<Button variant="outline" size="sm" disabled={!canMutate || busyAction} onclick={triggerPasswordReset}>
+						<Button size="sm" disabled={!canMutate || busyAction} onclick={triggerPasswordReset}>
 							Trigger Password Reset
 						</Button>
-						<Button variant="outline" size="sm" disabled={!canMutate || busyAction} onclick={revokeAllSessions}>
+						<Button size="sm" disabled={!canMutate || busyAction} onclick={revokeAllSessions}>
 							Revoke All Sessions
 						</Button>
 					</div>
@@ -442,15 +443,7 @@
 						<div class="role-toggle-grid">
 							{#each selectedUser.available_roles as role}
 								{@const assigned = selectedUser.roles.includes(role)}
-								<button
-									type="button"
-									class="role-toggle-btn"
-									class:assigned
-									disabled={!canMutate || busyAction}
-									onclick={() => toggleRole(role)}
-								>
-									{role} {assigned ? '(Active)' : '(Assign)'}
-								</button>
+								<SelectionRow label={role} checked={assigned} disabled={!canMutate || busyAction} onchange={() => toggleRole(role)} />
 							{/each}
 						</div>
 					</div>
@@ -487,7 +480,7 @@
 								<textarea rows="5" bind:value={editPrivateMeta} disabled={!canMutate}></textarea>
 							</label>
 						</div>
-						<Button variant="primary" size="sm" disabled={!canMutate || busyAction} onclick={saveMetadata}>
+						<Button size="sm" disabled={!canMutate || busyAction} onclick={saveMetadata}>
 							Save Metadata
 						</Button>
 					</div>
@@ -507,7 +500,7 @@
 										{#if s.revoked_at}
 											<Badge variant="neutral" size="sm">Revoked</Badge>
 										{:else}
-											<Button variant="danger" size="sm" disabled={!canMutate || busyAction} onclick={() => revokeSingleSession(s.id)}>
+											<Button size="sm" disabled={!canMutate || busyAction} onclick={() => revokeSingleSession(s.id)}>
 												Revoke
 											</Button>
 										{/if}
@@ -575,10 +568,10 @@
 	.mono { font-family: var(--font-mono); font-size: 0.78rem; }
 	.muted { color: var(--color-brand-text-secondary); font-size: 0.8rem; }
 	.row-action { text-align: right; }
-	.inspect-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; border-radius: 6px; padding: 0.3rem 0.65rem; font-size: 0.76rem; cursor: pointer; }
-	.inspect-btn:hover { border-color: #ffffff; color: #ffffff; }
+
+
 	.cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; }
-	.user-card { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 12px; padding: 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+	.user-card { padding: 1.1rem; display: flex; flex-direction: column; gap: 0.9rem; }
 	.card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
 	.card-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 	.card-foot { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--color-brand-text-secondary); padding-top: 0.65rem; border-top: 1px solid var(--color-brand-border); }
@@ -590,7 +583,7 @@
 	.drawer-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-brand-border); display: flex; align-items: center; justify-content: space-between; }
 	.drawer-header h2 { margin: 0; font-size: 1.1rem; color: #ffffff; }
 	.drawer-sub { margin: 0.2rem 0 0; font-size: 0.78rem; color: var(--color-brand-text-secondary); }
-	.close-btn { background: transparent; border: 1px solid var(--color-brand-border-hover); color: #d4d4d4; padding: 0.35rem 0.7rem; border-radius: 6px; font-size: 0.78rem; cursor: pointer; }
+
 	.drawer-body { padding: 1.35rem 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.35rem; }
 	.id-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); border-radius: 8px; padding: 0.85rem; }
 	.id-strip div { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
@@ -601,8 +594,6 @@
 	.drawer-section { display: flex; flex-direction: column; gap: 0.65rem; }
 	.drawer-section h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-brand-text-secondary); margin: 0; }
 	.role-toggle-grid { display: flex; gap: 0.45rem; flex-wrap: wrap; }
-	.role-toggle-btn { background-color: var(--color-brand-surface-card); border: 1px solid var(--color-brand-border); color: var(--color-brand-text-secondary); padding: 0.35rem 0.65rem; border-radius: 6px; font-size: 0.76rem; cursor: pointer; }
-	.role-toggle-btn.assigned { background-color: #ffffff; color: var(--color-brand-surface); border-color: #ffffff; font-weight: 600; }
 	.linked-list { display: flex; gap: 0.45rem; flex-wrap: wrap; }
 	.field { display: flex; flex-direction: column; gap: 0.3rem; }
 	.field span { font-size: 0.74rem; color: var(--color-brand-text-secondary); }
