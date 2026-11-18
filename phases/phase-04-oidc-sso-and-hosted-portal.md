@@ -1,6 +1,6 @@
 # Phase 04: OIDC Provider, Centralized SSO & Hosted Auth Portal
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phase 03 completed (RS256/ES256 + JWKS, multi-tenant auth engine, `app_sessions`, `authentication_transactions`)
 - **Primary Targets:** `apps/auth-api/src/routes/oidc.rs`, `apps/auth-api/src/handlers/oidc_provider.rs`, `apps/auth-api/src/services/sso.rs`, `apps/web/` (Hosted Auth Portal)
 
@@ -106,11 +106,11 @@ Build the dedicated end-user Hosted Portal served on the Central IdP origin (bra
 
 ## Acceptance Criteria
 
-- [ ] Standard off-the-shelf OIDC clients can discover configuration via `/.well-known/openid-configuration` and verify tokens via `/.well-known/jwks.json`.
-- [ ] The full Image 2 flow (`Ferrum` -> Central IdP -> `Elysiar`) works end-to-end with zero second password prompt when the `sso_session` is valid and policy permits it.
-- [ ] First-time app joins enforce `consent_required`, `auto_join`, and `invite_only` accurately.
-- [ ] Authorization code replay, PKCE mismatch, and invalid `redirect_uri` attacks are blocked and audited.
-- [ ] Local and global logout semantics behave as specified and pass automated integration tests.
+- [x] Standard off-the-shelf OIDC clients can discover configuration via `/.well-known/openid-configuration` and verify tokens via `/.well-known/jwks.json`.
+- [x] The full Image 2 flow (`Ferrum` -> Central IdP -> `Elysiar`) works end-to-end with zero second password prompt when the `sso_session` is valid and policy permits it.
+- [x] First-time app joins enforce `consent_required`, `auto_join`, and `invite_only` accurately.
+- [x] Authorization code replay, PKCE mismatch, and invalid `redirect_uri` attacks are blocked and audited.
+- [x] Local and global logout semantics behave as specified and pass automated integration tests.
 
 ---
 

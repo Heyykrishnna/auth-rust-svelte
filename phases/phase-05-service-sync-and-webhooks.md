@@ -1,6 +1,6 @@
 # Phase 05: Service Synchronization, Webhooks & Backend Reconciliation API
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phase 03 & Phase 04 completed (`outbox_events`, `webhook_endpoints`, `webhook_deliveries`, `SecretKeyAuth`, monotonic entity `version`)
 - **Primary Targets:** `apps/auth-api/src/services/events.rs`, `apps/auth-api/src/workers/webhooks.rs` (or separate worker binary in `apps/auth-api/src/bin/webhook_worker.rs`), `apps/auth-api/src/routes/backend.rs`, `apps/auth-api/src/routes/control_webhooks.rs`
 
@@ -116,11 +116,11 @@ Webhooks alone are eventually consistent and can be missed during consumer outag
 
 ## Acceptance Criteria
 
-- [ ] Every identity, membership, and session lifecycle mutation atomically records an outbox event with monotonic `aggregate_version`.
-- [ ] Global user updates fan out strictly to environments where that user holds an `application_users` membership.
-- [ ] Webhook worker verifies resolved IPs at connection time, blocks redirects, signs payloads with HMAC-SHA256 + timestamp, retries with exponential backoff + jitter, and supports manual replay.
-- [ ] Consuming services can bootstrap or reconcile their full user table via `/v1/backend/users?updated_since=...` and `/v1/backend/events?after_event_id=...` using `sk_*` keys.
-- [ ] All Phase 05 isolation, SSRF, signature, DLQ, and reconciliation integration tests pass.
+- [x] Every identity, membership, and session lifecycle mutation atomically records an outbox event with monotonic `aggregate_version`.
+- [x] Global user updates fan out strictly to environments where that user holds an `application_users` membership.
+- [x] Webhook worker verifies resolved IPs at connection time, blocks redirects, signs payloads with HMAC-SHA256 + timestamp, retries with exponential backoff + jitter, and supports manual replay.
+- [x] Consuming services can bootstrap or reconcile their full user table via `/v1/backend/users?updated_since=...` and `/v1/backend/events?after_event_id=...` using `sk_*` keys.
+- [x] All Phase 05 isolation, SSRF, signature, DLQ, and reconciliation integration tests pass.
 
 ---
 
