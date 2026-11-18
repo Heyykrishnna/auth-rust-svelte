@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SectionHeader from './SectionHeader.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import RefreshButton from '$lib/components/RefreshButton.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
 	import type {
@@ -128,9 +129,7 @@
 					</button>
 				{/each}
 			</div>
-			<Button size="sm" disabled={refreshing || loading} onclick={handleRefreshRollups}>
-				{refreshing ? 'Refreshing...' : 'Refresh'}
-			</Button>
+			<RefreshButton onclick={handleRefreshRollups} loading={refreshing} disabled={loading} label="Refresh analytics" />
 		</div>
 	</SectionHeader>
 

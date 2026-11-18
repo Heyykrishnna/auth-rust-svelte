@@ -1,6 +1,8 @@
 <script lang="ts">
   import Card from "$lib/components/Card.svelte";
   import Button from "$lib/components/Button.svelte";
+  import RefreshButton from "$lib/components/RefreshButton.svelte";
+  import DeleteButton from "$lib/components/DeleteButton.svelte";
   import Input from "$lib/components/Input.svelte";
   import Badge from "$lib/components/Badge.svelte";
   import Modal from "$lib/components/Modal.svelte";
@@ -247,13 +249,11 @@
         subtitle="Devices currently authenticated to your account via the Rust Auth API"
       >
         {#snippet headerActions()}
-          <Button
-            size="sm"
+          <RefreshButton
             onclick={loadSessions}
             loading={sessionsLoading}
-          >
-            Refresh
-          </Button>
+            label="Refresh sessions"
+          />
         {/snippet}
 
         {#if sessionsLoading && sessions.length === 0}
@@ -291,12 +291,10 @@
                 </div>
                 <div>
                   {#if !session.is_current}
-                    <Button
-                      size="sm"
+                    <DeleteButton
+                      label="Revoke session"
                       onclick={() => confirmRevokeSession(session)}
-                    >
-                      Revoke
-                    </Button>
+                    />
                   {/if}
                 </div>
               </div>

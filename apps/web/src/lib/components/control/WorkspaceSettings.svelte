@@ -2,6 +2,8 @@
 	import { controlApi } from '$lib/api/control';
 	import type { WorkspaceSummary } from '$lib/api/types';
 	import Button from '$lib/components/Button.svelte';
+	import CopyButton from '$lib/components/CopyButton.svelte';
+	import DeleteButton from '$lib/components/DeleteButton.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { canManageTeam } from '$lib/control/permissions';
 	import {
@@ -190,14 +192,11 @@
 								{workspace.logo_version ? 'Replace image' : 'Upload image'}
 							</Button>
 							{#if workspace.logo_version}
-								<Button
-									size="sm"
+								<DeleteButton
+									label="Remove logo"
 									onclick={removeLogo}
 									disabled={Boolean(pending)}
-									loading={pending === 'remove'}
-								>
-									Remove
-								</Button>
+								/>
 							{/if}
 						</div>
 					{/if}
@@ -275,28 +274,11 @@
 					>
 						{workspace.id}
 					</code>
-					<button
-						type="button"
-						class="action-button inline-grid size-8 shrink-0 place-items-center rounded-md mr-1.5"
-						aria-label="Copy workspace ID"
-						title="Copy workspace ID"
+					<CopyButton
+						class="mr-1.5"
+						label="Copy workspace ID"
 						onclick={copyId}
-					>
-						<svg
-							class="size-4"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.7"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							aria-hidden="true"
-						>
-							<rect x="8" y="8" width="12" height="12" rx="2" /><path
-								d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"
-							/>
-						</svg>
-					</button>
+					/>
 				</div>
 				<div
 					class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-brand-text-secondary"

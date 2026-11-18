@@ -5,6 +5,7 @@
 	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import CopyButton from '$lib/components/CopyButton.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
 	import type {
@@ -326,7 +327,7 @@
 						<div class="callback-row">
 							<span class="cb-label">Callback URL</span>
 							<code>{p.callback_url}</code>
-							<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyText(p.callback_url, 'Callback URL')}>Copy</button>
+							<CopyButton label="Copy Callback URL" onclick={() => copyText(p.callback_url, 'Callback URL')} />
 						</div>
 
 						<SelectionRow label="Use platform-managed OAuth credentials" bind:checked={draft.use_platform_credentials} disabled={!canEditProviders} />

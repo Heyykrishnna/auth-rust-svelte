@@ -3,6 +3,8 @@
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import CopyButton from '$lib/components/CopyButton.svelte';
+	import DeleteButton from '$lib/components/DeleteButton.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
@@ -449,13 +451,11 @@
 					>
 						{selectedOrg.status === 'suspended' ? 'Restore Organization' : 'Suspend Organization'}
 					</Button>
-					<Button
-						size="sm"
+					<DeleteButton
+						label="Delete Organization"
 						disabled={!canMutate || busyAction}
 						onclick={handleDeleteOrg}
-					>
-						Delete Organization
-					</Button>
+					/>
 				</div>
 
 				<div class="drawer-section">
@@ -508,13 +508,11 @@
 											disabled={!canMutate || busyAction}
 											onchange={(role) => handleMemberRoleChange(member.id, role)}
 										/>
-										<Button
-											size="sm"
+										<DeleteButton
+											label="Remove member"
 											disabled={!canMutate || busyAction}
 											onclick={() => handleRemoveMember(member.id)}
-										>
-											Remove
-										</Button>
+										/>
 									</div>
 								</div>
 							{/each}
@@ -557,9 +555,7 @@
 								<strong>One-time Invitation Token</strong>
 								<code>{lastIssuedToken}</code>
 							</div>
-							<Button size="sm" onclick={() => copyToken(lastIssuedToken!)}>
-								Copy
-							</Button>
+							<CopyButton label="Copy invitation token" onclick={() => copyToken(lastIssuedToken!)} />
 						</div>
 					{/if}
 				</div>
@@ -579,13 +575,11 @@
 										</span>
 									</div>
 									{#if inv.status === 'pending'}
-										<Button
-											size="sm"
+										<DeleteButton
+											label="Revoke invitation"
 											disabled={!canMutate || busyAction}
 											onclick={() => handleRevokeInvitation(inv.id)}
-										>
-											Revoke
-										</Button>
+										/>
 									{:else}
 										<Badge variant="neutral" size="sm">{inv.status}</Badge>
 									{/if}

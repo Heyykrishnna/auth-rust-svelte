@@ -12,7 +12,6 @@
 	} = $props();
 
 	const count = 6;
-	const slots = [0, 1, 2, 3, 4, 5];
 	let input: HTMLInputElement;
 	let focused = $state(false);
 	let cursor = $state(0);
@@ -50,7 +49,7 @@
 	}
 </script>
 
-<div class="relative grid w-full max-w-84 min-w-0 grid-cols-6 gap-1.5 sm:gap-2.5">
+<div class="relative flex w-full max-w-sm items-center justify-center gap-2 sm:gap-3">
 	<input
 		bind:this={input}
 		type="text"
@@ -69,18 +68,39 @@
 		onclick={syncSelection}
 		onfocus={() => { focused = true; syncSelection(); }}
 		onblur={() => (focused = false)}
-		class="absolute inset-0 z-10 size-full rounded-xl text-transparent caret-transparent opacity-0 disabled:cursor-not-allowed"
+		class="absolute inset-0 z-10 size-full cursor-pointer rounded-xl text-transparent caret-transparent opacity-0 disabled:cursor-not-allowed"
 	/>
-	{#each slots as index (index)}
-		<span
-			aria-hidden="true"
-			class="grid h-12 min-w-0 place-items-center rounded-xl border bg-brand-surface-card font-mono text-xl font-semibold text-white transition-colors sm:h-14 {invalid ? 'border-brand-danger' : 'border-brand-border-hover'} {focused && cursor === index ? 'ring-2 ring-action-focus ring-offset-2 ring-offset-brand-surface' : ''} {disabled ? 'opacity-60' : ''}"
-		>
-			{#if value[index]}
-				{value[index]}
-			{:else if focused && cursor === index}
-				<span class="h-4 w-px bg-white"></span>
-			{/if}
-		</span>
-	{/each}
+	<div class="flex items-center gap-1.5 sm:gap-2">
+		{#each [0, 1, 2] as index (index)}
+			{@const isCurrent = focused && cursor === index}
+			<span
+				aria-hidden="true"
+				class="grid h-13 w-11 place-items-center rounded-xl border bg-brand-surface-card font-mono text-xl font-bold text-white transition-all sm:h-15 sm:w-13 sm:text-2xl {invalid ? 'border-brand-danger ring-2 ring-brand-danger/30' : isCurrent ? 'border-[#296FF0] ring-2 ring-[#296FF0]/40' : 'border-brand-border-hover'} {disabled ? 'opacity-50' : ''}"
+			>
+				{#if value[index]}
+					{value[index]}
+				{:else if isCurrent}
+					<span class="h-5 w-0.5 rounded-full bg-[#296FF0] animate-pulse"></span>
+				{/if}
+			</span>
+		{/each}
+	</div>
+
+	<span class="h-0.5 w-2 rounded-full bg-zinc-600" aria-hidden="true"></span>
+
+	<div class="flex items-center gap-1.5 sm:gap-2">
+		{#each [3, 4, 5] as index (index)}
+			{@const isCurrent = focused && cursor === index}
+			<span
+				aria-hidden="true"
+				class="grid h-13 w-11 place-items-center rounded-xl border bg-brand-surface-card font-mono text-xl font-bold text-white transition-all sm:h-15 sm:w-13 sm:text-2xl {invalid ? 'border-brand-danger ring-2 ring-brand-danger/30' : isCurrent ? 'border-[#296FF0] ring-2 ring-[#296FF0]/40' : 'border-brand-border-hover'} {disabled ? 'opacity-50' : ''}"
+			>
+				{#if value[index]}
+					{value[index]}
+				{:else if isCurrent}
+					<span class="h-5 w-0.5 rounded-full bg-[#296FF0] animate-pulse"></span>
+				{/if}
+			</span>
+		{/each}
+	</div>
 </div>

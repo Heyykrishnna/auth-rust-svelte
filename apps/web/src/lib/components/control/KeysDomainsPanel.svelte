@@ -3,6 +3,8 @@
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import CopyButton from '$lib/components/CopyButton.svelte';
+	import DeleteButton from '$lib/components/DeleteButton.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
 	import { showOneTimeSecret } from '$lib/stores/control.svelte';
@@ -239,7 +241,7 @@
 							<td class="mono">
 								{#if c.public_key}
 									<span>{c.public_key}</span>
-									<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyText(c.public_key ?? '', 'Publishable key')}>Copy</button>
+									<CopyButton label="Copy publishable key" onclick={() => copyText(c.public_key ?? '', 'Publishable key')} />
 								{:else}
 									<span>{c.key_prefix}••••••••</span>
 								{/if}
@@ -252,7 +254,7 @@
 							<td class="row-actions">
 								{#if !c.revoked_at}
 									<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" disabled={!canMutate} onclick={() => handleRotateCredential(c.id)}>Rotate</button>
-									<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" disabled={!canMutate} onclick={() => handleRevokeCredential(c.id)}>Revoke</button>
+									<DeleteButton label="Revoke credential" disabled={!canMutate} onclick={() => handleRevokeCredential(c.id)} />
 								{/if}
 							</td>
 						</tr>
@@ -311,7 +313,7 @@
 									{d.is_verified ? 'Verified' : 'Pending DNS'}
 								</Badge>
 							</div>
-							<Button size="sm" disabled={!canMutate} onclick={() => handleDeleteDomain(d.id)}>Remove</Button>
+							<DeleteButton label="Remove domain" disabled={!canMutate} onclick={() => handleDeleteDomain(d.id)} />
 						</div>
 						<div class="domain-meta">
 							<span>Origins: {d.allowed_origins.join(', ') || 'None'}</span>

@@ -10,10 +10,34 @@
 	} = $props();
 
 	const styles = {
-		success: { label: 'Success', icon: 'm5 12 4 4L19 6', color: 'text-brand-success-text', fill: 'bg-brand-success-soft', track: 'text-brand-success' },
-		error: { label: 'Error', icon: 'm7 7 10 10M17 7 7 17', color: 'text-brand-danger-text', fill: 'bg-brand-danger-soft', track: 'text-brand-danger' },
-		warning: { label: 'Warning', icon: 'M12 7v6m0 4h.01', color: 'text-brand-warning-text', fill: 'bg-brand-warning-soft', track: 'text-brand-warning' },
-		info: { label: 'Notice', icon: 'M12 11v6m0-10h.01', color: 'text-action-focus', fill: 'bg-action/15', track: 'text-action-focus' }
+		success: {
+			label: 'Success',
+			color: 'text-emerald-400',
+			border: 'border-emerald-500/30',
+			iconBg: 'bg-emerald-500/15',
+			bar: 'bg-emerald-500'
+		},
+		error: {
+			label: 'Error',
+			color: 'text-red-400',
+			border: 'border-red-500/30',
+			iconBg: 'bg-red-500/15',
+			bar: 'bg-red-500'
+		},
+		warning: {
+			label: 'Warning',
+			color: 'text-amber-400',
+			border: 'border-amber-500/30',
+			iconBg: 'bg-amber-500/15',
+			bar: 'bg-amber-500'
+		},
+		info: {
+			label: 'Information',
+			color: 'text-[#296FF0]',
+			border: 'border-[#296FF0]/30',
+			iconBg: 'bg-[#296FF0]/15',
+			bar: 'bg-[#296FF0]'
+		}
 	};
 	const style = $derived(styles[type]);
 	let remaining = $state(0);
@@ -43,26 +67,54 @@
 </script>
 
 <li
-	class="task-surface pointer-events-auto relative isolate min-w-0 overflow-hidden text-brand-text-primary"
+	class="pointer-events-auto relative isolate min-w-0 overflow-hidden rounded-xl border border-brand-border bg-[#181818] text-white shadow-2xl transition-all"
 	onpointerenter={() => (hovered = true)}
 	onpointerleave={() => (hovered = false)}
 	onfocusin={() => (focused = true)}
 	onfocusout={(event) => (focused = event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))}
-	transition:fly={{ y: motion ? 8 : 0, duration: motion ? 150 : 0 }}
+	transition:fly={{ y: motion ? 12 : 0, duration: motion ? 180 : 0 }}
 >
-	<div class="flex min-w-0 items-start gap-3 p-3.5">
-		<span class="grid size-8 shrink-0 place-items-center rounded-lg {style.color} {style.fill}" aria-hidden="true">
-			<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d={style.icon} /></svg>
+	<div class="flex min-w-0 items-start gap-3 p-4">
+		<span class="grid size-8 shrink-0 place-items-center rounded-lg {style.iconBg} {style.color}" aria-hidden="true">
+			{#if type === 'success'}
+				<svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M3.5 8.5L6.5 11.5L12.5 4.5" />
+				</svg>
+			{:else if type === 'error'}
+				<svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M4 4L12 12M12 4L4 12" />
+				</svg>
+			{:else if type === 'warning'}
+				<svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M8 3V9M8 12.5V13" />
+				</svg>
+			{:else}
+				<svg class="size-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M8 7.5V12M8 4V4.5" />
+				</svg>
+			{/if}
 		</span>
-		<div class="min-w-0 flex-1" role={type === 'error' ? 'alert' : 'status'}>
+		<div class="min-w-0 flex-1 pt-0.5" role={type === 'error' ? 'alert' : 'status'}>
 			<p class="text-xs font-semibold {style.color}">{style.label}</p>
-			<p class="mt-0.5 text-sm leading-snug break-words">{message}</p>
+			<p class="mt-0.5 text-sm leading-snug text-brand-text-primary break-words">{message}</p>
 		</div>
-		<button type="button" class="action-button grid size-7 shrink-0 place-items-center rounded-md" onclick={onDismiss} aria-label="Dismiss notification">
-			<svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+		<button
+			type="button"
+			class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-zinc-400 hover:text-white transition-colors bg-transparent border-0 p-0"
+			onclick={onDismiss}
+			aria-label="Dismiss notification"
+		>
+			<svg class="size-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+				<path d="M2 2L12 12M12 2L2 12" />
+			</svg>
 		</button>
 	</div>
 	{#if duration > 0}
-		<progress class="absolute inset-x-0 bottom-0 h-0.5 w-full appearance-none {style.track} [&::-moz-progress-bar]:bg-current [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-current" value={remaining} max={duration} aria-hidden="true"></progress>
+		<div class="absolute inset-x-0 bottom-0 h-0.5 w-full bg-zinc-800">
+			<div
+				class="h-full {style.bar} transition-all ease-linear"
+				style="width: {(remaining / duration) * 100}%"
+			></div>
+		</div>
 	{/if}
 </li>

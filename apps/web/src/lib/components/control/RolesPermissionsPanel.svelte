@@ -4,6 +4,7 @@
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import DeleteButton from '$lib/components/DeleteButton.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
@@ -249,13 +250,11 @@
 									<Button size="sm" onclick={() => openEditRoleModal(role)}>
 										Edit
 									</Button>
-									<Button
-										size="sm"
+									<DeleteButton
+										label="Delete role"
 										disabled={busy}
 										onclick={() => handleDeleteRole(role)}
-									>
-										Delete
-									</Button>
+									/>
 								{/if}
 							</div>
 						</article>
@@ -303,13 +302,11 @@
 							{/if}
 						</div>
 						{#if canMutate}
-							<Button
-								size="sm"
+							<DeleteButton
+								label="Remove permission"
 								disabled={busy}
 								onclick={() => handleDeletePermission(perm.id)}
-							>
-								Remove
-							</Button>
+							/>
 						{/if}
 					</div>
 				{/each}

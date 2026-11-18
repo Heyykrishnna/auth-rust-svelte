@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SectionHeader from './SectionHeader.svelte';
-	import Button from '$lib/components/Button.svelte';
+	import CopyButton from '$lib/components/CopyButton.svelte';
+	import RefreshButton from '$lib/components/RefreshButton.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import type { EnvironmentKind, EnvironmentOverviewDto } from '$lib/api/types';
 	import { computeSuccessRate, formatRelativeTimestamp } from '$lib/control/permissions';
@@ -47,9 +48,7 @@
 
 <section class="grid min-w-0 grid-cols-1 gap-5 sm:gap-6" aria-label="Environment overview">
 	<SectionHeader title="Overview" description={`${appName} · ${environmentKind === 'production' ? 'Production' : 'Development'}`}>
-		<Button size="sm" onclick={onRefresh} disabled={loading}>
-			{loading ? 'Refreshing...' : 'Refresh'}
-		</Button>
+		<RefreshButton onclick={onRefresh} {loading} label="Refresh overview" />
 	</SectionHeader>
 
 	{#if loading && !overview}
@@ -121,27 +120,25 @@
 					<div class="kv-row">
 						<span class="kv-label">Issuer URL</span>
 						<code class="kv-code">{overview.issuer_url}</code>
-						<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyValue(overview.issuer_url, 'Issuer URL')}>Copy</button>
+						<CopyButton label="Copy Issuer URL" onclick={() => copyValue(overview.issuer_url, 'Issuer URL')} />
 					</div>
 					<div class="kv-row">
 						<span class="kv-label">JWKS URI</span>
 						<code class="kv-code">{overview.jwks_uri}</code>
-						<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyValue(overview.jwks_uri, 'JWKS URI')}>Copy</button>
+						<CopyButton label="Copy JWKS URI" onclick={() => copyValue(overview.jwks_uri, 'JWKS URI')} />
 					</div>
 					<div class="kv-row">
 						<span class="kv-label">Publishable Key</span>
 						<code class="kv-code">{overview.publishable_key ?? 'None active'}</code>
 						{#if overview.publishable_key}
-							<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold" onclick={() => copyValue(overview.publishable_key ?? '', 'Publishable key')}>Copy</button>
+							<CopyButton label="Copy publishable key" onclick={() => copyValue(overview.publishable_key ?? '', 'Publishable key')} />
 						{/if}
 					</div>
 				</div>
 
 				<div class="code-panel">
 					<pre><code>{snippetText}</code></pre>
-					<button type="button" class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold absolute right-3 top-3" onclick={() => copyValue(snippetText, 'Integration snippet')}>
-						Copy snippet
-					</button>
+					<CopyButton class="absolute right-3 top-3" label="Copy snippet" onclick={() => copyValue(snippetText, 'Integration snippet')} />
 				</div>
 			</div>
 

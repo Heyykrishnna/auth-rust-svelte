@@ -7,6 +7,7 @@
 		WorkspaceSummary
 	} from '$lib/api/types';
 	import Button from '$lib/components/Button.svelte';
+	import DeleteButton from '$lib/components/DeleteButton.svelte';
 	import Dropdown from '$lib/components/Dropdown.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
@@ -260,16 +261,14 @@
 								</span>
 							{/if}
 							{#if editable && !self}
-								<Button
-									size="sm"
+								<DeleteButton
+									label="Remove member"
 									disabled={busy}
 									onclick={() => {
 										error = '';
 										removing = member;
 									}}
-								>
-									Remove
-								</Button>
+								/>
 							{/if}
 						</div>
 					</li>

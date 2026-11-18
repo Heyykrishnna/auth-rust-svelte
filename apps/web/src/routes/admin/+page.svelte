@@ -1,8 +1,9 @@
 <script lang="ts">
 	import Card from '$lib/components/Card.svelte';
-	import Button from '$lib/components/Button.svelte';
 	import Badge from '$lib/components/Badge.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import RefreshButton from '$lib/components/RefreshButton.svelte';
+	import DeleteButton from '$lib/components/DeleteButton.svelte';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { usersApi } from '$lib/api/users';
@@ -103,9 +104,7 @@
 		</div>
 
 		<div class="flex items-center gap-3">
-			<Button onclick={loadUsers} {loading}>
-				Refresh Users
-			</Button>
+			<RefreshButton onclick={loadUsers} {loading} label="Refresh Users" />
 		</div>
 	</div>
 
@@ -188,12 +187,10 @@
 								</td>
 								<td class="px-4 py-3.5 border-b border-white/5 text-sm align-middle text-right">
 									{#if user.id !== authStore.user?.id}
-										<Button
-											size="sm"
+										<DeleteButton
+											label="Delete user"
 											onclick={() => confirmDelete(user)}
-										>
-											Delete
-										</Button>
+										/>
 									{:else}
 										<span class="text-xs text-brand-text-subtle px-2 py-1 bg-white/5 rounded">Protected</span>
 									{/if}

@@ -3,6 +3,7 @@
 	import Badge from '$lib/components/Badge.svelte';
 	import SelectionRow from '$lib/components/SelectionRow.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import DeleteButton from '$lib/components/DeleteButton.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
 	import { showOneTimeSecret } from '$lib/stores/control.svelte';
@@ -289,7 +290,7 @@
 							<Button size="sm" disabled={!canMutate} onclick={() => handleTogglePause(ep)}>
 								{ep.status === 'active' ? 'Pause' : 'Resume'}
 							</Button>
-							<Button size="sm" disabled={!canMutate} onclick={() => handleDelete(ep)}>Delete</Button>
+							<DeleteButton label="Delete webhook" disabled={!canMutate} onclick={() => handleDelete(ep)} />
 						</div>
 					</div>
 				{/each}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import AuthSplitShell from "$lib/components/AuthSplitShell.svelte";
+  import DeleteButton from "$lib/components/DeleteButton.svelte";
   import { portalApi, type PortalAccountView } from "$lib/api/portal";
 
   let account = $state<PortalAccountView | null>(null);
@@ -121,14 +122,11 @@
               >
               <span class="text-zinc-400 text-xs">{sess.ip_address ?? "Unknown IP"}</span>
             </div>
-            <button
-              type="button"
-              class="action-button inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold"
+            <DeleteButton
+              label="Revoke session"
               disabled={busy}
               onclick={() => handleRevokeSso(sess.id)}
-            >
-              Revoke
-            </button>
+            />
           </li>
         {/each}
       </ul>

@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/Button.svelte';
+	import CopyButton from '$lib/components/CopyButton.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
@@ -102,16 +103,14 @@
 							<code class="font-mono text-xs break-all text-white">
 								{controlStore.revealedSecret.publishableKey}
 							</code>
-							<Button
-								size="sm"
+							<CopyButton
+								label="Copy publishable key"
 								onclick={() =>
 									copyText(
 										controlStore.revealedSecret?.publishableKey ?? '',
 										'Publishable key'
 									)}
-							>
-								Copy
-							</Button>
+							/>
 						</div>
 					</div>
 				{/if}
@@ -128,16 +127,14 @@
 						<code class="font-mono text-xs break-all text-white">
 							{controlStore.revealedSecret.secretKey}
 						</code>
-						<Button
-							size="sm"
+						<CopyButton
+							label="Copy secret value"
 							onclick={() =>
 								copyText(
 									controlStore.revealedSecret?.secretKey ?? '',
 									'Secret value'
 								)}
-						>
-							Copy
-						</Button>
+						/>
 					</div>
 				</div>
 			</div>

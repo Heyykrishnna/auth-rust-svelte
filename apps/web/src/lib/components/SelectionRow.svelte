@@ -30,7 +30,7 @@
 	}
 </script>
 
-<label class="relative block min-w-0">
+<label class="group relative block min-w-0 select-none">
 	<input
 		type="checkbox"
 		{id}
@@ -41,12 +41,14 @@
 		onchange={select}
 		class="peer sr-only"
 	/>
-	<span class="flex min-h-9 min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-brand-border bg-brand-surface-card px-2.5 py-2 text-brand-text-primary transition-colors hover:border-brand-border-strong peer-checked:border-action/65 peer-checked:bg-action/15 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-action-focus peer-disabled:cursor-not-allowed peer-disabled:opacity-60">
-		<span class="grid size-4 shrink-0 place-items-center rounded-sm border {checked ? 'border-action bg-action text-white' : 'border-brand-text-muted text-transparent'}" aria-hidden="true">
-			<svg class="size-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8 3 3 6-6" /></svg>
+	<span class="flex min-h-11 min-w-0 cursor-pointer items-center gap-3.5 rounded-xl border border-brand-border bg-brand-surface-card px-3.5 py-2.5 text-brand-text-primary transition-all hover:border-brand-border-strong hover:bg-brand-surface-raised peer-checked:border-[#296FF0]/60 peer-checked:bg-[#296FF0]/10 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#296FF0] peer-disabled:cursor-not-allowed peer-disabled:opacity-50">
+		<span class="grid size-5 shrink-0 place-items-center rounded-full border transition-all {checked ? 'border-[#296FF0] bg-[#296FF0] text-white shadow-sm' : 'border-zinc-600 bg-zinc-900/60 text-transparent group-hover:border-zinc-400'}" aria-hidden="true">
+			<svg class="size-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M2.5 6.5L4.5 8.5L9.5 3.5" />
+			</svg>
 		</span>
 		<span class="grid min-w-0 gap-0.5">
-			<span id={`${id}-label`} class="min-w-0 text-xs font-semibold break-words">
+			<span id={`${id}-label`} class="min-w-0 text-sm font-medium tracking-tight break-words {checked ? 'text-white' : 'text-brand-text-primary'}">
 				{#if children}{@render children()}{:else}{label}{/if}
 			</span>
 			{#if description}
