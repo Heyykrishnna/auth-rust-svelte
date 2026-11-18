@@ -158,5 +158,26 @@ describe('controlApi Phase 07 endpoints', () => {
 		patchSpy.mockRestore();
 		deleteSpy.mockRestore();
 	});
+
+	it('calls Phase 09 environment analytics and rollup refresh endpoints', async () => {
+		const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValueOnce({});
+		const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValueOnce({ buckets_updated: 7 });
+
+		await controlApi.getAnalytics('app-1', 'production', '30d');
+		expect(getSpy).toHaveBeenCalledWith(
+			'/v1/control/applications/app-1/environments/production/analytics?window=30d',
+			undefined
+		);
+
+		await controlApi.refreshAnalytics('app-1', 'production', '24h');
+		expect(postSpy).toHaveBeenCalledWith(
+			'/v1/control/applications/app-1/environments/production/analytics/refresh?window=24h',
+			{},
+			undefined
+		);
+
+		getSpy.mockRestore();
+		postSpy.mockRestore();
+	});
 });
 

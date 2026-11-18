@@ -1,10 +1,12 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import OverviewPanel from '$lib/components/control/OverviewPanel.svelte';
+	import AnalyticsPanel from '$lib/components/control/AnalyticsPanel.svelte';
 	import AuthConfigPanel from '$lib/components/control/AuthConfigPanel.svelte';
 	import UsersDirectoryPanel from '$lib/components/control/UsersDirectoryPanel.svelte';
 	import OrganizationsPanel from '$lib/components/control/OrganizationsPanel.svelte';
@@ -39,6 +41,7 @@
 
 	type SectionId =
 		| 'overview'
+		| 'analytics'
 		| 'auth'
 		| 'keys'
 		| 'users'
@@ -72,6 +75,7 @@
 
 	const sectionTitles: Record<SectionId, string> = {
 		overview: 'Overview',
+		analytics: 'Analytics',
 		auth: 'Authentication & SSO',
 		keys: 'API Keys & Domains',
 		users: 'Users & Sessions',
@@ -82,6 +86,13 @@
 		team: 'Team & Roles',
 		security: 'Account Security'
 	};
+
+	onMount(() => {
+		const requested = new URLSearchParams(window.location.search).get('section');
+		if (requested && requested in sectionTitles) {
+			activeSection = requested as SectionId;
+		}
+	});
 
 	async function loadActiveEnvironmentData() {
 		const app = controlStore.activeApplication?.application;
@@ -289,6 +300,12 @@
 					</svg>
 					Overview
 				</button>
+				<button type="button" class="nav-item" class:active={activeSection === 'analytics'} onclick={() => selectNav('analytics')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+					</svg>
+					Analytics
+				</button>
 				<button type="button" class="nav-item" class:active={activeSection === 'auth'} onclick={() => selectNav('auth')}>
 					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
 						<rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -441,6 +458,13 @@
 					appName={controlStore.activeApplication.application.name}
 					appSlug={controlStore.activeApplication.application.slug}
 					onRefresh={loadActiveEnvironmentData}
+				/>
+			{:else if activeSection === 'analytics'}
+				<AnalyticsPanel
+					appId={controlStore.activeApplication.application.id}
+					envKind={controlStore.selectedEnvKind}
+					canMutate={allowMutate}
+					onNavigate={(target) => selectNav(target)}
 				/>
 			{:else if activeSection === 'auth'}
 				<AuthConfigPanel

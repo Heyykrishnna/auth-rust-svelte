@@ -1,5 +1,6 @@
 import { apiClient, type RequestOptions } from './client';
 import type {
+	AnalyticsWindow,
 	ApplicationDomainDto,
 	ApplicationDto,
 	ApplicationEnvironmentDto,
@@ -13,6 +14,7 @@ import type {
 	DeveloperAuthResponse,
 	DeveloperProfile,
 	EnrollmentPolicy,
+	EnvironmentAnalyticsDto,
 	EnvironmentKind,
 	EnvironmentOverviewDto,
 	EnvironmentPermissionDto,
@@ -722,6 +724,29 @@ export const controlApi = {
 	) =>
 		apiClient.delete<void>(
 			`/v1/control/applications/${appId}/environments/${envKind}/roles/${roleId}`,
+			options
+		),
+
+	getAnalytics: (
+		appId: string,
+		envKind: EnvironmentKind,
+		window: AnalyticsWindow = '7d',
+		options?: RequestOptions
+	) =>
+		apiClient.get<EnvironmentAnalyticsDto>(
+			`/v1/control/applications/${appId}/environments/${envKind}/analytics${toQueryString({ window })}`,
+			options
+		),
+
+	refreshAnalytics: (
+		appId: string,
+		envKind: EnvironmentKind,
+		window: AnalyticsWindow = '7d',
+		options?: RequestOptions
+	) =>
+		apiClient.post<{ window: string; granularity: string; buckets_updated: number }>(
+			`/v1/control/applications/${appId}/environments/${envKind}/analytics/refresh${toQueryString({ window })}`,
+			{},
 			options
 		)
 };

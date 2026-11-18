@@ -579,3 +579,60 @@ export interface IdentityDataExportDto {
   organizations: Record<string, unknown>[];
   recent_audit_logs: Record<string, unknown>[];
 }
+
+export type AnalyticsWindow = '24h' | '7d' | '30d' | '90d';
+
+export interface FailureReasonCountDto {
+  reason: string;
+  count: number;
+}
+
+export interface ProviderBreakdownDto {
+  password: number;
+  google: number;
+  github: number;
+  oidc_sso: number;
+}
+
+export interface AnalyticsSummaryDto {
+  registrations: number;
+  dau: number;
+  mau: number;
+  sign_in_success: number;
+  sign_in_failure: number;
+  lockouts: number;
+  active_sessions: number;
+  sessions_created: number;
+  sessions_revoked: number;
+  refresh_reuse_detected: number;
+  client_api_requests: number;
+  backend_api_requests: number;
+  webhook_deliveries_succeeded: number;
+  webhook_deliveries_failed: number;
+  webhook_deliveries_dead_letter: number;
+  webhook_success_rate: number;
+  webhook_avg_latency_ms: number;
+  failure_reasons: FailureReasonCountDto[];
+}
+
+export interface AnalyticsSeriesPointDto {
+  bucket_start: string;
+  registrations: number;
+  active_users: number;
+  sign_in_success: number;
+  sign_in_failure: number;
+  client_api_requests: number;
+  backend_api_requests: number;
+  webhook_succeeded: number;
+  webhook_failed: number;
+}
+
+export interface EnvironmentAnalyticsDto {
+  environment_id: string;
+  window: AnalyticsWindow | string;
+  granularity: 'hour' | 'day' | string;
+  generated_at: string;
+  summary: AnalyticsSummaryDto;
+  provider_breakdown: ProviderBreakdownDto;
+  series: AnalyticsSeriesPointDto[];
+}
