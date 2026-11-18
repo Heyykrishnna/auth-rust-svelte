@@ -2,146 +2,116 @@
 
 ## 1. Overview
 
-`secure-auth-platform` is a high-performance, security-hardened authentication and identity platform built with a modular monorepo architecture. The platform combines a low-latency, memory-safe backend written in Rust (Axum framework) with a reactive, type-safe web frontend built with SvelteKit 5.
+`secure-auth-platform` is a multi-tenant **Identity Infrastructure Platform** combining Clerk-style developer ergonomics (publishable/secret keys, isolated dev/prod environments, drop-in TypeScript SDKs, organizations, webhooks, and self-service dashboard) with a standards-compliant **Central OpenID Connect (OIDC) Identity Provider** supporting cross-application Single Sign-On and deterministic 4-layer synchronization with consuming services.
+
+The system is designed as a **Modular Monolith** (`apps/auth-api` in Rust/Axum) paired with independently deployable supporting workers (`webhook_worker`), two clearly separated SvelteKit 5 web surfaces (**Hosted Auth Portal** and **Developer Control Plane Dashboard**), and runtime-agnostic TypeScript SDKs (`packages/*`).
 
 ```mermaid
 graph TD
-    Client[Web Browser / Mobile Client] -->|HTTPS / WAF| Ingress[Kubernetes Ingress / NGINX]
-    
-    subgraph K8s_Cluster [Kubernetes Platform Namespace: auth]
-        Ingress -->|/api/*| AuthAPI[Rust Auth API - Axum]
-        Ingress -->|/*| WebApp[Web Frontend - SvelteKit]
-        
-        AuthAPI -->|Connection Pool| Postgres[(PostgreSQL 16)]
-        AuthAPI -->|TCP / In-Memory| RedisCache[(Redis 7)]
-        AuthAPI -->|OTLP Traces / Metrics| OTelCollector[OpenTelemetry Collector]
+    Browser[User Browser] -->|OIDC Redirect / First-Party SSO Cookie| Portal[Hosted Auth Portal]
+    Browser -->|SDK / Bearer JWT + Dynamic CORS| ClientAPI[Client & OIDC Plane]
+    DevBrowser[Developer Browser] -->|Control Plane Session| Dashboard[Developer Control Plane UI]
+    AppBackend[Consuming App Backend<br/>Ferrum / Elysiar] -->|Bearer sk_*| BackendAPI[Backend Sync & Management Plane]
+
+    subgraph Platform [Rust Modular Monolith + Workers]
+        Portal --> ClientAPI
+        Dashboard --> ControlAPI[Control Plane API]
+        ClientAPI --> CoreEngine[Auth, OIDC, Session & RBAC Services]
+        BackendAPI --> CoreEngine
+        ControlAPI --> CoreEngine
+        CoreEngine -->|SQLx Tx + SET LOCAL RLS| Postgres[(PostgreSQL 16)]
+        CoreEngine -->|Scoped Cache & Lockouts| Redis[(Redis 7)]
+        Postgres -->|SKIP LOCKED outbox_events| Worker[webhook_worker]
     end
 
-    subgraph Observability [Observability Namespace]
-        OTelCollector -->|Metrics| Prometheus[Prometheus]
-        OTelCollector -->|Traces| Tempo[Grafana Tempo]
-        AuthAPI -.->|JSON Logs| Loki[Grafana Loki]
-        Grafana[Grafana Dashboards] --> Prometheus
-        Grafana --> Tempo
-        Grafana --> Loki
-    end
-
-    subgraph External_Providers [External IdPs]
-        AuthAPI -->|OAuth2 / OIDC| Google[Google Identity]
-        AuthAPI -->|OAuth2 / OIDC| GitHub[GitHub OAuth]
-    end
+    Worker -->|SSRF-Safe HTTPS + HMAC-SHA256| AppBackend
+    CoreEngine -->|Upstream OAuth2/OIDC + PKCE| SocialIdP[Google / GitHub]
+    CoreEngine -->|OTLP / Metrics / JSON Logs| OTel[OTel Collector -> Tempo / Prometheus / Loki / Grafana]
 ```
 
 ---
 
-## 2. Monorepo Structure
+## 2. Three-Plane API & Trust Boundaries
+
+See [ADR-006](./adr/0006-three-plane-api-and-versioning.md) for the formal decision record.
+
+| Plane | Base Paths | Caller | Auth & Middleware |
+| --- | --- | --- | --- |
+| **OIDC & Discovery** | `/.well-known/openid-configuration`, `/.well-known/jwks.json`, `/oauth2/*` | Browsers, Hosted Portal, OIDC relying parties | First-party `__Host-idp_sso_session` cookie (IdP origin), PKCE `S256`, `client_id`, exact `redirect_uri` |
+| **Client / Frontend API** | `/v1/client/*` | Browser SDKs (`@secure-auth/*`) | `pk_test_*` / `pk_live_*`, dynamic per-environment CORS, `aud`-scoped asymmetric access JWT |
+| **Backend Sync & Management API** | `/v1/backend/*` | Consuming backends (Ferrum API, Elysiar API) | Scoped `sk_test_*` / `sk_live_*` Bearer keys, zero cookies/CSRF |
+| **Developer Control Plane API** | `/v1/control/*` | Developer Dashboard (`apps/web`) | Developer session + workspace RBAC (`owner`, `admin`, `developer`, `viewer`), strict CSRF |
+
+### Trust Boundaries
+1. **Untrusted Browser -> Platform:** Browsers only ever receive `pk_*` publishable keys, short-lived `aud`-scoped access tokens, or first-party `HttpOnly` cookies on the IdP origin. Secret keys (`sk_*`), webhook signing secrets (`whsec_*`), OAuth client secrets, and asymmetric signing private keys never reach browsers.
+2. **Consuming App Backend -> Platform:** Consuming backends verify end-user tokens locally using `/.well-known/jwks.json` (strictly validating `iss`, `aud`, `exp`, `kid`, `typ`) and authenticate server-to-server sync/management calls with hashed, scoped `sk_*` keys.
+3. **Platform Worker -> External Webhook URLs:** `webhook_worker` treats developer-registered webhook URLs as untrusted egress targets, enforcing HTTPS (in prod), connection-time IP validation (blocking loopback/RFC1918/link-local/metadata ranges), disabled redirects, and strict timeouts.
+4. **Tenant Boundary Inside PostgreSQL & Redis:** Every tenant-owned record belongs to an `environment_id` (see [ADR-001](./adr/0001-application-environments-as-tenant-boundary.md)). Composite foreign keys, transaction-scoped `SET LOCAL` RLS, and explicit `env:{environment_id}:` vs. `idp:global:` Redis key prefixes enforce isolation across both applications and `dev`/`prod` environments.
+
+---
+
+## 3. Frontend Surface Separation (`apps/web`)
+
+Although both surfaces initially share the SvelteKit 5 + Svelte 5 component library (`Button`, `Card`, `Input`, `Modal`, `Navbar`, `Toast`, `Badge`), they are architecturally isolated:
+
+1. **Hosted Auth Portal (`accounts.<domain>` / `/portal/*`, `/oauth/*`):**
+   - End-user sign-in, sign-up, OTP verification, password reset, first-time app consent ("Continue to Elysiar as..."), and personal SSO session management.
+   - Dynamically branded per `application_environments.branding`.
+   - Enforces `Content-Security-Policy: frame-ancestors 'none'` and `X-Frame-Options: DENY`.
+2. **Developer Control Plane Dashboard (`dashboard.<domain>` / `/dashboard/*`):**
+   - Developer authentication, Workspace -> Application -> Environment (`Development` / `Production`) switcher, API keys, domains/CORS, OAuth/OIDC policy config, end-user directory, webhook debugger/replay, organizations, RBAC editor, audit logs, and analytics.
+
+---
+
+## 4. Backend Layered Structure (`apps/auth-api`)
+
+```text
+apps/auth-api/src/
+├── config/        # Typed environment configuration & validation
+├── errors/        # Unified AppError & ApiErrorEnvelope (code, message, request_id, details)
+├── models/        # Domain models, strong ID newtypes, DomainEventEnvelope
+├── repositories/  # PostgreSQL (with explicit sqlx::Transaction helpers) & Redis persistence
+├── services/      # Transactional business orchestration (auth, tokens, sessions, OIDC, sync)
+├── middleware/    # Tenant resolution, auth/RBAC, dynamic CORS, route-scoped CSRF, rate limits
+├── handlers/      # Thin HTTP transport adapters & request validation
+├── routes/        # Plane-separated Axum routers
+└── bin/           # Independent binaries (e.g., webhook_worker in Phase 05)
+```
+
+### Transactional & Domain Event Conventions
+- Multi-step writes (e.g., creating a user + membership + default role + session + refresh token + outbox event) execute inside a single PostgreSQL transaction via `repositories::db::begin_tx` / `commit_tx`.
+- Errors from persistence operations are never silently discarded.
+- Domain services construct versioned `DomainEventEnvelope` records (`spec_version: "1.0"`) inside the write transaction for audit trails and Phase 05 transactional outbox dispatch.
+
+---
+
+## 5. Planned Monorepo Evolution
 
 ```text
 secure-auth-platform/
-│
 ├── apps/
-│   ├── auth-api/          # Rust 1.80 + Axum REST & Authentication Engine
-│   └── web/               # SvelteKit 5 + TypeScript Web Application
-│
+│   ├── auth-api/          # Rust Axum Identity/OIDC/Backend/Control API + webhook_worker
+│   └── web/               # SvelteKit 5 Hosted Auth Portal + Developer Control Plane
 ├── packages/
-│   └── shared-types/      # TypeScript DTOs & API Contracts
-│
-├── infrastructure/
-│   ├── terraform/         # Cloud Infrastructure as Code (AWS EKS, RDS, Redis)
-│   ├── kubernetes/        # Kustomize GitOps Manifests (base, dev, prod)
-│   └── helm/              # Helm Charts for Unified Application Packaging
-│
-├── observability/
-│   ├── prometheus/        # Scrape rules and metrics collection
-│   ├── grafana/           # Datasource configurations & pre-built dashboards
-│   ├── loki/              # High-throughput log aggregation
-│   └── tempo/             # Distributed tracing storage
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yml         # Continuous integration & build verification
-│       ├── security.yml   # Dependency audit, secret scan, Trivy container audit
-│       └── release.yml    # GitOps production release automation
-│
-├── docker/
-│   ├── Dockerfile.api     # Multi-stage distroless Rust build
-│   ├── Dockerfile.web     # Minimal Alpine Node.js production server
-│   └── README.md
-│
-├── docs/
-│   ├── architecture.md    # System architecture & component design (this file)
-│   ├── authentication.md  # Authentication, token rotation & session lifecycles
-│   ├── security.md        # Threat mitigation, RBAC, and defense-in-depth
-│   └── deployment.md      # Local orchestration, K8s, Helm & GitOps workflows
-│
-├── docker-compose.yml     # Local multi-service orchestration
-└── README.md              # Monorepo developer guide
+│   ├── shared-types/      # Canonical API DTOs, error envelopes, event contracts
+│   ├── core/              # (Phase 06) Runtime-agnostic WebCrypto SDK & webhook verifier
+│   ├── svelte/            # (Phase 06) Svelte 5 & SvelteKit SDK
+│   ├── react/             # (Phase 06) React SDK
+│   └── next/              # (Phase 06) Next.js App Router & Edge Middleware SDK
+├── examples/              # (Phase 06/12) Ferrum (SvelteKit) & Elysiar (Next.js) reference apps
+├── docs/                  # Architecture, ADRs, ER diagram, SSO sequences, API spec, threat model
+├── phases/                # Phase 00–12 implementation plans & acceptance criteria
+├── observability/         # OTel Collector, Prometheus, Grafana, Loki, Tempo
+└── infrastructure/        # Terraform, Kubernetes (Kustomize), Helm, ArgoCD
 ```
 
 ---
 
-## 3. Core Components
+## 6. Related Architecture Documents
 
-### 3.1 Auth API (`apps/auth-api`)
-
-- **Language & Framework**: Rust 1.80 with [Axum](https://github.com/tokio-rs/axum) and [Tokio](https://tokio.rs/) async runtime.
-- **Layered Architecture**:
-  - **Handlers (`src/handlers/`)**: Transport layer handling HTTP requests, query parameters, deserialization, and HTTP status codes.
-  - **Services (`src/services/`)**: Core business logic, token generation, Argon2id verification, session orchestration, audit dispatching.
-  - **Repositories (`src/repositories/`)**: Data access layer interfacing with PostgreSQL via SQLx compile-time checked queries and Redis.
-  - **Middleware (`src/middleware/`)**: Authentication extraction, RBAC authorization, token bucket rate limiting, double-submit CSRF validation, security headers, distributed tracing context propagation.
-  - **Models (`src/models/`)**: Strongly-typed domain models (User, Session, TokenFamily, AuditLog, Role, Permission).
-
-### 3.2 Web Frontend (`apps/web`)
-
-- **Framework**: SvelteKit 2 running on Svelte 5 (Runes reactivity `$state()`, `$derived()`).
-- **Rendering**: Hybrid SSR (Server-Side Rendering) with client-side hydration for optimal performance and SEO.
-- **Contract Integration**: Directly imports data schemas and contracts from `@secure-auth/shared-types`.
-- **State Management**: Reactive session store with automatic token refreshing, route guards, and multi-tab sync.
-
-### 3.3 Shared Types (`packages/shared-types`)
-
-- **Purpose**: Defines shared TypeScript interfaces for requests, responses, sessions, audit events, and user models.
-- **Benefit**: Guarantees end-to-end type safety between the API endpoints and frontend consumers without schema drift.
-
----
-
-## 4. Data Layer Architecture
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    PostgreSQL 16 (Primary)                  │
-├─────────────────────────────────────────────────────────────┤
-│ • users: UUID, email, hashed_password (Argon2id), status    │
-│ • sessions: UUID, user_id, user_agent, ip, expires_at      │
-│ • oidc_accounts: provider, provider_user_id, user_id        │
-│ • token_families: family_id, user_id, current_hash, counter │
-│ • roles / permissions: RBAC role mappings                   │
-│ • audit_logs: append-only security and auth audit trail     │
-└─────────────────────────────────────────────────────────────┘
-                               ▲
-                               │ Cache Aside / Invalidation
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       Redis 7 (Cache)                       │
-├─────────────────────────────────────────────────────────────┤
-│ • session:<session_id>     -> Fast session validation       │
-│ • ratelimit:<ip>:<route>   -> Token-bucket rate counters    │
-│ • blacklist:<token_jti>    -> Revoked JWT blacklist         │
-│ • tfam:<family_id>         -> Immediate reuse detection     │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 5. Observability & Telemetry
-
-1. **Distributed Tracing**:
-   - Axum injects OpenTelemetry trace contexts (`traceparent` header).
-   - Traces flow from `auth-api` to `otel-collector` (via OTLP gRPC port 4317) to Grafana Tempo.
-2. **Metrics**:
-   - Axum exposes Prometheus metrics at `/metrics` (request latency histograms, status codes, active connection pool counts).
-   - Prometheus server scrapes targets every 15 seconds.
-3. **Structured Logging**:
-   - `tracing-subscriber` formats logs as structured JSON containing `trace_id`, `span_id`, user identifiers, and operation outcomes.
-   - Logs are indexed by Loki and linked to Tempo spans in Grafana.
+- [GLOSSARY.md](../GLOSSARY.md) — Canonical domain vocabulary
+- [docs/er-diagram.md](./er-diagram.md) — Target multi-tenant database ER model & isolation invariants
+- [docs/sso-sequences.md](./sso-sequences.md) — OIDC SSO, refresh rotation, logout, and 4-layer sync sequences
+- [docs/api-specification.md](./api-specification.md) — Three-plane `v1` HTTP and webhook contract specification
+- [docs/threat-model.md](./threat-model.md) — Security threat model & mitigations
+- [docs/adr/](./adr/) — Architecture Decision Records (`0001`–`0007`)
