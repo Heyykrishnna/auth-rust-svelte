@@ -51,12 +51,12 @@
 </script>
 
 <svelte:head>
-	<title>{mode === 'signin' ? 'Developer Login' : 'Create Developer Account'} — Secure Auth</title>
+	<title>{mode === 'signin' ? 'Developer Login' : 'Create Developer Account'} — Signet</title>
 </svelte:head>
 
 <AuthSplitShell
-	brandName="Secure Auth"
-	footerText="Developer Control Plane · Multi-Tenant Identity Infrastructure"
+	brandName="Signet"
+	footerText="Signet Control Plane · Multi-Tenant Identity Infrastructure"
 	topActionLabel={mode === 'signin' ? 'Create an account' : 'Sign in'}
 	onTopAction={() => {
 		mode = mode === 'signin' ? 'signup' : 'signin';

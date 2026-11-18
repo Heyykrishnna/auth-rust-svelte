@@ -55,7 +55,7 @@
 {#if page.url.pathname.startsWith('/control/login')}
 	{@render children()}
 {:else if initializing}
-	<div class="boot-screen">
+	<div class="min-h-screen flex items-center justify-center bg-[#0b0c0e] text-zinc-400 text-sm">
 		<span>Loading Developer Control Plane...</span>
 	</div>
 {:else}
@@ -72,12 +72,12 @@
 	oncancel={dismissOneTimeSecret}
 >
 	{#if controlStore.revealedSecret}
-		<div class="secret-reveal-stack">
+		<div class="flex flex-col gap-3.5 mt-4">
 			{#if controlStore.revealedSecret.publishableKey}
-				<div class="key-box">
-					<span class="key-label">Publishable Key</span>
-					<div class="key-value-row">
-						<code>{controlStore.revealedSecret.publishableKey}</code>
+				<div class="flex flex-col gap-1.5 p-3.5 rounded-lg bg-[#0b0c0e] border border-[#23262e]">
+					<span class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Publishable Key</span>
+					<div class="flex items-center justify-between gap-2.5">
+						<code class="text-xs font-mono break-all text-white">{controlStore.revealedSecret.publishableKey}</code>
 						<Button
 							variant="outline"
 							size="sm"
@@ -90,10 +90,10 @@
 				</div>
 			{/if}
 
-			<div class="key-box key-box-secret">
-				<span class="key-label">Secret Value (Shown Once)</span>
-				<div class="key-value-row">
-					<code>{controlStore.revealedSecret.secretKey}</code>
+			<div class="flex flex-col gap-1.5 p-3.5 rounded-lg bg-[#0b0c0e] border border-[#4b3d18]">
+				<span class="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Secret Value (Shown Once)</span>
+				<div class="flex items-center justify-between gap-2.5">
+					<code class="text-xs font-mono break-all text-white">{controlStore.revealedSecret.secretKey}</code>
 					<Button
 						variant="primary"
 						size="sm"
@@ -106,56 +106,3 @@
 		</div>
 	{/if}
 </Modal>
-
-<style>
-	.boot-screen {
-		min-height: 100vh;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: #0b0c0e;
-		color: #71717a;
-		font-size: 0.88rem;
-	}
-
-	.secret-reveal-stack {
-		display: flex;
-		flex-direction: column;
-		gap: 0.9rem;
-		margin-top: 1rem;
-	}
-
-	.key-box {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-		padding: 0.85rem;
-		border-radius: 8px;
-		background-color: #0b0c0e;
-		border: 1px solid #23262e;
-	}
-
-	.key-box-secret {
-		border-color: #4b3d18;
-	}
-
-	.key-label {
-		font-size: 0.72rem;
-		font-weight: 600;
-		color: #a1a1aa;
-		text-transform: uppercase;
-	}
-
-	.key-value-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.65rem;
-	}
-
-	.key-value-row code {
-		font-size: 0.78rem;
-		word-break: break-all;
-		color: #ffffff;
-	}
-</style>

@@ -193,8 +193,8 @@ impl AppConfig {
         let smtp_from = read("SMTP_FROM")
             .or_else(|_| read("SMTP_FROM_EMAIL"))
             .or_else(|_| read("SENDER_EMAIL"))
-            .unwrap_or_else(|_| "Dradix <support@dradix.dev>".to_string());
-        let smtp_from_name = read("SMTP_FROM_NAME").unwrap_or_else(|_| "Dradix".to_string());
+            .unwrap_or_else(|_| "Signet <support@signet.dev>".to_string());
+        let smtp_from_name = read("SMTP_FROM_NAME").unwrap_or_else(|_| "Signet".to_string());
 
         Ok(Self {
             host,

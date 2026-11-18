@@ -1,6 +1,8 @@
-# Secure Auth Platform
+# Signet
 
-A multi-tenant authentication and identity platform built with Rust and SvelteKit. It gives independent applications a shared identity service while keeping their credentials, memberships, sessions, and development/production environments separate.
+Authentication infrastructure for every application.
+
+Signet is a multi-tenant authentication and identity platform built with Rust and SvelteKit. It gives independent applications a shared identity service while keeping their credentials, memberships, sessions, and development/production environments separate.
 
 [![CI](https://github.com/Heyykrishnna/auth-rust-svelte/actions/workflows/ci.yml/badge.svg)](https://github.com/Heyykrishnna/auth-rust-svelte/actions/workflows/ci.yml)
 [![Security](https://github.com/Heyykrishnna/auth-rust-svelte/actions/workflows/security.yml/badge.svg)](https://github.com/Heyykrishnna/auth-rust-svelte/actions/workflows/security.yml)

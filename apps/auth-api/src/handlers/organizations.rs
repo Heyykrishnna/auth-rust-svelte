@@ -360,7 +360,7 @@ pub async fn client_create_org_invitation(
     if let Ok(org) =
         organizations::get_organization(&state.db, user.tenant.environment_id, org_id).await
     {
-        let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Auth Platform");
+        let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Signet");
         let _ = email::send_organization_invitation_email(
             &state.config,
             &brand,
@@ -378,7 +378,7 @@ pub async fn client_create_org_invitation(
     if let Ok(org) =
         organizations::get_organization(&state.db, user.tenant.environment_id, org_id).await
     {
-        let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Auth Platform");
+        let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Signet");
         let _ = email::send_organization_invitation_email(
             &state.config,
             &brand,
@@ -474,7 +474,7 @@ pub async fn client_add_email(
     let (view, otp) =
         identity_advanced::add_user_email(&state.db, &state.redis, user.user_id, &body.email)
             .await?;
-    let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Auth Platform");
+    let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Signet");
     email::send_branded_otp_email(&state.config, &brand, &view.email, &view.email, &otp).await?;
     Ok((StatusCode::CREATED, Json(view)))
 }
@@ -766,7 +766,7 @@ pub async fn backend_create_org_invitation(
     if let Ok(org) =
         organizations::get_organization(&state.db, auth.tenant.environment_id, org_id).await
     {
-        let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Auth Platform");
+        let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Signet");
         let _ = email::send_organization_invitation_email(
             &state.config,
             &brand,
@@ -784,7 +784,7 @@ pub async fn backend_create_org_invitation(
     if let Ok(org) =
         organizations::get_organization(&state.db, auth.tenant.environment_id, org_id).await
     {
-        let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Auth Platform");
+        let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Signet");
         let _ = email::send_organization_invitation_email(
             &state.config,
             &brand,
@@ -1137,7 +1137,7 @@ pub async fn control_create_org_invitation(
     )
     .await?;
     if let Ok(org) = organizations::get_organization(&state.db, env.id, org_id).await {
-        let brand = EmailBrand::from_environment_branding(&env.branding, "Auth Platform");
+        let brand = EmailBrand::from_environment_branding(&env.branding, "Signet");
         let _ = email::send_organization_invitation_email(
             &state.config,
             &brand,
@@ -1153,7 +1153,7 @@ pub async fn control_create_org_invitation(
         .await;
     }
     if let Ok(org) = organizations::get_organization(&state.db, env.id, org_id).await {
-        let brand = EmailBrand::from_environment_branding(&env.branding, "Auth Platform");
+        let brand = EmailBrand::from_environment_branding(&env.branding, "Signet");
         let _ = email::send_organization_invitation_email(
             &state.config,
             &brand,
