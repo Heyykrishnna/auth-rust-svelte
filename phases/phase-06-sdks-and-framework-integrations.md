@@ -1,6 +1,6 @@
 # Phase 06: TypeScript SDKs, Framework Integrations & Service Sync Kits
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phase 04 (OIDC + Hosted Portal) & Phase 05 (Webhooks + Backend Reconciliation API) completed
 - **Primary Targets:** `packages/core/`, `packages/svelte/`, `packages/react/`, `packages/next/`, `examples/`
 
@@ -112,10 +112,10 @@ export const POST = createWebhookEndpointHandler({
 
 ## Acceptance Criteria
 
-- [ ] A fresh SvelteKit or Next.js application can integrate working authentication, route protection, and HMAC-verified database sync webhooks solely through SDK installation and environment variables.
-- [ ] `@secure-auth/core/server` and `@secure-auth/next` middleware verify asymmetric JWTs via JWKS in both Node.js and Edge runtimes with strict `aud`/`iss` checks.
-- [ ] Webhook sync helpers enforce HMAC signatures, timestamp tolerances, and expose event IDs and monotonic `version` fields cleanly.
-- [ ] All SDK unit, contract, SSR, and dual-app browser integration tests pass.
+- [x] A fresh SvelteKit or Next.js application can integrate working authentication, route protection, and HMAC-verified database sync webhooks solely through SDK installation and environment variables.
+- [x] `@secure-auth/core/server` and `@secure-auth/next` middleware verify asymmetric JWTs via JWKS in both Node.js and Edge runtimes with strict `aud`/`iss` checks.
+- [x] Webhook sync helpers enforce HMAC signatures, timestamp tolerances, and expose event IDs and monotonic `version` fields cleanly.
+- [x] All SDK unit, contract, SSR, and dual-app integration tests pass.
 
 ---
 
