@@ -18,8 +18,9 @@ use tower_http::trace::TraceLayer;
 
 use crate::middleware::{
     api_rate_limit_layer, csrf_protection_middleware, dynamic_cors_middleware,
-    security_headers_middleware,
+    security_headers_middleware, telemetry_correlation_middleware,
 };
+use crate::services::metrics as platform_metrics;
 use crate::AppState;
 
 static PROMETHEUS_PAIR: OnceLock<(PrometheusMetricLayer<'static>, PrometheusHandle)> =
@@ -27,8 +28,14 @@ static PROMETHEUS_PAIR: OnceLock<(PrometheusMetricLayer<'static>, PrometheusHand
 
 pub fn build_router(state: AppState) -> Router {
     let (prometheus_layer, metrics_handle) = PROMETHEUS_PAIR
-        .get_or_init(PrometheusMetricLayer::pair)
+        .get_or_init(|| {
+            let pair = PrometheusMetricLayer::pair();
+            platform_metrics::init_metrics_descriptors();
+            pair
+        })
         .clone();
+
+    let metrics_db = state.db.clone();
 
     let authenticated_api = Router::new()
         .nest("/users", users::routes())
@@ -50,7 +57,14 @@ pub fn build_router(state: AppState) -> Router {
         .nest("/oauth2", oidc::oidc_routes())
         .route(
             "/metrics",
-            get(move || async move { metrics_handle.render() }),
+            get(move || {
+                let handle = metrics_handle.clone();
+                let db = metrics_db.clone();
+                async move {
+                    platform_metrics::refresh_infrastructure_gauges(&db).await;
+                    handle.render()
+                }
+            }),
         )
         .nest("/auth", auth::routes())
         .nest("/api/auth", auth::routes())
@@ -62,6 +76,7 @@ pub fn build_router(state: AppState) -> Router {
         .layer(axum::middleware::from_fn(security_headers_middleware))
         .layer(RequestBodyLimitLayer::new(64 * 1024))
         .layer(TimeoutLayer::new(Duration::from_secs(30)))
+        .layer(axum::middleware::from_fn(telemetry_correlation_middleware))
         .layer(TraceLayer::new_for_http())
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))

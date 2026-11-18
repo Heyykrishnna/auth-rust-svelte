@@ -23,4 +23,4 @@ pub use security_headers::security_headers_middleware;
 pub use tenant::{
     PublishableKeyTenant, SecretKeyAuth, TenantContext, TenantSource, PUBLISHABLE_KEY_HEADER,
 };
-pub use tracing::init_telemetry;
+pub use tracing::{init_telemetry, init_worker_telemetry, telemetry_correlation_middleware};

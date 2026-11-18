@@ -1,5 +1,3 @@
-use argon2::password_hash::SaltString;
-use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use chrono::Utc;
 use deadpool_redis::Pool as RedisPool;
@@ -7,7 +5,6 @@ use jsonwebtoken::{
     decode, decode_header, encode, Algorithm as JwtAlgorithm, DecodingKey, EncodingKey, Header,
     Validation,
 };
-use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -60,9 +57,9 @@ impl From<Developer> for DeveloperProfileResponse {
     }
 }
 
-fn create_argon2id() -> Argon2<'static> {
-    Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default())
-}
+use crate::services::password_hasher::{
+    hash_password_async, verify_dummy_password_async, verify_password_async,
+};
 
 pub async fn issue_developer_token(
     db: &PgPool,
@@ -197,11 +194,7 @@ pub async fn register_developer(
         return Err(AppError::EmailAlreadyExists);
     }
 
-    let salt = SaltString::generate(&mut OsRng);
-    let password_hash = create_argon2id()
-        .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| AppError::PasswordHash(e.to_string()))?
-        .to_string();
+    let password_hash = hash_password_async(password.to_string()).await?;
 
     let clean_name = display_name.trim();
     let ws_name = workspace_name
@@ -273,6 +266,7 @@ pub async fn login_developer(
     let developer = match tenant_repo::find_developer_by_email(db, &normalized_email).await? {
         Some(dev) => dev,
         None => {
+            verify_dummy_password_async(password.to_string()).await;
             increment_dev_failed_attempt(redis, &lockout_key, config.login_lockout_duration_secs)
                 .await;
             return Err(AppError::InvalidCredentials);
@@ -285,16 +279,15 @@ pub async fn login_developer(
         ));
     }
 
-    let hash_str = developer
-        .password_hash
-        .as_deref()
-        .ok_or(AppError::InvalidCredentials)?;
-    let parsed_hash = PasswordHash::new(hash_str).map_err(|_| AppError::InvalidCredentials)?;
+    let hash_str = match developer.password_hash.as_deref() {
+        Some(h) => h.to_string(),
+        None => {
+            verify_dummy_password_async(password.to_string()).await;
+            return Err(AppError::InvalidCredentials);
+        }
+    };
 
-    if create_argon2id()
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .is_err()
-    {
+    if !verify_password_async(password.to_string(), hash_str).await? {
         increment_dev_failed_attempt(redis, &lockout_key, config.login_lockout_duration_secs).await;
         return Err(AppError::InvalidCredentials);
     }

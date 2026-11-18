@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use argon2::password_hash::SaltString;
-use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version};
 use chrono::{DateTime, Utc};
-use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
@@ -1755,18 +1752,19 @@ pub async fn change_developer_password(
         AppError::Unauthorized("Password authentication is not configured".to_string())
     })?;
 
-    let parsed = PasswordHash::new(stored_hash)
-        .map_err(|_| AppError::Internal("Stored password hash is invalid".to_string()))?;
-    let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default());
-    argon2
-        .verify_password(current_password.as_bytes(), &parsed)
-        .map_err(|_| AppError::Unauthorized("Current password is incorrect".to_string()))?;
+    if !crate::services::password_hasher::verify_password_async(
+        current_password.to_string(),
+        stored_hash.to_string(),
+    )
+    .await?
+    {
+        return Err(AppError::Unauthorized(
+            "Current password is incorrect".to_string(),
+        ));
+    }
 
-    let salt = SaltString::generate(&mut OsRng);
-    let new_hash = argon2
-        .hash_password(new_password.as_bytes(), &salt)
-        .map_err(|_| AppError::Internal("Failed to hash new password".to_string()))?
-        .to_string();
+    let new_hash =
+        crate::services::password_hasher::hash_password_async(new_password.to_string()).await?;
 
     let mut tx = begin_tx(db).await?;
     sqlx::query(

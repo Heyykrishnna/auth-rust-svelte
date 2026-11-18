@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod backend_sync;
 pub mod client_auth;
 pub mod control_ops;

@@ -2,6 +2,7 @@ use sqlx::PgExecutor;
 use uuid::Uuid;
 
 use crate::errors::AppError;
+use crate::middleware::tracing as otel_tracing;
 use crate::models::{DomainEventEnvelope, EnvironmentId};
 
 pub async fn insert_outbox_event<'e, E>(
@@ -23,13 +24,14 @@ where
         .ok_or_else(|| AppError::Internal("Failed to serialize aggregate type".to_string()))?;
 
     let payload = serde_json::to_value(envelope).map_err(|e| AppError::Internal(e.to_string()))?;
+    let traceparent = otel_tracing::current_traceparent();
 
     let id: Uuid = sqlx::query_scalar(
         r#"
         INSERT INTO outbox_events (
-            id, environment_id, event_type, aggregate_type, aggregate_id, aggregate_version, payload
+            id, environment_id, event_type, aggregate_type, aggregate_id, aggregate_version, payload, traceparent
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
         "#,
     )
@@ -40,6 +42,7 @@ where
     .bind(envelope.aggregate_id)
     .bind(envelope.aggregate_version)
     .bind(payload)
+    .bind(traceparent)
     .fetch_one(executor)
     .await?;
 

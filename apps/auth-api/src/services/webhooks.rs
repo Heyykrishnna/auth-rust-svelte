@@ -12,11 +12,13 @@ use ring::hmac;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use subtle::ConstantTimeEq;
-use tracing::{info, warn};
+use tracing::{info, info_span, warn, Instrument};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
 
 use crate::config::AppConfig;
 use crate::errors::AppError;
+use crate::middleware::tracing as otel_tracing;
 use crate::models::{
     AggregateType, ApplicationId, DeveloperId, DomainEventEnvelope, DomainEventType, EnvironmentId,
     EnvironmentKind, WorkspaceRole,
@@ -28,6 +30,7 @@ use crate::repositories::webhooks::{
     self as webhook_repo, DueDeliveryJob, WebhookDeliveryRecord, WebhookEndpointRecord,
 };
 use crate::services::control_plane::require_application_access;
+use crate::services::metrics as platform_metrics;
 use crate::services::signing_keys::{
     decrypt_envelope, encrypt_envelope, WEBHOOK_SECRET_AAD_PURPOSE,
 };
@@ -497,6 +500,8 @@ async fn execute_single_delivery(
     let validated_url = match validate_webhook_url(&job.endpoint_url, env_kind) {
         Ok(u) => u,
         Err(err) => {
+            platform_metrics::record_webhook_ssrf_blocked();
+            platform_metrics::record_webhook_delivery("blocked", 0.0);
             return Ok(DeliveryAttemptOutcome {
                 succeeded: false,
                 response_status: None,
@@ -532,22 +537,28 @@ async fn execute_single_delivery(
     let client = build_ssrf_safe_http_client(allow_loopback)?;
     let started = Instant::now();
 
-    let send_res = client
+    let mut req_builder = client
         .post(validated_url)
         .header("Content-Type", "application/json")
         .header(WEBHOOK_EVENT_ID_HEADER, &event_id_header)
         .header(WEBHOOK_TIMESTAMP_HEADER, timestamp.to_string())
-        .header(WEBHOOK_SIGNATURE_HEADER, &signature_header)
-        .body(raw_body)
-        .send()
-        .await;
+        .header(WEBHOOK_SIGNATURE_HEADER, &signature_header);
+    if let Some(tp) = otel_tracing::current_traceparent().or_else(|| job.event_traceparent.clone())
+    {
+        req_builder = req_builder.header("traceparent", tp);
+    }
 
+    let send_res = req_builder.body(raw_body).send().await;
+
+    let elapsed_secs = started.elapsed().as_secs_f64();
     let latency_ms = started.elapsed().as_millis().min(i32::MAX as u128) as i32;
 
     match send_res {
         Ok(resp) => {
             let status_code = resp.status().as_u16() as i32;
             if (300..400).contains(&status_code) {
+                platform_metrics::record_webhook_ssrf_blocked();
+                platform_metrics::record_webhook_delivery("3xx", elapsed_secs);
                 return Ok(DeliveryAttemptOutcome {
                     succeeded: false,
                     response_status: Some(status_code),
@@ -559,6 +570,14 @@ async fn execute_single_delivery(
                     permanent_4xx: true,
                 });
             }
+
+            let status_class = match status_code {
+                200..=299 => "2xx",
+                400..=499 => "4xx",
+                500..=599 => "5xx",
+                _ => "other",
+            };
+            platform_metrics::record_webhook_delivery(status_class, elapsed_secs);
 
             let body_text = resp.text().await.unwrap_or_default();
             let excerpt = truncate_excerpt(&body_text);
@@ -574,14 +593,17 @@ async fn execute_single_delivery(
                 permanent_4xx: perm_4xx,
             })
         }
-        Err(err) => Ok(DeliveryAttemptOutcome {
-            succeeded: false,
-            response_status: None,
-            response_excerpt: truncate_excerpt(&err.to_string()),
-            latency_ms,
-            request_headers: req_headers_json,
-            permanent_4xx: false,
-        }),
+        Err(err) => {
+            platform_metrics::record_webhook_delivery("network_error", elapsed_secs);
+            Ok(DeliveryAttemptOutcome {
+                succeeded: false,
+                response_status: None,
+                response_excerpt: truncate_excerpt(&err.to_string()),
+                latency_ms,
+                request_headers: req_headers_json,
+                permanent_4xx: false,
+            })
+        }
     }
 }
 
@@ -613,7 +635,20 @@ pub async fn run_worker_tick(
             continue;
         }
 
-        let outcome = execute_single_delivery(&job, config).await?;
+        let delivery_span = info_span!(
+            "webhook_delivery",
+            delivery_id = %job.delivery_id,
+            outbox_event_id = %job.outbox_event_id,
+            event_type = %job.event_type,
+            attempt = job.attempt_number
+        );
+        if let Some(tp) = job.event_traceparent.as_deref() {
+            delivery_span.set_parent(otel_tracing::extract_context_from_traceparent(tp));
+        }
+
+        let outcome = execute_single_delivery(&job, config)
+            .instrument(delivery_span)
+            .await?;
         if outcome.succeeded {
             webhook_repo::mark_delivery_succeeded_in_tx(
                 &mut claim_tx,
@@ -671,11 +706,13 @@ pub async fn run_worker_tick(
                 stats.deliveries_failed += 1;
             } else {
                 stats.deliveries_dead_lettered += 1;
+                platform_metrics::record_webhook_dead_letter();
             }
         }
     }
 
     commit_tx(claim_tx).await?;
+    platform_metrics::refresh_infrastructure_gauges(db).await;
     Ok(stats)
 }
 

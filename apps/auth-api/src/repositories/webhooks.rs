@@ -77,6 +77,7 @@ pub struct DueDeliveryJob {
     pub previous_secret_expires_at: Option<DateTime<Utc>>,
     pub event_type: String,
     pub event_payload: serde_json::Value,
+    pub event_traceparent: Option<String>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -374,7 +375,8 @@ pub async fn claim_due_deliveries_in_tx(
             we.previous_signing_secret_encrypted,
             we.previous_secret_expires_at,
             oe.event_type,
-            oe.payload AS event_payload
+            oe.payload AS event_payload,
+            oe.traceparent AS event_traceparent
         FROM webhook_deliveries wd
         JOIN webhook_endpoints we
           ON we.environment_id = wd.environment_id AND we.id = wd.webhook_endpoint_id

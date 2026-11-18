@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod audit;
 pub mod authentication;
 pub mod authorization;
@@ -11,8 +12,10 @@ pub mod credentials;
 pub mod domains;
 pub mod email;
 pub mod identity_advanced;
+pub mod metrics;
 pub mod oidc_provider;
 pub mod organizations;
+pub mod password_hasher;
 pub mod sessions;
 pub mod signing_keys;
 pub mod social_oauth;

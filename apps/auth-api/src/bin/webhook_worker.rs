@@ -1,10 +1,15 @@
 use std::time::Duration;
 
+use axum::routing::get;
+use axum::Router;
+use axum_prometheus::PrometheusMetricLayer;
 use sqlx::postgres::PgPoolOptions;
 use tokio::signal;
 use tracing::{error, info};
 
 use auth_api::config::AppConfig;
+use auth_api::middleware::init_worker_telemetry;
+use auth_api::services::metrics as platform_metrics;
 use auth_api::services::webhooks::run_worker_tick;
 
 async fn shutdown_signal() {
@@ -31,15 +36,9 @@ async fn shutdown_signal() {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            std::env::var("RUST_LOG")
-                .unwrap_or_else(|_| "webhook_worker=info,auth_api=info".into()),
-        )
-        .json()
-        .init();
-
     let config = AppConfig::from_env()?;
+    init_worker_telemetry(&config)?;
+
     let poll_ms: u64 = std::env::var("WEBHOOK_WORKER_POLL_MS")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -49,11 +48,41 @@ async fn main() -> anyhow::Result<()> {
         .and_then(|v| v.parse().ok())
         .unwrap_or(50)
         .clamp(1, 500);
+    let metrics_port: u16 = std::env::var("WEBHOOK_WORKER_METRICS_PORT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(9091);
 
     let db = PgPoolOptions::new()
         .max_connections(config.db_max_connections)
         .connect(&config.database_url)
         .await?;
+
+    let (_prom_layer, metrics_handle) = PrometheusMetricLayer::pair();
+    platform_metrics::init_metrics_descriptors();
+
+    let metrics_db = db.clone();
+    let metrics_app = Router::new()
+        .route("/health", get(|| async { "ok" }))
+        .route(
+            "/metrics",
+            get(move || {
+                let handle = metrics_handle.clone();
+                let pool = metrics_db.clone();
+                async move {
+                    platform_metrics::refresh_infrastructure_gauges(&pool).await;
+                    handle.render()
+                }
+            }),
+        );
+
+    let metrics_addr = format!("0.0.0.0:{metrics_port}");
+    if let Ok(listener) = tokio::net::TcpListener::bind(&metrics_addr).await {
+        info!(address = %metrics_addr, "Webhook worker metrics server listening");
+        tokio::spawn(async move {
+            let _ = axum::serve(listener, metrics_app).await;
+        });
+    }
 
     info!(
         poll_ms = poll_ms,
@@ -94,6 +123,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     db.close().await;
+    opentelemetry::global::shutdown_tracer_provider();
     info!("Webhook delivery worker stopped cleanly");
     Ok(())
 }

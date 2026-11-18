@@ -1,5 +1,3 @@
-use argon2::password_hash::SaltString;
-use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version};
 use chrono::{DateTime, Duration, Utc};
 use deadpool_redis::Pool as RedisPool;
 use rand_core::{OsRng, RngCore};
@@ -96,9 +94,9 @@ struct LockedRefreshTokenRow {
     revoked_at: Option<DateTime<Utc>>,
 }
 
-fn create_argon2id() -> Argon2<'static> {
-    Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default())
-}
+use crate::services::password_hasher::{
+    hash_password_async, verify_dummy_password_async, verify_password_async,
+};
 
 fn generate_otp_code() -> String {
     let mut bytes = [0u8; 4];
@@ -254,11 +252,7 @@ pub async fn initiate_sign_up(
         return Err(AppError::EmailAlreadyExists);
     }
 
-    let salt = SaltString::generate(&mut OsRng);
-    let password_hash = create_argon2id()
-        .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| AppError::PasswordHash(e.to_string()))?
-        .to_string();
+    let password_hash = hash_password_async(password.to_string()).await?;
 
     let code = generate_otp_code();
     let clean_name = display_name.trim().to_string();
@@ -522,6 +516,9 @@ pub async fn verify_sign_up_otp(
     )
     .await?;
 
+    crate::services::metrics::record_session_created();
+    crate::services::metrics::record_sign_up("verified");
+
     Ok(ClientAuthResponse {
         user: ClientUserView {
             sub: user_id,
@@ -623,17 +620,30 @@ pub async fn sign_in(
     user_agent: Option<&str>,
     ip_address: Option<&str>,
 ) -> Result<ClientAuthResponse, AppError> {
+    let sign_in_started = std::time::Instant::now();
     let normalized = redis_ephemeral::normalize_email(email);
     let lockout_key = redis_keys::env_login_attempt_key(environment_id, &normalized);
 
     if let Ok(mut conn) = redis.get().await {
-        let attempts: Option<String> = redis::cmd("GET")
+        let redis_started = std::time::Instant::now();
+        let attempts_res: Result<Option<String>, _> = redis::cmd("GET")
             .arg(&lockout_key)
             .query_async(&mut conn)
-            .await
-            .unwrap_or(None);
+            .await;
+        crate::services::metrics::record_redis_op(
+            "get",
+            redis_started.elapsed().as_secs_f64(),
+            attempts_res.is_err(),
+        );
+        let attempts = attempts_res.unwrap_or(None);
         if let Some(count) = attempts.and_then(|s| s.parse::<u32>().ok()) {
             if count >= config.login_max_attempts {
+                crate::services::metrics::record_lockout();
+                crate::services::metrics::record_sign_in(
+                    "password",
+                    "locked_out",
+                    sign_in_started.elapsed().as_secs_f64(),
+                );
                 return Err(AppError::TooManyRequests(
                     "Too many failed login attempts".to_string(),
                 ));
@@ -648,23 +658,35 @@ pub async fn sign_in(
     let user = match find_global_user_by_email(db, &normalized).await? {
         Some(u) => u,
         None => {
+            verify_dummy_password_async(password.to_string()).await;
             increment_env_failed_attempt(redis, &lockout_key, config.login_lockout_duration_secs)
                 .await;
+            crate::services::metrics::record_sign_in(
+                "password",
+                "failure",
+                sign_in_started.elapsed().as_secs_f64(),
+            );
             return Err(AppError::InvalidCredentials);
         }
     };
 
-    let hash_str = user
-        .password_hash
-        .as_deref()
-        .ok_or(AppError::InvalidCredentials)?;
-    let parsed_hash = PasswordHash::new(hash_str).map_err(|_| AppError::InvalidCredentials)?;
+    let hash_str = match user.password_hash.as_deref() {
+        Some(h) => h.to_string(),
+        None => {
+            verify_dummy_password_async(password.to_string()).await;
+            return Err(AppError::InvalidCredentials);
+        }
+    };
 
-    if create_argon2id()
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .is_err()
-    {
+    let verified_ok = verify_password_async(password.to_string(), hash_str).await?;
+
+    if !verified_ok {
         increment_env_failed_attempt(redis, &lockout_key, config.login_lockout_duration_secs).await;
+        crate::services::metrics::record_sign_in(
+            "password",
+            "failure",
+            sign_in_started.elapsed().as_secs_f64(),
+        );
         return Err(AppError::InvalidCredentials);
     }
 
@@ -792,6 +814,13 @@ pub async fn sign_in(
     )
     .await?;
 
+    crate::services::metrics::record_session_created();
+    crate::services::metrics::record_sign_in(
+        "password",
+        "success",
+        sign_in_started.elapsed().as_secs_f64(),
+    );
+
     Ok(ClientAuthResponse {
         user: ClientUserView {
             sub: user_id,
@@ -902,6 +931,9 @@ pub async fn refresh_tokens(
         );
         outbox::insert_outbox_event(&mut *tx, environment_id, &revoke_evt).await?;
         commit_tx(tx).await?;
+
+        crate::services::metrics::record_refresh_token_reuse();
+        crate::services::metrics::record_session_revoked("refresh_token_reuse");
 
         return Err(AppError::InvalidToken(
             "Refresh token reuse detected".to_string(),
@@ -1305,11 +1337,7 @@ pub async fn complete_password_reset(
     }
 
     let token_hash = hash_token(raw_token.trim());
-    let salt = SaltString::generate(&mut OsRng);
-    let password_hash = create_argon2id()
-        .hash_password(new_password.as_bytes(), &salt)
-        .map_err(|e| AppError::PasswordHash(e.to_string()))?
-        .to_string();
+    let password_hash = hash_password_async(new_password.to_string()).await?;
 
     let mut tx = begin_tx(db).await?;
     let auth_tx = auth_tx_repo::consume_auth_transaction_by_state_in_tx(
@@ -1370,20 +1398,13 @@ pub async fn change_password(
     let existing_hash = user
         .password_hash
         .as_deref()
-        .ok_or(AppError::InvalidCredentials)?;
-    let parsed = PasswordHash::new(existing_hash).map_err(|_| AppError::InvalidCredentials)?;
-    if create_argon2id()
-        .verify_password(current_password.as_bytes(), &parsed)
-        .is_err()
-    {
+        .ok_or(AppError::InvalidCredentials)?
+        .to_string();
+    if !verify_password_async(current_password.to_string(), existing_hash).await? {
         return Err(AppError::InvalidCredentials);
     }
 
-    let salt = SaltString::generate(&mut OsRng);
-    let new_hash = create_argon2id()
-        .hash_password(new_password.as_bytes(), &salt)
-        .map_err(|e| AppError::PasswordHash(e.to_string()))?
-        .to_string();
+    let new_hash = hash_password_async(new_password.to_string()).await?;
 
     let mut tx = begin_tx(db).await?;
     sqlx::query("UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1")

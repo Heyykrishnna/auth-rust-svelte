@@ -2,7 +2,8 @@ use axum::routing::{delete, get, patch, post};
 use axum::Router;
 
 use crate::handlers::{
-    backend_sync, client_auth, control_ops, control_plane, control_webhooks, organizations,
+    analytics, backend_sync, client_auth, control_ops, control_plane, control_webhooks,
+    organizations,
 };
 use crate::middleware::{api_rate_limit_layer, auth_rate_limit_layer, sensitive_rate_limit_layer};
 use crate::AppState;
@@ -96,6 +97,14 @@ pub fn control_routes() -> Router<AppState> {
         .route(
             "/applications/:app_id/environments/:env_kind/overview",
             get(control_ops::get_overview),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/analytics",
+            get(analytics::get_analytics),
+        )
+        .route(
+            "/applications/:app_id/environments/:env_kind/analytics/refresh",
+            post(analytics::refresh_analytics),
         )
         .route(
             "/applications/:app_id/environments/:env_kind/oauth-providers",

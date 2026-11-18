@@ -375,14 +375,20 @@ pub async fn client_create_org_invitation(
         )
         .await;
     }
-    if let Ok(org) = organizations::get_organization(&state.db, user.tenant.environment_id, org_id).await {
+    if let Ok(org) =
+        organizations::get_organization(&state.db, user.tenant.environment_id, org_id).await
+    {
         let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Auth Platform");
         let _ = email::send_organization_invitation_email(
             &state.config,
             &brand,
             &created.invitation.email,
             &org.name,
-            created.invitation.role_slug.as_deref().unwrap_or("org:member"),
+            created
+                .invitation
+                .role_slug
+                .as_deref()
+                .unwrap_or("org:member"),
             &created.invitation_token,
         )
         .await;
@@ -776,14 +782,20 @@ pub async fn backend_create_org_invitation(
         )
         .await;
     }
-    if let Ok(org) = organizations::get_organization(&state.db, auth.tenant.environment_id, org_id).await {
+    if let Ok(org) =
+        organizations::get_organization(&state.db, auth.tenant.environment_id, org_id).await
+    {
         let brand = EmailBrand::from_environment_branding(&serde_json::json!({}), "Auth Platform");
         let _ = email::send_organization_invitation_email(
             &state.config,
             &brand,
             &created.invitation.email,
             &org.name,
-            created.invitation.role_slug.as_deref().unwrap_or("org:member"),
+            created
+                .invitation
+                .role_slug
+                .as_deref()
+                .unwrap_or("org:member"),
             &created.invitation_token,
         )
         .await;
@@ -1148,7 +1160,11 @@ pub async fn control_create_org_invitation(
             &brand,
             &created.invitation.email,
             &org.name,
-            created.invitation.role_slug.as_deref().unwrap_or("org:member"),
+            created
+                .invitation
+                .role_slug
+                .as_deref()
+                .unwrap_or("org:member"),
             &created.invitation_token,
         )
         .await;

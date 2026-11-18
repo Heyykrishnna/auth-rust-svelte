@@ -109,6 +109,7 @@ pub async fn jwks_endpoint(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Response, AppError> {
+    crate::services::metrics::record_jwks_request();
     let (jwks, etag) = signing_keys::build_jwks_with_etag(&state.db, &state.config).await?;
 
     if let Some(if_none_match) = headers.get(IF_NONE_MATCH).and_then(|v| v.to_str().ok()) {

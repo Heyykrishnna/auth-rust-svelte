@@ -1,6 +1,3 @@
-use argon2::password_hash::SaltString;
-use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version};
-use rand_core::OsRng;
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -26,9 +23,7 @@ pub struct AuthContext<'a> {
     pub redis: &'a RedisPool,
 }
 
-fn create_argon2id() -> Argon2<'static> {
-    Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default())
-}
+use crate::services::password_hasher::{hash_password_async, verify_password_async};
 
 fn generate_otp_code() -> String {
     use rand_core::{OsRng, RngCore};
@@ -50,12 +45,7 @@ pub async fn initiate_registration(
         return Err(AppError::EmailAlreadyExists);
     }
 
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = create_argon2id();
-    let password_hash = argon2
-        .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| AppError::PasswordHash(e.to_string()))?
-        .to_string();
+    let password_hash = hash_password_async(password).await?;
 
     let code_str = generate_otp_code();
 
@@ -265,12 +255,7 @@ pub async fn register(
         return Err(AppError::EmailAlreadyExists);
     }
 
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = create_argon2id();
-    let password_hash = argon2
-        .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| AppError::PasswordHash(e.to_string()))?
-        .to_string();
+    let password_hash = hash_password_async(password).await?;
 
     let user = User::new(email, display_name, Some(password_hash));
     let mut tx = begin_tx(ctx.db).await?;
@@ -408,27 +393,8 @@ pub async fn login(
         }
     };
 
-    let parsed_hash = match PasswordHash::new(password_hash) {
-        Ok(h) => h,
-        Err(_) => {
-            let _ = crate::services::audit::log_event(
-                ctx.db,
-                Some(user.id),
-                crate::models::AuditEvent::LoginFailed,
-                ip_address,
-                user_agent,
-                serde_json::json!({ "email": email, "reason": "hash_error" }),
-            )
-            .await;
-            return Err(AppError::InvalidCredentials);
-        }
-    };
-
-    let argon2 = create_argon2id();
-    if argon2
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .is_err()
-    {
+    let verified = verify_password_async(password.to_string(), password_hash.to_string()).await?;
+    if !verified {
         let attempts = redis_ephemeral::record_failed_login(
             ctx.redis,
             &email,
@@ -715,12 +681,7 @@ pub async fn reset_password(
         .await?
         .ok_or(AppError::UserNotFound)?;
 
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = create_argon2id();
-    let password_hash = argon2
-        .hash_password(new_password.as_bytes(), &salt)
-        .map_err(|e| AppError::PasswordHash(e.to_string()))?
-        .to_string();
+    let password_hash = hash_password_async(new_password.to_string()).await?;
 
     user_repo::update_password_hash(ctx.db, user.id, &password_hash).await?;
 

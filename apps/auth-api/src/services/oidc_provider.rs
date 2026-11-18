@@ -1,4 +1,3 @@
-use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordVerifier, Version};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
@@ -490,9 +489,7 @@ fn constant_time_str_eq(a: &str, b: &str) -> bool {
     ab.len() == bb.len() && bool::from(ab.ct_eq(bb))
 }
 
-fn create_argon2id() -> Argon2<'static> {
-    Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::default())
-}
+use crate::services::password_hasher::{verify_dummy_password_async, verify_password_async};
 
 async fn resolve_oidc_client_environment(
     db: &PgPool,
@@ -778,6 +775,8 @@ pub async fn handle_authorize(
     let portal_origin = config.portal_origin();
     match evaluate_sso_policy(&policy_input) {
         SsoPolicyDecision::IssueCode => {
+            crate::services::metrics::record_oidc_authorize("issue_code");
+            crate::services::metrics::record_oidc_sso_hit();
             let (sso, user) = active_sso.expect("sso present for IssueCode");
             let mut tx = begin_tx(db).await?;
             let code =
@@ -791,6 +790,8 @@ pub async fn handle_authorize(
             )))
         }
         SsoPolicyDecision::AutoJoinAndIssueCode => {
+            crate::services::metrics::record_oidc_authorize("auto_join_and_issue_code");
+            crate::services::metrics::record_oidc_sso_hit();
             let (sso, user) = active_sso.expect("sso present for AutoJoinAndIssueCode");
             let mut tx = begin_tx(db).await?;
             let code =
@@ -803,10 +804,14 @@ pub async fn handle_authorize(
                 query.state.as_deref(),
             )))
         }
-        SsoPolicyDecision::RequireLogin => Ok(AuthorizeOutcome::Redirect(format!(
-            "{portal_origin}/portal/login?tx={tx_id}"
-        ))),
+        SsoPolicyDecision::RequireLogin => {
+            crate::services::metrics::record_oidc_authorize("require_login");
+            Ok(AuthorizeOutcome::Redirect(format!(
+                "{portal_origin}/portal/login?tx={tx_id}"
+            )))
+        }
         SsoPolicyDecision::RequireConsent => {
+            crate::services::metrics::record_oidc_authorize("require_consent");
             if let Some((sso, user)) = active_sso {
                 sqlx::query(
                     "UPDATE authentication_transactions SET user_id = $2, sso_session_id = $3, status = 'authenticated', updated_at = NOW() WHERE id = $1",
@@ -822,6 +827,7 @@ pub async fn handle_authorize(
             )))
         }
         SsoPolicyDecision::ErrorRedirect { error, description } => {
+            crate::services::metrics::record_oidc_authorize("error_redirect");
             sqlx::query(
                 "UPDATE authentication_transactions SET status = 'revoked', updated_at = NOW() WHERE id = $1",
             )
@@ -959,24 +965,28 @@ pub async fn portal_login_for_transaction(
         .ok_or_else(|| AppError::Unauthorized("Environment not found".to_string()))?;
 
     let normalized = redis_ephemeral::normalize_email(email);
-    let user = if let Some(verified_email) =
+    let user = match if let Some(verified_email) =
         global_identity::find_verified_email(&mut *tx, &normalized).await?
     {
         user_repo::find_user_by_id(db, verified_email.user_id.into_inner()).await?
     } else {
         user_repo::find_user_by_email(db, &normalized).await?
-    }
-    .ok_or(AppError::InvalidCredentials)?;
+    } {
+        Some(u) => u,
+        None => {
+            verify_dummy_password_async(password.to_string()).await;
+            return Err(AppError::InvalidCredentials);
+        }
+    };
 
-    let hash_str = user
-        .password_hash
-        .as_deref()
-        .ok_or(AppError::InvalidCredentials)?;
-    let parsed_hash = PasswordHash::new(hash_str).map_err(|_| AppError::InvalidCredentials)?;
-    if create_argon2id()
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .is_err()
-    {
+    let hash_str = match user.password_hash.as_deref() {
+        Some(h) => h.to_string(),
+        None => {
+            verify_dummy_password_async(password.to_string()).await;
+            return Err(AppError::InvalidCredentials);
+        }
+    };
+    if !verify_password_async(password.to_string(), hash_str).await? {
         let _ = redis;
         return Err(AppError::InvalidCredentials);
     }
@@ -1646,6 +1656,8 @@ pub async fn exchange_authorization_code(
         exp: now + env.access_token_ttl_secs as i64,
     };
     let id_token = issue_tenant_id_token(db, config, &id_claims).await?;
+    crate::services::metrics::record_oidc_token_exchange("authorization_code", "success");
+    crate::services::metrics::record_session_created();
 
     Ok(OidcTokenResponse {
         access_token,
@@ -1680,6 +1692,8 @@ pub async fn exchange_refresh_token(
         ip_address,
     )
     .await?;
+
+    crate::services::metrics::record_oidc_token_exchange("refresh_token", "success");
 
     Ok(OidcTokenResponse {
         access_token: rotated.access_token,
