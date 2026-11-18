@@ -1,11 +1,15 @@
 pub mod audit_logs;
+pub mod auth_transactions;
 pub mod authorization;
 pub mod db;
 pub mod global_identity;
+pub mod outbox;
 pub mod redis_ephemeral;
 pub mod redis_keys;
 pub mod refresh_tokens;
 pub mod sessions;
+pub mod signing_keys;
 pub mod tenant_memberships;
+pub mod tenant_rbac;
 pub mod tenants;
 pub mod users;
