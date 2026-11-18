@@ -1,3 +1,4 @@
+pub mod control_plane;
 pub mod csrf;
 pub mod health;
 pub mod login;

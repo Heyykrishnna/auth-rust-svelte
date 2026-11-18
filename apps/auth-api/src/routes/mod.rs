@@ -1,53 +1,26 @@
 pub mod auth;
+pub mod control;
 pub mod health;
 pub mod sessions;
 pub mod users;
 
-use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN};
-use axum::http::{HeaderName, HeaderValue, Method};
 use axum::routing::get;
 use axum::Router;
 use axum_prometheus::PrometheusMetricLayer;
 use std::time::Duration;
-use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 
 use crate::middleware::{
-    api_rate_limit_layer, csrf_protection_middleware, security_headers_middleware,
+    api_rate_limit_layer, csrf_protection_middleware, dynamic_cors_middleware,
+    security_headers_middleware,
 };
 use crate::AppState;
 
 pub fn build_router(state: AppState) -> Router {
     let (prometheus_layer, metrics_handle) = PrometheusMetricLayer::pair();
-
-    let cors_origins: Vec<HeaderValue> = state
-        .config
-        .cors_origins
-        .iter()
-        .filter_map(|o| o.parse().ok())
-        .collect();
-
-    let cors = CorsLayer::new()
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::PUT,
-            Method::DELETE,
-            Method::OPTIONS,
-        ])
-        .allow_headers([
-            AUTHORIZATION,
-            ACCEPT,
-            CONTENT_TYPE,
-            ORIGIN,
-            HeaderName::from_static("x-csrf-token"),
-            HeaderName::from_static("x-request-id"),
-        ])
-        .allow_credentials(true)
-        .allow_origin(cors_origins);
 
     let authenticated_api = Router::new()
         .nest("/users", users::routes())
@@ -64,6 +37,9 @@ pub fn build_router(state: AppState) -> Router {
         )
         .nest("/auth", auth::routes())
         .nest("/api/auth", auth::routes())
+        .nest("/v1/control", control::control_routes())
+        .nest("/v1/client", control::client_v1_routes())
+        .nest("/v1/backend", control::backend_v1_routes())
         .merge(authenticated_api)
         .layer(axum::middleware::from_fn(csrf_protection_middleware))
         .layer(axum::middleware::from_fn(security_headers_middleware))
@@ -72,7 +48,10 @@ pub fn build_router(state: AppState) -> Router {
         .layer(TraceLayer::new_for_http())
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-        .layer(cors)
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            dynamic_cors_middleware,
+        ))
         .layer(prometheus_layer)
         .layer(axum::Extension(state.clone()))
         .with_state(state)
