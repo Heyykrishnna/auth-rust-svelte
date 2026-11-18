@@ -25,7 +25,9 @@ pub fn argon2_max_concurrency() -> usize {
 }
 
 fn argon2_semaphore() -> Arc<Semaphore> {
-    ARGON2_SEMAPHORE.get_or_init(|| Arc::new(Semaphore::new(argon2_max_concurrency()))).clone()
+    ARGON2_SEMAPHORE
+        .get_or_init(|| Arc::new(Semaphore::new(argon2_max_concurrency())))
+        .clone()
 }
 
 fn create_argon2id() -> Argon2<'static> {
@@ -95,7 +97,9 @@ pub async fn verify_password_async(password: String, hash: String) -> Result<boo
 
 fn validate_password_length(password: &str) -> Result<(), AppError> {
     if password.len() > 512 || password.chars().count() > 128 {
-        return Err(AppError::Validation("Password must not exceed 128 characters".to_string()));
+        return Err(AppError::Validation(
+            "Password must not exceed 128 characters".to_string(),
+        ));
     }
     Ok(())
 }

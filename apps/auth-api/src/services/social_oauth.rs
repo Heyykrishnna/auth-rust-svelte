@@ -792,11 +792,18 @@ pub async fn complete_social_login_with_identity(
 }
 
 fn shared_oauth_client() -> Result<reqwest::Client, AppError> {
-    static CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> = std::sync::OnceLock::new();
-    CLIENT.get_or_init(|| reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .connect_timeout(std::time::Duration::from_secs(3))
-        .timeout(std::time::Duration::from_secs(10))
-        .build().map_err(|error| error.to_string()))
-        .as_ref().cloned().map_err(|error| AppError::Internal(error.clone()))
+    static CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> =
+        std::sync::OnceLock::new();
+    CLIENT
+        .get_or_init(|| {
+            reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .connect_timeout(std::time::Duration::from_secs(3))
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .map_err(|error| error.to_string())
+        })
+        .as_ref()
+        .cloned()
+        .map_err(|error| AppError::Internal(error.clone()))
 }

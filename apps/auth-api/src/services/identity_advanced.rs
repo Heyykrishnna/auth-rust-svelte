@@ -1,5 +1,4 @@
 use chrono::{DateTime, Utc};
-use deadpool_redis::redis::AsyncCommands;
 use deadpool_redis::Pool as RedisPool;
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -169,7 +168,13 @@ pub async fn add_user_email(
     .await?;
 
     let otp = generate_email_otp_code();
-    crate::services::otp::store(redis, &email_otp_redis_key(user_id, &clean_email), &otp, 600).await?;
+    crate::services::otp::store(
+        redis,
+        &email_otp_redis_key(user_id, &clean_email),
+        &otp,
+        600,
+    )
+    .await?;
 
     Ok((row.into(), otp))
 }
@@ -185,7 +190,9 @@ pub async fn verify_user_email(
     let clean_email = raw_email.trim().to_lowercase();
     let key = email_otp_redis_key(user_id, &clean_email);
     if !crate::services::otp::consume(redis, &key, code).await? {
-        return Err(AppError::Validation("Invalid or expired email verification code".to_string()));
+        return Err(AppError::Validation(
+            "Invalid or expired email verification code".to_string(),
+        ));
     }
 
     let mut tx = begin_tx(db).await?;
@@ -645,7 +652,7 @@ pub async fn delete_user_account(db: &PgPool, user_id: UserId) -> Result<usize, 
     let (next_version,): (i64,) = sqlx::query_as(
         r#"
         UPDATE users
-        SET status = 'deleted', updated_at = NOW()
+        SET status = 'deleted', email = 'deleted-' || id::text || '@erased.invalid', display_name = 'Deleted User', avatar_url = NULL, password_hash = NULL, email_verified = FALSE, primary_email_id = NULL, updated_at = NOW()
         WHERE id = $1
         RETURNING version
         "#,
@@ -677,10 +684,26 @@ pub async fn delete_user_account(db: &PgPool, user_id: UserId) -> Result<usize, 
     .execute(&mut *tx)
     .await?;
 
+    for statement in [
+        "DELETE FROM user_emails WHERE user_id = $1",
+        "DELETE FROM oauth_accounts WHERE user_id = $1",
+        "DELETE FROM oidc_accounts WHERE user_id = $1",
+        "DELETE FROM refresh_tokens WHERE user_id = $1",
+        "DELETE FROM sessions WHERE user_id = $1",
+        "UPDATE audit_logs SET ip_address = NULL, user_agent = NULL, metadata = '{}'::jsonb WHERE user_id = $1 OR actor_id = $1",
+        "UPDATE sso_sessions SET ip_address = NULL, user_agent = NULL WHERE user_id = $1",
+        "UPDATE app_sessions SET ip_address = NULL, user_agent = NULL WHERE user_id = $1",
+        "DELETE FROM authentication_transactions WHERE user_id = $1",
+        "UPDATE outbox_events SET payload = jsonb_set(payload, '{payload}', jsonb_build_object('sub', $1::uuid, 'erased', true)) WHERE aggregate_id = $1 OR aggregate_id IN (SELECT id FROM application_users WHERE user_id = $1) OR payload->'payload'->>'sub' = $1::text",
+        "UPDATE webhook_deliveries SET response_body_excerpt = NULL, request_headers = '{}'::jsonb WHERE outbox_event_id IN (SELECT id FROM outbox_events WHERE aggregate_id = $1 OR aggregate_id IN (SELECT id FROM application_users WHERE user_id = $1))",
+    ] {
+        sqlx::query(statement).bind(user_id).execute(&mut *tx).await?;
+    }
+
     let memberships: Vec<(Uuid, Uuid)> = sqlx::query_as(
         r#"
         UPDATE application_users
-        SET status = 'revoked', updated_at = NOW()
+        SET status = 'revoked', public_metadata = '{}'::jsonb, private_metadata = '{}'::jsonb, external_id = NULL, updated_at = NOW()
         WHERE user_id = $1
         RETURNING environment_id, id
         "#,

@@ -250,11 +250,14 @@ pub async fn initiate_sign_up(
     let existing_user = user_repo::find_user_by_email(db, &normalized).await?;
     let password_hash = hash_password_async(password.to_string()).await?;
     if existing_verified.is_some() || existing_user.is_some() {
-        return Ok((ClientSignUpInitiatedResponse {
-            status: "pending_verification".to_string(),
-            email: normalized,
-            message: "If this email is eligible, a verification code has been sent".to_string(),
-        }, String::new()));
+        return Ok((
+            ClientSignUpInitiatedResponse {
+                status: "pending_verification".to_string(),
+                email: normalized,
+                message: "If this email is eligible, a verification code has been sent".to_string(),
+            },
+            String::new(),
+        ));
     }
 
     let code = generate_otp_code();
@@ -300,13 +303,13 @@ pub async fn initiate_sign_up(
     let to_email = normalized.clone();
     let otp_for_mail = code.clone();
     crate::services::email::send_branded_otp_email(
-            &cfg,
-            &brand,
-            &to_email,
-            &clean_name,
-            &otp_for_mail,
-        )
-        .await?;
+        &cfg,
+        &brand,
+        &to_email,
+        &clean_name,
+        &otp_for_mail,
+    )
+    .await?;
 
     Ok((
         ClientSignUpInitiatedResponse {
@@ -596,13 +599,13 @@ pub async fn resend_sign_up_otp(
     let cfg = config.clone();
     let mail_code = new_code.clone();
     crate::services::email::send_branded_otp_email(
-            &cfg,
-            &brand,
-            &pending.email,
-            &pending.display_name,
-            &mail_code,
-        )
-        .await?;
+        &cfg,
+        &brand,
+        &pending.email,
+        &pending.display_name,
+        &mail_code,
+    )
+    .await?;
 
     Ok(new_code)
 }
@@ -1310,13 +1313,13 @@ pub async fn request_password_reset(
     let cfg = config.clone();
     let token_copy = raw_token.clone();
     crate::services::email::send_branded_password_reset_email(
-            &cfg,
-            &brand,
-            &user.email,
-            &user.display_name,
-            &token_copy,
-        )
-        .await?;
+        &cfg,
+        &brand,
+        &user.email,
+        &user.display_name,
+        &token_copy,
+    )
+    .await?;
 
     Ok(Some(raw_token))
 }
@@ -1682,13 +1685,13 @@ pub async fn request_secondary_email_verification(
     let to_email = normalized.clone();
     let mail_code = code.clone();
     crate::services::email::send_branded_otp_email(
-            &cfg,
-            &brand,
-            &to_email,
-            &user.display_name,
-            &mail_code,
-        )
-        .await?;
+        &cfg,
+        &brand,
+        &to_email,
+        &user.display_name,
+        &mail_code,
+    )
+    .await?;
 
     Ok((
         SecondaryEmailVerificationResponse {

@@ -1100,9 +1100,19 @@ pub async fn replay_endpoint_time_range(
 }
 
 fn shared_webhook_client(allow_loopback: bool) -> Result<reqwest::Client, AppError> {
-    static PUBLIC_CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> = std::sync::OnceLock::new();
-    static LOOPBACK_CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> = std::sync::OnceLock::new();
-    let slot = if allow_loopback { &LOOPBACK_CLIENT } else { &PUBLIC_CLIENT };
-    slot.get_or_init(|| build_ssrf_safe_http_client(allow_loopback).map_err(|error| error.to_string()))
-        .as_ref().cloned().map_err(|error| AppError::Internal(error.clone()))
+    static PUBLIC_CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> =
+        std::sync::OnceLock::new();
+    static LOOPBACK_CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> =
+        std::sync::OnceLock::new();
+    let slot = if allow_loopback {
+        &LOOPBACK_CLIENT
+    } else {
+        &PUBLIC_CLIENT
+    };
+    slot.get_or_init(|| {
+        build_ssrf_safe_http_client(allow_loopback).map_err(|error| error.to_string())
+    })
+    .as_ref()
+    .cloned()
+    .map_err(|error| AppError::Internal(error.clone()))
 }

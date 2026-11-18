@@ -1,16 +1,31 @@
-use deadpool_redis::Pool;
 use crate::errors::AppError;
 use crate::services::tokens::hash_token;
+use deadpool_redis::Pool;
 
 pub async fn store(pool: &Pool, key: &str, code: &str, ttl: u64) -> Result<(), AppError> {
-    let mut connection = pool.get().await.map_err(|error| AppError::Redis(error.to_string()))?;
-    let _: () = redis::pipe().atomic().del(key).hset(key, "digest", hash_token(code)).hset(key, "attempts", 0).expire(key, ttl.min(i64::MAX as u64) as i64)
-        .query_async(&mut connection).await.map_err(|error| AppError::Redis(error.to_string()))?;
+    let mut connection = pool
+        .get()
+        .await
+        .map_err(|error| AppError::Redis(error.to_string()))?;
+    let ttl =
+        i64::try_from(ttl).map_err(|_| AppError::Validation("Invalid OTP lifetime".to_string()))?;
+    let _: () = redis::pipe()
+        .atomic()
+        .del(key)
+        .hset(key, "digest", hash_token(code))
+        .hset(key, "attempts", 0)
+        .expire(key, ttl)
+        .query_async(&mut connection)
+        .await
+        .map_err(|error| AppError::Redis(error.to_string()))?;
     Ok(())
 }
 
 pub async fn consume(pool: &Pool, key: &str, code: &str) -> Result<bool, AppError> {
-    let mut connection = pool.get().await.map_err(|error| AppError::Redis(error.to_string()))?;
+    let mut connection = pool
+        .get()
+        .await
+        .map_err(|error| AppError::Redis(error.to_string()))?;
     let outcome: i64 = redis::Script::new(r#"
 local expected = redis.call('HGET', KEYS[1], 'digest')
 if not expected then return 0 end

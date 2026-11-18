@@ -777,7 +777,8 @@ pub async fn handle_authorize(
         SsoPolicyDecision::IssueCode => {
             crate::services::metrics::record_oidc_authorize("issue_code");
             crate::services::metrics::record_oidc_sso_hit();
-            let (sso, user) = active_sso.ok_or_else(|| AppError::Internal("SSO session unavailable".to_string()))?;
+            let (sso, user) = active_sso
+                .ok_or_else(|| AppError::Internal("SSO session unavailable".to_string()))?;
             let mut tx = begin_tx(db).await?;
             let code =
                 ensure_membership_and_issue_code_in_tx(&mut tx, tx_id, &env, &user, sso.id, false)
@@ -792,7 +793,8 @@ pub async fn handle_authorize(
         SsoPolicyDecision::AutoJoinAndIssueCode => {
             crate::services::metrics::record_oidc_authorize("auto_join_and_issue_code");
             crate::services::metrics::record_oidc_sso_hit();
-            let (sso, user) = active_sso.ok_or_else(|| AppError::Internal("SSO session unavailable".to_string()))?;
+            let (sso, user) = active_sso
+                .ok_or_else(|| AppError::Internal("SSO session unavailable".to_string()))?;
             let mut tx = begin_tx(db).await?;
             let code =
                 ensure_membership_and_issue_code_in_tx(&mut tx, tx_id, &env, &user, sso.id, true)

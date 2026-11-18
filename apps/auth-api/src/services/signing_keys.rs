@@ -36,7 +36,7 @@ pub struct JwksDocument {
     pub keys: Vec<serde_json::Value>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct GeneratedEs256Key {
     pub kid: String,
     pub pkcs8_der: Zeroizing<Vec<u8>>,
@@ -253,4 +253,13 @@ pub async fn build_jwks_with_etag(
     let etag = format!("\"{}\"", hex::encode(hasher.finalize()));
 
     Ok((jwks, etag))
+}
+
+impl std::fmt::Debug for GeneratedEs256Key {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("GeneratedEs256Key")
+            .field("kid", &self.kid)
+            .finish_non_exhaustive()
+    }
 }

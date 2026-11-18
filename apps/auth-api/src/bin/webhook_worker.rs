@@ -90,6 +90,14 @@ async fn main() -> anyhow::Result<()> {
         "Starting webhook delivery worker"
     );
 
+    let retention_days = std::env::var("DATA_RETENTION_DAYS")
+        .unwrap_or_else(|_| "90".to_string())
+        .parse::<u32>()?;
+    anyhow::ensure!(
+        (30..=3650).contains(&retention_days),
+        "DATA_RETENTION_DAYS must be between 30 and 3650"
+    );
+    let mut retention_tick = tokio::time::interval(Duration::from_secs(3600));
     let mut shutdown = Box::pin(shutdown_signal());
     let mut ticker = tokio::time::interval(Duration::from_millis(poll_ms));
 
@@ -98,6 +106,11 @@ async fn main() -> anyhow::Result<()> {
             _ = &mut shutdown => {
                 info!("Received shutdown signal; draining webhook worker");
                 break;
+            }
+            _ = retention_tick.tick() => {
+                if let Err(error) = auth_api::services::retention::purge_expired_records(&db, retention_days).await {
+                    error!(error = %error, "Retention purge failed");
+                }
             }
             _ = ticker.tick() => {
                 match run_worker_tick(&db, &config, batch_size).await {

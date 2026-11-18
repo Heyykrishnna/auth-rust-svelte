@@ -454,7 +454,9 @@ async fn send_smtp_message(
     html_body: String,
 ) -> Result<(), AppError> {
     static SMTP_PERMITS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(16);
-    let _permit = SMTP_PERMITS.try_acquire().map_err(|_| AppError::TooManyRequests("Email delivery capacity reached; retry shortly".to_string()))?;
+    let _permit = SMTP_PERMITS.try_acquire().map_err(|_| {
+        AppError::TooManyRequests("Email delivery capacity reached; retry shortly".to_string())
+    })?;
     let clean_user = config.smtp_user.as_deref().map(|u| u.trim().to_string());
 
     let clean_pass = config
@@ -507,7 +509,8 @@ async fn send_smtp_message(
 
     let transport = transport_builder.build();
 
-    let result = tokio::time::timeout(std::time::Duration::from_secs(10), transport.send(email)).await;
+    let result =
+        tokio::time::timeout(std::time::Duration::from_secs(10), transport.send(email)).await;
     match result {
         Ok(Ok(_)) => {
             metrics::counter!("auth_email_delivery_total", "result" => "success").increment(1);

@@ -44,12 +44,17 @@ async fn main() -> Result<()> {
 
     let app = routes::build_router(state.clone());
     let metrics_host = std::env::var("METRICS_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let metrics_port = std::env::var("METRICS_PORT").unwrap_or_else(|_| "9090".to_string()).parse::<u16>()?;
-    let metrics_listener = tokio::net::TcpListener::bind((metrics_host.as_str(), metrics_port)).await?;
+    let metrics_port = std::env::var("METRICS_PORT")
+        .unwrap_or_else(|_| "9090".to_string())
+        .parse::<u16>()?;
+    let metrics_listener =
+        tokio::net::TcpListener::bind((metrics_host.as_str(), metrics_port)).await?;
     let (shutdown_sender, mut shutdown_receiver) = tokio::sync::watch::channel(false);
     let metrics_task = tokio::spawn(async move {
         axum::serve(metrics_listener, routes::metrics_router(state))
-            .with_graceful_shutdown(async move { let _ = shutdown_receiver.changed().await; })
+            .with_graceful_shutdown(async move {
+                let _ = shutdown_receiver.changed().await;
+            })
             .await
     });
 

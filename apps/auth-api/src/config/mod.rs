@@ -123,13 +123,18 @@ impl AppConfig {
             .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
             .unwrap_or(false);
 
-        let cookie_domain = env::var("COOKIE_DOMAIN").ok().filter(|value| !value.trim().is_empty());
+        let cookie_domain = env::var("COOKIE_DOMAIN")
+            .ok()
+            .filter(|value| !value.trim().is_empty());
         crate::middleware::rate_limit::trusted_proxy_ranges().map_err(anyhow::Error::msg)?;
         let production = env::var("APP_ENV")
             .map(|value| value.eq_ignore_ascii_case("production"))
             .unwrap_or(false);
         let issuer = url::Url::parse(&issuer_url).context("ISSUER_URL must be an absolute URL")?;
-        if issuer.host_str().is_none() || !issuer.username().is_empty() || issuer.password().is_some() {
+        if issuer.host_str().is_none()
+            || !issuer.username().is_empty()
+            || issuer.password().is_some()
+        {
             anyhow::bail!("ISSUER_URL must have a host and no credentials");
         }
         if production && (!cookie_secure || issuer.scheme() != "https") {
@@ -244,11 +249,21 @@ fn required_secret(name: &str) -> Result<String> {
     let value = env::var(name).with_context(|| format!("{name} must be explicitly specified"))?;
     let normalized = value.to_ascii_lowercase();
     if value.trim().len() < 32
-        || ["change_me", "change-me", "replace_me", "replace-me", "your_secret", "dev_jwt", "dev_signing"]
-            .iter()
-            .any(|placeholder| normalized.contains(placeholder))
+        || [
+            "change_me",
+            "change-me",
+            "replace_me",
+            "replace-me",
+            "your_secret",
+            "dev_jwt",
+            "dev_signing",
+        ]
+        .iter()
+        .any(|placeholder| normalized.contains(placeholder))
     {
-        anyhow::bail!("{name} must contain at least 32 characters of non-placeholder secret material");
+        anyhow::bail!(
+            "{name} must contain at least 32 characters of non-placeholder secret material"
+        );
     }
     Ok(value)
 }
@@ -262,6 +277,19 @@ impl std::fmt::Debug for AppConfig {
             .field("db_max_connections", &self.db_max_connections)
             .field("cookie_secure", &self.cookie_secure)
             .finish_non_exhaustive()
+    }
+}
+
+impl Drop for AppConfig {
+    fn drop(&mut self) {
+        use zeroize::Zeroize;
+        self.database_url.zeroize();
+        self.redis_url.zeroize();
+        self.jwt_secret.zeroize();
+        self.signing_key_kek.zeroize();
+        self.google_client_secret.zeroize();
+        self.github_client_secret.zeroize();
+        self.smtp_pass.zeroize();
     }
 }
 

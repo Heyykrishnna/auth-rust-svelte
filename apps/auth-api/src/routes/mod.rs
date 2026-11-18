@@ -11,8 +11,8 @@ use axum_prometheus::metrics_exporter_prometheus::PrometheusHandle;
 use axum_prometheus::PrometheusMetricLayer;
 use std::sync::OnceLock;
 use std::time::Duration;
-use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::catch_panic::CatchPanicLayer;
+use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
@@ -79,17 +79,22 @@ pub fn build_router(state: AppState) -> Router {
 }
 
 pub fn metrics_router(state: AppState) -> Router {
-    let (_, handle) = PROMETHEUS_PAIR.get_or_init(|| {
-        let pair = PrometheusMetricLayer::pair();
-        platform_metrics::init_metrics_descriptors();
-        pair
-    }).clone();
-    Router::new().route("/metrics", get(move || {
-        let db = state.db.clone();
-        let handle = handle.clone();
-        async move {
-            platform_metrics::refresh_infrastructure_gauges(&db).await;
-            handle.render()
-        }
-    }))
+    let (_, handle) = PROMETHEUS_PAIR
+        .get_or_init(|| {
+            let pair = PrometheusMetricLayer::pair();
+            platform_metrics::init_metrics_descriptors();
+            pair
+        })
+        .clone();
+    Router::new().route(
+        "/metrics",
+        get(move || {
+            let db = state.db.clone();
+            let handle = handle.clone();
+            async move {
+                platform_metrics::refresh_infrastructure_gauges(&db).await;
+                handle.render()
+            }
+        }),
+    )
 }
