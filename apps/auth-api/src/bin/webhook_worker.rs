@@ -97,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
         (30..=3650).contains(&retention_days),
         "DATA_RETENTION_DAYS must be between 30 and 3650"
     );
-    let mut retention_tick = tokio::time::interval(Duration::from_secs(3600));
+    let mut retention_tick = tokio::time::interval(Duration::from_secs(60));
     let mut shutdown = Box::pin(shutdown_signal());
     let mut ticker = tokio::time::interval(Duration::from_millis(poll_ms));
 
@@ -108,8 +108,12 @@ async fn main() -> anyhow::Result<()> {
                 break;
             }
             _ = retention_tick.tick() => {
-                if let Err(error) = auth_api::services::retention::purge_expired_records(&db, retention_days).await {
-                    error!(error = %error, "Retention purge failed");
+                for _ in 0..10 {
+                    match auth_api::services::retention::purge_expired_records(&db, retention_days).await {
+                        Ok(removed) if removed >= 500 => {},
+                        Ok(_) => break,
+                        Err(error) => { error!(error = %error, "Retention purge failed"); break; }
+                    }
                 }
             }
             _ = ticker.tick() => {
