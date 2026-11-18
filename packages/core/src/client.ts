@@ -2,22 +2,40 @@ import { base64UrlToBytes, bytesToUtf8, randomBase64Url, sha256Base64Url } from 
 import { AuthSdkError, TokenVerificationError } from './errors.js';
 import { fetchWithPolicy, parseJsonResponse, type FetchLike } from './http.js';
 import type {
+	ActiveOrganizationSwitchResponse,
 	ClientAuthResponse,
 	ClientSessionView,
 	ClientSignUpInitiatedResponse,
 	ClientTokenRefreshResponse,
 	ClientUser,
-	OidcTokenResponse
+	CreatedInvitationResponse,
+	IdentityDataExportResponse,
+	LinkedOAuthAccountView,
+	OidcTokenResponse,
+	OrganizationInvitationView,
+	OrganizationMemberView,
+	OrganizationView,
+	UserEmailView,
+	UserOrganizationMembership
 } from './types.js';
 
 export type {
+	ActiveOrganizationSwitchResponse,
 	ClientAuthResponse,
 	ClientSessionView,
 	ClientSignUpInitiatedResponse,
 	ClientTokenRefreshResponse,
 	ClientUser,
+	CreatedInvitationResponse,
 	FetchLike,
-	OidcTokenResponse
+	IdentityDataExportResponse,
+	LinkedOAuthAccountView,
+	OidcTokenResponse,
+	OrganizationInvitationView,
+	OrganizationMemberView,
+	OrganizationView,
+	UserEmailView,
+	UserOrganizationMembership
 };
 
 export interface StorageAdapter {
@@ -44,6 +62,10 @@ export interface AuthSessionSnapshot {
 	sessionId: string | null;
 	expiresAt: number | null;
 	user: ClientUser | null;
+	activeOrganizationId: string | null;
+	orgSlug: string | null;
+	orgRole: string | null;
+	orgPermissions: string[];
 }
 
 export interface RedirectSignInOptions {
@@ -129,6 +151,49 @@ export interface AuthClient {
 	updateProfile(input: { displayName: string; avatarUrl?: string | null }): Promise<ClientUser>;
 	listSessions(): Promise<ClientSessionView[]>;
 	revokeSession(sessionId: string): Promise<void>;
+	listOrganizations(): Promise<UserOrganizationMembership[]>;
+	createOrganization(input: {
+		name: string;
+		slug: string;
+		logoUrl?: string | null;
+		metadata?: Record<string, unknown>;
+	}): Promise<OrganizationView>;
+	getOrganization(orgId: string): Promise<OrganizationView>;
+	updateOrganization(
+		orgId: string,
+		input: {
+			name?: string;
+			slug?: string;
+			logoUrl?: string | null;
+			status?: string;
+			metadata?: Record<string, unknown>;
+		}
+	): Promise<OrganizationView>;
+	deleteOrganization(orgId: string): Promise<void>;
+	listOrganizationMembers(orgId: string): Promise<OrganizationMemberView[]>;
+	updateOrganizationMemberRole(
+		orgId: string,
+		memberId: string,
+		roleSlug: string
+	): Promise<OrganizationMemberView>;
+	removeOrganizationMember(orgId: string, memberId: string): Promise<void>;
+	listOrganizationInvitations(orgId: string): Promise<OrganizationInvitationView[]>;
+	createOrganizationInvitation(
+		orgId: string,
+		input: { email: string; roleSlug?: string; expiresInDays?: number }
+	): Promise<CreatedInvitationResponse>;
+	revokeOrganizationInvitation(orgId: string, invitationId: string): Promise<void>;
+	acceptOrganizationInvitation(token: string): Promise<OrganizationMemberView>;
+	switchActiveOrganization(organizationId: string | null): Promise<ActiveOrganizationSwitchResponse>;
+	listEmails(): Promise<UserEmailView[]>;
+	addEmail(email: string): Promise<UserEmailView>;
+	verifyEmailAddress(input: { email: string; code: string }): Promise<UserEmailView>;
+	setPrimaryEmail(emailId: string): Promise<UserEmailView>;
+	removeEmail(emailId: string): Promise<void>;
+	listOAuthAccounts(): Promise<LinkedOAuthAccountView[]>;
+	unlinkOAuthAccount(provider: string): Promise<void>;
+	exportAccountData(): Promise<IdentityDataExportResponse>;
+	deleteAccount(): Promise<{ deleted: boolean; notified_environments: number }>;
 	getSession(): AuthSessionSnapshot;
 	setSession(snapshot: Partial<AuthSessionSnapshot>): void;
 	subscribe(listener: (snapshot: AuthSessionSnapshot) => void): () => void;
@@ -148,7 +213,11 @@ export function createAuthClient(config: AuthClientConfig): AuthClient {
 		idToken: null,
 		sessionId: null,
 		expiresAt: null,
-		user: null
+		user: null,
+		activeOrganizationId: null,
+		orgSlug: null,
+		orgRole: null,
+		orgPermissions: []
 	};
 
 	const listeners = new Set<(snapshot: AuthSessionSnapshot) => void>();
@@ -447,7 +516,11 @@ export function createAuthClient(config: AuthClientConfig): AuthClient {
 				idToken: null,
 				sessionId: null,
 				expiresAt: null,
-				user: null
+				user: null,
+				activeOrganizationId: null,
+				orgSlug: null,
+				orgRole: null,
+				orgPermissions: []
 			});
 			const logoutUrl = `${baseUrl}/oauth2/logout?${params.toString()}`;
 			if (typeof globalThis.window !== 'undefined' && globalThis.window.location) {
@@ -480,7 +553,11 @@ export function createAuthClient(config: AuthClientConfig): AuthClient {
 			idToken: null,
 			sessionId: null,
 			expiresAt: null,
-			user: null
+			user: null,
+			activeOrganizationId: null,
+			orgSlug: null,
+			orgRole: null,
+			orgPermissions: []
 		});
 		return {};
 	}
@@ -544,6 +621,372 @@ export function createAuthClient(config: AuthClientConfig): AuthClient {
 		}
 	}
 
+	async function listOrganizations(): Promise<UserOrganizationMembership[]> {
+		const res = await fetchWithPolicy(fetchImpl, `${baseUrl}/v1/client/organizations`, {
+			method: 'GET',
+			headers: baseHeaders(true),
+			timeoutMs,
+			maxRetries,
+			idempotent: true
+		});
+		return parseJsonResponse<UserOrganizationMembership[]>(res);
+	}
+
+	async function createOrganization(input: {
+		name: string;
+		slug: string;
+		logoUrl?: string | null;
+		metadata?: Record<string, unknown>;
+	}): Promise<OrganizationView> {
+		const res = await fetchWithPolicy(fetchImpl, `${baseUrl}/v1/client/organizations`, {
+			method: 'POST',
+			headers: baseHeaders(true),
+			body: JSON.stringify({
+				name: input.name,
+				slug: input.slug,
+				logo_url: input.logoUrl ?? null,
+				metadata: input.metadata
+			}),
+			timeoutMs,
+			idempotent: false
+		});
+		return parseJsonResponse<OrganizationView>(res);
+	}
+
+	async function getOrganization(orgId: string): Promise<OrganizationView> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}`,
+			{
+				method: 'GET',
+				headers: baseHeaders(true),
+				timeoutMs,
+				maxRetries,
+				idempotent: true
+			}
+		);
+		return parseJsonResponse<OrganizationView>(res);
+	}
+
+	async function updateOrganization(
+		orgId: string,
+		input: {
+			name?: string;
+			slug?: string;
+			logoUrl?: string | null;
+			status?: string;
+			metadata?: Record<string, unknown>;
+		}
+	): Promise<OrganizationView> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}`,
+			{
+				method: 'PATCH',
+				headers: baseHeaders(true),
+				body: JSON.stringify({
+					name: input.name,
+					slug: input.slug,
+					logo_url: input.logoUrl,
+					status: input.status,
+					metadata: input.metadata
+				}),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		return parseJsonResponse<OrganizationView>(res);
+	}
+
+	async function deleteOrganization(orgId: string): Promise<void> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}`,
+			{
+				method: 'DELETE',
+				headers: baseHeaders(true),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		if (!res.ok) {
+			await parseJsonResponse<unknown>(res);
+		}
+	}
+
+	async function listOrganizationMembers(orgId: string): Promise<OrganizationMemberView[]> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}/members`,
+			{
+				method: 'GET',
+				headers: baseHeaders(true),
+				timeoutMs,
+				maxRetries,
+				idempotent: true
+			}
+		);
+		return parseJsonResponse<OrganizationMemberView[]>(res);
+	}
+
+	async function updateOrganizationMemberRole(
+		orgId: string,
+		memberId: string,
+		roleSlug: string
+	): Promise<OrganizationMemberView> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(memberId)}`,
+			{
+				method: 'PATCH',
+				headers: baseHeaders(true),
+				body: JSON.stringify({ role_slug: roleSlug }),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		return parseJsonResponse<OrganizationMemberView>(res);
+	}
+
+	async function removeOrganizationMember(orgId: string, memberId: string): Promise<void> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(memberId)}`,
+			{
+				method: 'DELETE',
+				headers: baseHeaders(true),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		if (!res.ok) {
+			await parseJsonResponse<unknown>(res);
+		}
+	}
+
+	async function listOrganizationInvitations(orgId: string): Promise<OrganizationInvitationView[]> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}/invitations`,
+			{
+				method: 'GET',
+				headers: baseHeaders(true),
+				timeoutMs,
+				maxRetries,
+				idempotent: true
+			}
+		);
+		return parseJsonResponse<OrganizationInvitationView[]>(res);
+	}
+
+	async function createOrganizationInvitation(
+		orgId: string,
+		input: { email: string; roleSlug?: string; expiresInDays?: number }
+	): Promise<CreatedInvitationResponse> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}/invitations`,
+			{
+				method: 'POST',
+				headers: baseHeaders(true),
+				body: JSON.stringify({
+					email: input.email,
+					role_slug: input.roleSlug,
+					expires_in_days: input.expiresInDays
+				}),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		return parseJsonResponse<CreatedInvitationResponse>(res);
+	}
+
+	async function revokeOrganizationInvitation(orgId: string, invitationId: string): Promise<void> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/${encodeURIComponent(orgId)}/invitations/${encodeURIComponent(invitationId)}`,
+			{
+				method: 'DELETE',
+				headers: baseHeaders(true),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		if (!res.ok) {
+			await parseJsonResponse<unknown>(res);
+		}
+	}
+
+	async function acceptOrganizationInvitation(token: string): Promise<OrganizationMemberView> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/organizations/invitations/accept`,
+			{
+				method: 'POST',
+				headers: baseHeaders(true),
+				body: JSON.stringify({ token }),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		return parseJsonResponse<OrganizationMemberView>(res);
+	}
+
+	async function switchActiveOrganization(
+		organizationId: string | null
+	): Promise<ActiveOrganizationSwitchResponse> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/sessions/active-organization`,
+			{
+				method: 'POST',
+				headers: baseHeaders(true),
+				body: JSON.stringify({ organization_id: organizationId }),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		const switched = await parseJsonResponse<ActiveOrganizationSwitchResponse>(res);
+		updateState({
+			accessToken: switched.access_token,
+			expiresAt: Date.now() + switched.expires_in * 1000,
+			activeOrganizationId: switched.active_organization_id,
+			orgSlug: switched.org_slug,
+			orgRole: switched.org_role,
+			orgPermissions: switched.org_permissions
+		});
+		return switched;
+	}
+
+	async function listEmails(): Promise<UserEmailView[]> {
+		const res = await fetchWithPolicy(fetchImpl, `${baseUrl}/v1/client/users/me/emails`, {
+			method: 'GET',
+			headers: baseHeaders(true),
+			timeoutMs,
+			maxRetries,
+			idempotent: true
+		});
+		return parseJsonResponse<UserEmailView[]>(res);
+	}
+
+	async function addEmail(email: string): Promise<UserEmailView> {
+		const res = await fetchWithPolicy(fetchImpl, `${baseUrl}/v1/client/users/me/emails`, {
+			method: 'POST',
+			headers: baseHeaders(true),
+			body: JSON.stringify({ email }),
+			timeoutMs,
+			idempotent: false
+		});
+		return parseJsonResponse<UserEmailView>(res);
+	}
+
+	async function verifyEmailAddress(input: {
+		email: string;
+		code: string;
+	}): Promise<UserEmailView> {
+		const res = await fetchWithPolicy(fetchImpl, `${baseUrl}/v1/client/users/me/emails/verify`, {
+			method: 'POST',
+			headers: baseHeaders(true),
+			body: JSON.stringify(input),
+			timeoutMs,
+			idempotent: false
+		});
+		return parseJsonResponse<UserEmailView>(res);
+	}
+
+	async function setPrimaryEmail(emailId: string): Promise<UserEmailView> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/users/me/emails/${encodeURIComponent(emailId)}/primary`,
+			{
+				method: 'POST',
+				headers: baseHeaders(true),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		return parseJsonResponse<UserEmailView>(res);
+	}
+
+	async function removeEmail(emailId: string): Promise<void> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/users/me/emails/${encodeURIComponent(emailId)}`,
+			{
+				method: 'DELETE',
+				headers: baseHeaders(true),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		if (!res.ok) {
+			await parseJsonResponse<unknown>(res);
+		}
+	}
+
+	async function listOAuthAccounts(): Promise<LinkedOAuthAccountView[]> {
+		const res = await fetchWithPolicy(fetchImpl, `${baseUrl}/v1/client/users/me/oauth-accounts`, {
+			method: 'GET',
+			headers: baseHeaders(true),
+			timeoutMs,
+			maxRetries,
+			idempotent: true
+		});
+		return parseJsonResponse<LinkedOAuthAccountView[]>(res);
+	}
+
+	async function unlinkOAuthAccount(provider: string): Promise<void> {
+		const res = await fetchWithPolicy(
+			fetchImpl,
+			`${baseUrl}/v1/client/users/me/oauth-accounts/${encodeURIComponent(provider)}`,
+			{
+				method: 'DELETE',
+				headers: baseHeaders(true),
+				timeoutMs,
+				idempotent: false
+			}
+		);
+		if (!res.ok) {
+			await parseJsonResponse<unknown>(res);
+		}
+	}
+
+	async function exportAccountData(): Promise<IdentityDataExportResponse> {
+		const res = await fetchWithPolicy(fetchImpl, `${baseUrl}/v1/client/users/me/export`, {
+			method: 'GET',
+			headers: baseHeaders(true),
+			timeoutMs,
+			maxRetries,
+			idempotent: true
+		});
+		return parseJsonResponse<IdentityDataExportResponse>(res);
+	}
+
+	async function deleteAccount(): Promise<{ deleted: boolean; notified_environments: number }> {
+		const res = await fetchWithPolicy(fetchImpl, `${baseUrl}/v1/client/users/me`, {
+			method: 'DELETE',
+			headers: baseHeaders(true),
+			timeoutMs,
+			idempotent: false
+		});
+		const result = await parseJsonResponse<{ deleted: boolean; notified_environments: number }>(
+			res
+		);
+		updateState({
+			accessToken: null,
+			refreshToken: null,
+			idToken: null,
+			sessionId: null,
+			expiresAt: null,
+			user: null,
+			activeOrganizationId: null,
+			orgSlug: null,
+			orgRole: null,
+			orgPermissions: []
+		});
+		return result;
+	}
+
 	return {
 		buildAuthorizeUrl,
 		signInWithRedirect,
@@ -560,6 +1003,28 @@ export function createAuthClient(config: AuthClientConfig): AuthClient {
 		updateProfile,
 		listSessions,
 		revokeSession,
+		listOrganizations,
+		createOrganization,
+		getOrganization,
+		updateOrganization,
+		deleteOrganization,
+		listOrganizationMembers,
+		updateOrganizationMemberRole,
+		removeOrganizationMember,
+		listOrganizationInvitations,
+		createOrganizationInvitation,
+		revokeOrganizationInvitation,
+		acceptOrganizationInvitation,
+		switchActiveOrganization,
+		listEmails,
+		addEmail,
+		verifyEmailAddress,
+		setPrimaryEmail,
+		removeEmail,
+		listOAuthAccounts,
+		unlinkOAuthAccount,
+		exportAccountData,
+		deleteAccount,
 		getSession: () => ({ ...state }),
 		setSession: (patch) => updateState(patch),
 		subscribe: (listener) => {

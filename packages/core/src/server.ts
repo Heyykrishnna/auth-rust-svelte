@@ -5,10 +5,16 @@ import type {
 	BackendSessionStatus,
 	BackendUserSyncItem,
 	EcPublicJwk,
+	EnvironmentPermissionView,
+	EnvironmentRoleView,
 	IdTokenClaims,
 	JwksDocument,
+	OrganizationMemberView,
+	OrganizationView,
 	PaginatedBackendEvents,
+	PaginatedBackendOrganizations,
 	PaginatedBackendUsers,
+	PermissionCheckInput,
 	TenantAccessTokenClaims
 } from './types.js';
 
@@ -16,13 +22,63 @@ export type {
 	BackendSessionStatus,
 	BackendUserSyncItem,
 	EcPublicJwk,
+	EnvironmentPermissionView,
+	EnvironmentRoleView,
 	FetchLike,
 	IdTokenClaims,
 	JwksDocument,
+	OrganizationMemberView,
+	OrganizationView,
 	PaginatedBackendEvents,
+	PaginatedBackendOrganizations,
 	PaginatedBackendUsers,
+	PermissionCheckInput,
 	TenantAccessTokenClaims
 };
+
+export function hasPermission(
+	claims: Pick<
+		TenantAccessTokenClaims,
+		'roles' | 'permissions' | 'org_id' | 'org_role' | 'org_permissions'
+	> | null,
+	check: PermissionCheckInput
+): boolean {
+	if (!claims) {
+		return false;
+	}
+	if (check.orgId && claims.org_id !== check.orgId) {
+		if (check.permission && claims.permissions.includes(check.permission)) {
+			if (!check.role || claims.roles.includes(check.role)) {
+				return true;
+			}
+		}
+		if (check.role && !check.permission && claims.roles.includes(check.role)) {
+			return true;
+		}
+		return false;
+	}
+
+	const activeOrgMatches = !check.orgId || claims.org_id === check.orgId;
+	const orgPermissions = activeOrgMatches && claims.org_id ? (claims.org_permissions ?? []) : [];
+
+	if (check.permission) {
+		const allowed =
+			claims.permissions.includes(check.permission) || orgPermissions.includes(check.permission);
+		if (!allowed) {
+			return false;
+		}
+	}
+
+	if (check.role) {
+		const roleAllowed =
+			claims.roles.includes(check.role) || (activeOrgMatches && claims.org_role === check.role);
+		if (!roleAllowed) {
+			return false;
+		}
+	}
+
+	return Boolean(check.permission || check.role);
+}
 
 export interface AuthServerConfig {
 	issuerUrl: string;
@@ -49,6 +105,13 @@ export interface VerifyAccessTokenOptions {
 export interface ListUsersParams {
 	updatedSince?: string | Date;
 	cursor?: string;
+	limit?: number;
+}
+
+export interface ListOrganizationsParams {
+	updatedSince?: string | Date;
+	cursor?: string;
+	q?: string;
 	limit?: number;
 }
 
@@ -129,6 +192,43 @@ export interface AuthServer {
 	revokeSession(sessionId: string): Promise<BackendSessionStatus>;
 	revokeAllUserSessions(appUserId: string): Promise<{ revoked_sessions: number }>;
 	listEvents(params?: ListEventsParams): Promise<PaginatedBackendEvents>;
+	listOrganizations(params?: ListOrganizationsParams): Promise<PaginatedBackendOrganizations>;
+	iterateOrganizationsUpdatedSince(
+		updatedSince?: string | Date,
+		options?: { pageSize?: number }
+	): AsyncGenerator<OrganizationView, void, unknown>;
+	getOrganization(orgId: string): Promise<OrganizationView>;
+	createOrganization(input: {
+		name: string;
+		slug: string;
+		logoUrl?: string | null;
+		metadata?: Record<string, unknown>;
+		creatorAppUserId?: string;
+	}): Promise<OrganizationView>;
+	updateOrganization(
+		orgId: string,
+		input: {
+			name?: string;
+			slug?: string;
+			logoUrl?: string | null;
+			status?: string;
+			metadata?: Record<string, unknown>;
+		}
+	): Promise<OrganizationView>;
+	deleteOrganization(orgId: string): Promise<void>;
+	listOrganizationMembers(orgId: string): Promise<OrganizationMemberView[]>;
+	addOrganizationMember(
+		orgId: string,
+		input: { applicationUserId: string; roleSlug?: string }
+	): Promise<OrganizationMemberView>;
+	updateOrganizationMemberRole(
+		orgId: string,
+		memberId: string,
+		roleSlug: string
+	): Promise<OrganizationMemberView>;
+	removeOrganizationMember(orgId: string, memberId: string): Promise<void>;
+	listPermissions(): Promise<EnvironmentPermissionView[]>;
+	listRoles(): Promise<EnvironmentRoleView[]>;
 }
 
 export function createAuthServer(config: AuthServerConfig): AuthServer {
@@ -471,6 +571,221 @@ export function createAuthServer(config: AuthServerConfig): AuthServer {
 				idempotent: true
 			});
 			return parseJsonResponse<PaginatedBackendEvents>(res);
+		},
+
+		listOrganizations: async (params = {}) => {
+			const qs = new URLSearchParams();
+			if (params.updatedSince) {
+				const iso =
+					params.updatedSince instanceof Date
+						? params.updatedSince.toISOString()
+						: params.updatedSince;
+				qs.set('updated_since', iso);
+			}
+			if (params.cursor) qs.set('cursor', params.cursor);
+			if (params.q) qs.set('q', params.q);
+			if (typeof params.limit === 'number') qs.set('limit', String(params.limit));
+			const suffix = qs.toString() ? `?${qs.toString()}` : '';
+			const res = await fetchWithPolicy(
+				fetchImpl,
+				`${issuerUrl}/v1/backend/organizations${suffix}`,
+				{
+					method: 'GET',
+					headers: requireSecretKeyHeaders(),
+					timeoutMs,
+					maxRetries: 2,
+					idempotent: true
+				}
+			);
+			return parseJsonResponse<PaginatedBackendOrganizations>(res);
+		},
+
+		iterateOrganizationsUpdatedSince: async function* (updatedSince, options = {}) {
+			const pageSize = options.pageSize ?? 100;
+			let cursor: string | undefined;
+			while (true) {
+				const qs = new URLSearchParams();
+				if (updatedSince) {
+					const iso = updatedSince instanceof Date ? updatedSince.toISOString() : updatedSince;
+					qs.set('updated_since', iso);
+				}
+				if (cursor) qs.set('cursor', cursor);
+				qs.set('limit', String(pageSize));
+				const res = await fetchWithPolicy(
+					fetchImpl,
+					`${issuerUrl}/v1/backend/organizations?${qs.toString()}`,
+					{
+						method: 'GET',
+						headers: requireSecretKeyHeaders(),
+						timeoutMs,
+						maxRetries: 2,
+						idempotent: true
+					}
+				);
+				const page = await parseJsonResponse<PaginatedBackendOrganizations>(res);
+				for (const item of page.data) {
+					yield item;
+				}
+				if (!page.has_more || !page.next_cursor) {
+					break;
+				}
+				cursor = page.next_cursor;
+			}
+		},
+
+		getOrganization: async (orgId) => {
+			const res = await fetchWithPolicy(
+				fetchImpl,
+				`${issuerUrl}/v1/backend/organizations/${encodeURIComponent(orgId)}`,
+				{
+					method: 'GET',
+					headers: requireSecretKeyHeaders(),
+					timeoutMs,
+					maxRetries: 2,
+					idempotent: true
+				}
+			);
+			return parseJsonResponse<OrganizationView>(res);
+		},
+
+		createOrganization: async (input) => {
+			const res = await fetchWithPolicy(fetchImpl, `${issuerUrl}/v1/backend/organizations`, {
+				method: 'POST',
+				headers: requireSecretKeyHeaders(),
+				body: JSON.stringify({
+					name: input.name,
+					slug: input.slug,
+					logo_url: input.logoUrl ?? null,
+					metadata: input.metadata,
+					creator_app_user_id: input.creatorAppUserId
+				}),
+				timeoutMs,
+				idempotent: false
+			});
+			return parseJsonResponse<OrganizationView>(res);
+		},
+
+		updateOrganization: async (orgId, input) => {
+			const res = await fetchWithPolicy(
+				fetchImpl,
+				`${issuerUrl}/v1/backend/organizations/${encodeURIComponent(orgId)}`,
+				{
+					method: 'PATCH',
+					headers: requireSecretKeyHeaders(),
+					body: JSON.stringify({
+						name: input.name,
+						slug: input.slug,
+						logo_url: input.logoUrl,
+						status: input.status,
+						metadata: input.metadata
+					}),
+					timeoutMs,
+					idempotent: false
+				}
+			);
+			return parseJsonResponse<OrganizationView>(res);
+		},
+
+		deleteOrganization: async (orgId) => {
+			const res = await fetchWithPolicy(
+				fetchImpl,
+				`${issuerUrl}/v1/backend/organizations/${encodeURIComponent(orgId)}`,
+				{
+					method: 'DELETE',
+					headers: requireSecretKeyHeaders(),
+					timeoutMs,
+					idempotent: false
+				}
+			);
+			if (!res.ok) {
+				await parseJsonResponse<unknown>(res);
+			}
+		},
+
+		listOrganizationMembers: async (orgId) => {
+			const res = await fetchWithPolicy(
+				fetchImpl,
+				`${issuerUrl}/v1/backend/organizations/${encodeURIComponent(orgId)}/members`,
+				{
+					method: 'GET',
+					headers: requireSecretKeyHeaders(),
+					timeoutMs,
+					maxRetries: 2,
+					idempotent: true
+				}
+			);
+			return parseJsonResponse<OrganizationMemberView[]>(res);
+		},
+
+		addOrganizationMember: async (orgId, input) => {
+			const res = await fetchWithPolicy(
+				fetchImpl,
+				`${issuerUrl}/v1/backend/organizations/${encodeURIComponent(orgId)}/members`,
+				{
+					method: 'POST',
+					headers: requireSecretKeyHeaders(),
+					body: JSON.stringify({
+						application_user_id: input.applicationUserId,
+						role_slug: input.roleSlug
+					}),
+					timeoutMs,
+					idempotent: false
+				}
+			);
+			return parseJsonResponse<OrganizationMemberView>(res);
+		},
+
+		updateOrganizationMemberRole: async (orgId, memberId, roleSlug) => {
+			const res = await fetchWithPolicy(
+				fetchImpl,
+				`${issuerUrl}/v1/backend/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(memberId)}`,
+				{
+					method: 'PATCH',
+					headers: requireSecretKeyHeaders(),
+					body: JSON.stringify({ role_slug: roleSlug }),
+					timeoutMs,
+					idempotent: false
+				}
+			);
+			return parseJsonResponse<OrganizationMemberView>(res);
+		},
+
+		removeOrganizationMember: async (orgId, memberId) => {
+			const res = await fetchWithPolicy(
+				fetchImpl,
+				`${issuerUrl}/v1/backend/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(memberId)}`,
+				{
+					method: 'DELETE',
+					headers: requireSecretKeyHeaders(),
+					timeoutMs,
+					idempotent: false
+				}
+			);
+			if (!res.ok) {
+				await parseJsonResponse<unknown>(res);
+			}
+		},
+
+		listPermissions: async () => {
+			const res = await fetchWithPolicy(fetchImpl, `${issuerUrl}/v1/backend/permissions`, {
+				method: 'GET',
+				headers: requireSecretKeyHeaders(),
+				timeoutMs,
+				maxRetries: 2,
+				idempotent: true
+			});
+			return parseJsonResponse<EnvironmentPermissionView[]>(res);
+		},
+
+		listRoles: async () => {
+			const res = await fetchWithPolicy(fetchImpl, `${issuerUrl}/v1/backend/roles`, {
+				method: 'GET',
+				headers: requireSecretKeyHeaders(),
+				timeoutMs,
+				maxRetries: 2,
+				idempotent: true
+			});
+			return parseJsonResponse<EnvironmentRoleView[]>(res);
 		}
 	};
 }

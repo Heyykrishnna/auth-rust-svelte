@@ -13,7 +13,7 @@ import {
 	utf8ToBytes
 } from '../dist/index.js';
 import { createAuthClient } from '../dist/client.js';
-import { createAuthServer } from '../dist/server.js';
+import { createAuthServer, hasPermission } from '../dist/server.js';
 import {
 	WEBHOOK_EVENT_ID_HEADER,
 	WEBHOOK_SIGNATURE_HEADER,
@@ -536,6 +536,110 @@ test('webhooks verify HMAC-SHA256 with dual-secret rotation, reject tamper/repla
 	});
 	assert.equal(projected.sub, 'u_9');
 	assert.equal(projected.identityVersion, 4);
+});
+
+test('Phase 08: hasPermission enforces org boundaries and client/server org helpers work cleanly', async () => {
+	const claims = {
+		roles: ['user'],
+		permissions: ['profile.read'],
+		org_id: 'org_acme',
+		org_role: 'org:admin',
+		org_permissions: ['org:billing:write', 'org:members:manage']
+	};
+
+	assert.equal(hasPermission(claims, { permission: 'profile.read' }), true);
+	assert.equal(hasPermission(claims, { permission: 'org:billing:write', orgId: 'org_acme' }), true);
+	assert.equal(hasPermission(claims, { permission: 'org:billing:write', orgId: 'org_other' }), false);
+	assert.equal(hasPermission(claims, { role: 'org:admin', orgId: 'org_acme' }), true);
+	assert.equal(hasPermission(claims, { role: 'org:admin', orgId: 'org_other' }), false);
+	assert.equal(hasPermission(null, { permission: 'profile.read' }), false);
+
+	const client = createAuthClient({
+		issuerUrl: 'https://auth.example.test',
+		publishableKey: 'pub-ferrum',
+		fetch: async (input) => {
+			const url = String(input);
+			if (url.endsWith('/v1/client/sessions/active-organization')) {
+				return new Response(
+					JSON.stringify({
+						access_token: 'switched-jwt',
+						token_type: 'Bearer',
+						expires_in: 900,
+						active_organization_id: 'org_acme',
+						org_slug: 'acme',
+						org_role: 'org:owner',
+						org_permissions: ['org:billing:write']
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				);
+			}
+			return new Response(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'not found' } }), {
+				status: 404
+			});
+		}
+	});
+	client.setSession({ accessToken: 'initial-jwt' });
+	const switched = await client.switchActiveOrganization('org_acme');
+	assert.equal(switched.org_slug, 'acme');
+	assert.equal(client.getSession().activeOrganizationId, 'org_acme');
+	assert.deepEqual(client.getSession().orgPermissions, ['org:billing:write']);
+
+	let orgPage = 0;
+	const orgPages = [
+		{
+			data: [
+				{
+					id: 'org_1',
+					environment_id: 'env_1',
+					slug: 'acme',
+					name: 'Acme',
+					logo_url: null,
+					status: 'active',
+					metadata: {},
+					version: 1,
+					member_count: 3,
+					created_at: '2026-01-01T00:00:00Z',
+					updated_at: '2026-01-02T00:00:00Z'
+				}
+			],
+			next_cursor: 'cur_2',
+			has_more: true
+		},
+		{
+			data: [
+				{
+					id: 'org_2',
+					environment_id: 'env_1',
+					slug: 'beta',
+					name: 'Beta',
+					logo_url: null,
+					status: 'active',
+					metadata: {},
+					version: 2,
+					member_count: 1,
+					created_at: '2026-01-01T00:00:00Z',
+					updated_at: '2026-01-03T00:00:00Z'
+				}
+			],
+			next_cursor: null,
+			has_more: false
+		}
+	];
+	const server = createAuthServer({
+		issuerUrl: 'https://auth.example.test',
+		audience: 'ferrum',
+		secretKey: 'backend-test-credential-value',
+		fetch: async () =>
+			new Response(JSON.stringify(orgPages[orgPage++]), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			})
+	});
+	const collected = [];
+	for await (const org of server.iterateOrganizationsUpdatedSince('2026-01-01T00:00:00Z')) {
+		collected.push(org.slug);
+	}
+	assert.deepEqual(collected, ['acme', 'beta']);
 });
 
 test('Edge Runtime compliance: compiled core dist bundle imports zero Node built-ins', () => {
