@@ -331,7 +331,7 @@
 				<strong>Delete Application</strong>
 				<p>Soft-deletes '{appName}' and revokes all development and production credentials immediately.</p>
 			</div>
-			<Button size="sm" loading={deletingApp} disabled={deletingApp} onclick={handleDeleteApplication}>
+			<Button variant="danger" size="sm" loading={deletingApp} disabled={deletingApp} onclick={handleDeleteApplication}>
 				Delete Application
 			</Button>
 		</div>

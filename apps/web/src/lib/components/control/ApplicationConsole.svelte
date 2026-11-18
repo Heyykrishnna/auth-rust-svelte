@@ -582,7 +582,7 @@
 			class="sticky top-0 z-30 border-b border-brand-border bg-brand-surface/95 backdrop-blur"
 		>
 			<div
-				class="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
+				class="flex min-h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
 			>
 				<div class="flex min-w-0 items-center gap-3">
 					<button
@@ -646,7 +646,7 @@
 		</header>
 
 		<main
-			class="mx-auto grid w-full max-w-7xl min-w-0 grid-cols-1 gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-7 lg:px-8"
+			class="grid w-full min-w-0 grid-cols-1 gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-7 lg:px-8"
 		>
 			{#if !allowMutate}
 				<div class="readonly-banner" role="status">

@@ -206,7 +206,7 @@
 	<div class="min-w-0">
 		<header class="border-b border-brand-border">
 			<div
-				class="mx-auto flex min-h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 text-sm sm:px-6 lg:px-9"
+				class="flex min-h-14 w-full items-center justify-between gap-3 px-4 text-sm sm:px-6 lg:px-8"
 			>
 				<div class="flex min-w-0 items-center gap-2.5">
 					{#if workspace}
@@ -236,7 +236,7 @@
 		</header>
 
 		<main
-			class="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-9 lg:px-9"
+			class="grid w-full gap-5 px-4 py-6 sm:gap-6 sm:px-6 sm:py-9 lg:px-8"
 		>
 			{#if view === 'security'}
 				<AccountSecurityPanel />

@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	let {
+		variant = 'primary',
 		size = 'md',
 		type = 'button',
 		disabled = false,
@@ -11,6 +12,7 @@
 		onclick,
 		children
 	}: {
+		variant?: 'primary' | 'danger';
 		size?: 'sm' | 'md' | 'lg';
 		type?: 'button' | 'submit' | 'reset';
 		disabled?: boolean;
@@ -26,8 +28,9 @@
 		md: 'min-h-10 px-4 py-2 text-sm',
 		lg: 'min-h-11 px-6 py-2.5 text-base'
 	};
+	const variantClass = $derived(variant === 'danger' ? 'danger-button' : 'action-button');
 	const classes = $derived(
-		`action-button inline-flex items-center justify-center gap-2 rounded-lg text-center font-semibold no-underline select-none ${sizes[size]} ${full ? 'w-full' : ''}`
+		`${variantClass} inline-flex items-center justify-center gap-2 rounded-lg text-center font-semibold no-underline select-none ${sizes[size]} ${full ? 'w-full' : ''}`
 	);
 	const unavailable = $derived(disabled || loading);
 </script>

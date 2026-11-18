@@ -227,9 +227,15 @@
 					<input type="number" min="8" max="64" bind:value={minPasswordLength} disabled={!canEditPolicies} />
 				</label>
 
-				<SelectionRow label="Require uppercase" bind:checked={requireUppercase} disabled={!canEditPolicies} />
+				<div class="field">
+					<span>Uppercase Requirement</span>
+					<SelectionRow compact label="Require uppercase" bind:checked={requireUppercase} disabled={!canEditPolicies} />
+				</div>
 
-				<SelectionRow label="Require number" bind:checked={requireNumber} disabled={!canEditPolicies} />
+				<div class="field">
+					<span>Number Requirement</span>
+					<SelectionRow compact label="Require number" bind:checked={requireNumber} disabled={!canEditPolicies} />
+				</div>
 			</div>
 
 			<div class="form-actions">
@@ -373,21 +379,15 @@
 	.box-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 	.box-title { font-size: 0.98rem; font-weight: 600; color: var(--color-brand-text-primary); margin: 0; }
 	.box-sub { font-size: 0.78rem; color: var(--color-brand-text-secondary); margin: 0.2rem 0 0; }
-	.toggle-list { display: flex; flex-direction: column; border-top: 1px solid var(--color-brand-border); }
-
-
-
-
-
+	.toggle-list { display: flex; flex-direction: column; gap: 0.5rem; }
 	.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
-	.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; align-items: end; }
-	.field { display: flex; flex-direction: column; gap: 0.35rem; }
-	.field span { font-size: 0.74rem; color: var(--color-brand-text-secondary); font-weight: 500; }
-	.field input { background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 0.55rem 0.75rem; color: var(--color-brand-text-primary); font-size: 0.84rem; outline: none; }
-	.field input:focus { border-color: #ffffff; }
-
-
-	.form-actions { display: flex; justify-content: flex-end; }
+	.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.85rem; align-items: start; }
+	.field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+	.field span { font-size: 0.74rem; color: var(--color-brand-text-secondary); font-weight: 500; height: 1.25rem; line-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.field input { height: 2.25rem; background-color: var(--color-brand-surface-input); border: 1px solid var(--color-brand-border-hover); border-radius: var(--radius-lg, 8px); padding: 0 0.75rem; color: var(--color-brand-text-primary); font-size: 0.84rem; outline: none; width: 100%; box-sizing: border-box; transition: border-color 150ms ease; }
+	.field input:focus { border-color: #296ff0; }
+	.field input:disabled { cursor: not-allowed; opacity: 0.5; }
+	.form-actions { display: flex; justify-content: flex-end; padding-top: 0.75rem; border-top: 1px solid var(--color-brand-border); margin-top: 0.25rem; }
 	.seg-tabs { display: inline-flex; background-color: var(--color-brand-surface); border: 1px solid var(--color-brand-border); border-radius: 6px; padding: 2px; }
 	.seg-tabs button { background: transparent; border: none; color: var(--color-brand-text-secondary); font-size: 0.74rem; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; }
 	.seg-tabs button.active { background-color: #ffffff; color: var(--color-brand-surface); }
