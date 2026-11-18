@@ -114,7 +114,7 @@ The platform implements automated security verification on every pull request an
 
 ### Test fixture findings
 
-`.gitleaksignore` lists exact commit/path/rule/line fingerprints for reviewed synthetic test data: test JWT/encryption keys, dummy token hashes, sample publishable keys, the frontend one-time-key test, and the historic CI test JWT. These exclusions do not allow entire paths or secret patterns. Full Git history remains scanned; a new finding at another fingerprint fails the job. Review any additional exclusion against its original source before adding it.
+`.gitleaksignore` lists exact commit/path/rule/line fingerprints for reviewed synthetic test data: test JWT/encryption keys, dummy token hashes, sample publishable keys, the frontend one-time-key test, the historic CI test JWT, and the OWASP webhook signing fixture. The current OWASP test generates its signing secret at runtime. These exclusions do not allow entire paths or secret patterns. Full Git history remains scanned; a new finding at another fingerprint fails the job. Review any additional exclusion against its original source before adding it.
 
 ### Outstanding upstream advisories
 

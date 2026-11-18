@@ -3,6 +3,7 @@
 0aef87911258d2571ff68cc90cf1a721ae347507:apps/auth-api/tests/phase04_oidc_sso_tests.rs:generic-api-key:185
 0dff173b9461d5b08263f6601d07b145d0d69b7d:apps/web/src/lib/stores/control.test.ts:stripe-access-token:149
 0dff173b9461d5b08263f6601d07b145d0d69b7d:apps/web/src/lib/stores/control.test.ts:stripe-access-token:152
+20a4b6ea3b40cf6ffdcf994e7f551d2c21b61f8d:apps/auth-api/tests/security_owasp_asvs_tests.rs:generic-api-key:435
 3bd38791b22ead13c01e6fa3cd90202bf2a79acb:apps/auth-api/tests/auth_tests.rs:generic-api-key:228
 3bd38791b22ead13c01e6fa3cd90202bf2a79acb:apps/auth-api/tests/auth_tests.rs:generic-api-key:273
 401e36a1e682b59badc2a7c9c98f21538855ff48:apps/auth-api/tests/control_plane_tests.rs:generic-api-key:188

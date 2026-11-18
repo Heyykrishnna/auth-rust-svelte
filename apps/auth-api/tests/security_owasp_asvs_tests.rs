@@ -37,6 +37,7 @@ use chrono::Utc;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use sha2::{Digest, Sha256};
 use tower::ServiceExt;
+use uuid::Uuid;
 
 fn test_config(cookie_secure: bool) -> AppConfig {
     AppConfig {
@@ -432,7 +433,7 @@ fn test_webhook_ssrf_and_hmac_replay_protection() {
     .is_ok());
     assert!(build_ssrf_safe_http_client(false).is_ok());
 
-    let signing_secret = format!("{}{}", "test_wh_secret_", "a1b2c3d4e5f60718293a");
+    let signing_secret = Uuid::new_v4().to_string();
     let body = br#"{"event_id":"evt_1","type":"user.created"}"#;
     let now = 1_760_000_000i64;
     let header = build_signature_header(&[signing_secret.as_str()], now, body);
