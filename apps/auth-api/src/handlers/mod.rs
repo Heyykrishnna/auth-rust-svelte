@@ -1,10 +1,13 @@
+pub mod backend_sync;
 pub mod client_auth;
 pub mod control_plane;
+pub mod control_webhooks;
 pub mod csrf;
 pub mod health;
 pub mod login;
 pub mod logout;
 pub mod oidc;
+pub mod oidc_provider;
 pub mod password_reset;
 pub mod refresh;
 pub mod register;
