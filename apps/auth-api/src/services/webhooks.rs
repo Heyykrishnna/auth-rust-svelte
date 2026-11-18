@@ -409,14 +409,14 @@ fn truncate_excerpt(body: &str) -> String {
 fn decrypt_active_and_grace_secrets(
     job: &DueDeliveryJob,
     config: &AppConfig,
-) -> Result<Vec<String>, AppError> {
+) -> Result<zeroize::Zeroizing<Vec<String>>, AppError> {
     let active_bytes = decrypt_envelope(
         &job.signing_secret_encrypted,
         &config.signing_key_kek,
         &job.kek_version,
         WEBHOOK_SECRET_AAD_PURPOSE,
     )?;
-    let active_secret = String::from_utf8(active_bytes)
+    let active_secret = String::from_utf8(active_bytes.to_vec())
         .map_err(|_| AppError::Internal("Corrupted webhook signing secret UTF-8".to_string()))?;
 
     let mut secrets = vec![active_secret];
@@ -431,14 +431,14 @@ fn decrypt_active_and_grace_secrets(
                 &job.kek_version,
                 WEBHOOK_SECRET_AAD_PURPOSE,
             ) {
-                if let Ok(prev_secret) = String::from_utf8(prev_bytes) {
+                if let Ok(prev_secret) = String::from_utf8(prev_bytes.to_vec()) {
                     secrets.push(prev_secret);
                 }
             }
         }
     }
 
-    Ok(secrets)
+    Ok(zeroize::Zeroizing::new(secrets))
 }
 
 pub async fn dispatch_outbox_to_deliveries(
@@ -534,7 +534,7 @@ async fn execute_single_delivery(
         WEBHOOK_SIGNATURE_HEADER: signature_header,
     });
 
-    let client = build_ssrf_safe_http_client(allow_loopback)?;
+    let client = shared_webhook_client(allow_loopback)?;
     let started = Instant::now();
 
     let mut req_builder = client
@@ -1097,4 +1097,12 @@ pub async fn replay_endpoint_time_range(
     commit_tx(tx).await?;
 
     Ok(enqueued)
+}
+
+fn shared_webhook_client(allow_loopback: bool) -> Result<reqwest::Client, AppError> {
+    static PUBLIC_CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> = std::sync::OnceLock::new();
+    static LOOPBACK_CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> = std::sync::OnceLock::new();
+    let slot = if allow_loopback { &LOOPBACK_CLIENT } else { &PUBLIC_CLIENT };
+    slot.get_or_init(|| build_ssrf_safe_http_client(allow_loopback).map_err(|error| error.to_string()))
+        .as_ref().cloned().map_err(|error| AppError::Internal(error.clone()))
 }

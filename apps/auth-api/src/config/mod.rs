@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::env;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct AppConfig {
     pub host: String,
     pub port: u16,
@@ -66,8 +66,7 @@ impl AppConfig {
         let redis_url =
             env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
 
-        let jwt_secret = env::var("JWT_SECRET")
-            .unwrap_or_else(|_| "dev_jwt_secret_change_me_in_production_min_32_chars".to_string());
+        let jwt_secret = required_secret("JWT_SECRET")?;
 
         if jwt_secret.trim().len() < 32 {
             anyhow::bail!(
@@ -80,9 +79,7 @@ impl AppConfig {
             .trim_end_matches('/')
             .to_string();
 
-        let signing_key_kek = env::var("SIGNING_KEY_KEK").unwrap_or_else(|_| {
-            "dev_signing_key_kek_change_me_in_production_32_bytes_min".to_string()
-        });
+        let signing_key_kek = required_secret("SIGNING_KEY_KEK")?;
         if signing_key_kek.trim().len() < 32 {
             anyhow::bail!(
                 "SIGNING_KEY_KEK must be at least 32 characters long for AES-256-GCM envelope encryption"
@@ -126,7 +123,18 @@ impl AppConfig {
             .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
             .unwrap_or(false);
 
-        let cookie_domain = env::var("COOKIE_DOMAIN").ok();
+        let cookie_domain = env::var("COOKIE_DOMAIN").ok().filter(|value| !value.trim().is_empty());
+        crate::middleware::rate_limit::trusted_proxy_ranges().map_err(anyhow::Error::msg)?;
+        let production = env::var("APP_ENV")
+            .map(|value| value.eq_ignore_ascii_case("production"))
+            .unwrap_or(false);
+        let issuer = url::Url::parse(&issuer_url).context("ISSUER_URL must be an absolute URL")?;
+        if issuer.host_str().is_none() || !issuer.username().is_empty() || issuer.password().is_some() {
+            anyhow::bail!("ISSUER_URL must have a host and no credentials");
+        }
+        if production && (!cookie_secure || issuer.scheme() != "https") {
+            anyhow::bail!("Production requires COOKIE_SECURE=true and an HTTPS ISSUER_URL");
+        }
 
         let google_client_id = env::var("GOOGLE_CLIENT_ID").ok();
         let google_client_secret = env::var("GOOGLE_CLIENT_SECRET").ok();
@@ -229,5 +237,43 @@ impl AppConfig {
                     .map(|v| v.trim_end_matches('/').to_string())
                     .unwrap_or_else(|| "http://localhost:3000".to_string())
             })
+    }
+}
+
+fn required_secret(name: &str) -> Result<String> {
+    let value = env::var(name).with_context(|| format!("{name} must be explicitly specified"))?;
+    let normalized = value.to_ascii_lowercase();
+    if value.trim().len() < 32
+        || ["change_me", "change-me", "replace_me", "replace-me", "your_secret", "dev_jwt", "dev_signing"]
+            .iter()
+            .any(|placeholder| normalized.contains(placeholder))
+    {
+        anyhow::bail!("{name} must contain at least 32 characters of non-placeholder secret material");
+    }
+    Ok(value)
+}
+
+impl std::fmt::Debug for AppConfig {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("AppConfig")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("db_max_connections", &self.db_max_connections)
+            .field("cookie_secure", &self.cookie_secure)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Drop for AppConfig {
+    fn drop(&mut self) {
+        use zeroize::Zeroize;
+        self.database_url.zeroize();
+        self.redis_url.zeroize();
+        self.jwt_secret.zeroize();
+        self.signing_key_kek.zeroize();
+        self.google_client_secret.zeroize();
+        self.github_client_secret.zeroize();
+        self.smtp_pass.zeroize();
     }
 }

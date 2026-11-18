@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use argon2::password_hash::SaltString;
@@ -9,7 +9,7 @@ use tokio::sync::Semaphore;
 use crate::errors::AppError;
 use crate::services::metrics as platform_metrics;
 
-static ARGON2_SEMAPHORE: OnceLock<Semaphore> = OnceLock::new();
+static ARGON2_SEMAPHORE: OnceLock<Arc<Semaphore>> = OnceLock::new();
 static DUMMY_HASH: OnceLock<String> = OnceLock::new();
 
 pub fn argon2_max_concurrency() -> usize {
@@ -24,8 +24,8 @@ pub fn argon2_max_concurrency() -> usize {
         })
 }
 
-fn argon2_semaphore() -> &'static Semaphore {
-    ARGON2_SEMAPHORE.get_or_init(|| Semaphore::new(argon2_max_concurrency()))
+fn argon2_semaphore() -> Arc<Semaphore> {
+    ARGON2_SEMAPHORE.get_or_init(|| Arc::new(Semaphore::new(argon2_max_concurrency()))).clone()
 }
 
 fn create_argon2id() -> Argon2<'static> {
@@ -45,13 +45,16 @@ fn dummy_password_hash() -> &'static str {
 }
 
 pub async fn hash_password_async(password: String) -> Result<String, AppError> {
-    let _permit = argon2_semaphore()
-        .acquire()
+    validate_password_length(&password)?;
+    let permit = argon2_semaphore()
+        .acquire_owned()
         .await
         .map_err(|_| AppError::Internal("Password hashing pool unavailable".to_string()))?;
 
     let started = Instant::now();
     let result = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        let password = zeroize::Zeroizing::new(password);
         let salt = SaltString::generate(&mut OsRng);
         create_argon2id()
             .hash_password(password.as_bytes(), &salt)
@@ -66,13 +69,16 @@ pub async fn hash_password_async(password: String) -> Result<String, AppError> {
 }
 
 pub async fn verify_password_async(password: String, hash: String) -> Result<bool, AppError> {
-    let _permit = argon2_semaphore()
-        .acquire()
+    validate_password_length(&password)?;
+    let permit = argon2_semaphore()
+        .acquire_owned()
         .await
         .map_err(|_| AppError::Internal("Password verification pool unavailable".to_string()))?;
 
     let started = Instant::now();
     let result = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        let password = zeroize::Zeroizing::new(password);
         let Ok(parsed_hash) = PasswordHash::new(&hash) else {
             return false;
         };
@@ -85,6 +91,13 @@ pub async fn verify_password_async(password: String, hash: String) -> Result<boo
 
     platform_metrics::record_argon2_duration(started.elapsed().as_secs_f64());
     Ok(result)
+}
+
+fn validate_password_length(password: &str) -> Result<(), AppError> {
+    if password.len() > 512 || password.chars().count() > 128 {
+        return Err(AppError::Validation("Password must not exceed 128 characters".to_string()));
+    }
+    Ok(())
 }
 
 pub async fn verify_dummy_password_async(password: String) {

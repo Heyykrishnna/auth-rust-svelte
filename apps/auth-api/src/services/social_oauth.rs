@@ -124,7 +124,7 @@ pub async fn resolve_provider_credentials(
                 &kek_version,
                 OAUTH_SECRET_AAD_PURPOSE,
             )?;
-            let client_secret = String::from_utf8(decrypted)
+            let client_secret = String::from_utf8(decrypted.to_vec())
                 .map_err(|_| AppError::Internal("Corrupted OAuth client secret".to_string()))?;
             return Ok(ResolvedOAuthProviderCredentials {
                 client_id,
@@ -379,10 +379,7 @@ async fn exchange_google_code(
     code_verifier: &str,
     expected_nonce: &str,
 ) -> Result<VerifiedSocialIdentity, AppError> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let client = shared_oauth_client()?;
 
     let token_res = client
         .post("https://oauth2.googleapis.com/token")
@@ -463,10 +460,7 @@ async fn exchange_github_code(
     redirect_uri: &str,
     code_verifier: &str,
 ) -> Result<VerifiedSocialIdentity, AppError> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .map_err(|e| AppError::Internal(e.to_string()))?;
+    let client = shared_oauth_client()?;
 
     let token_res = client
         .post("https://github.com/login/oauth/access_token")
@@ -795,4 +789,14 @@ pub async fn complete_social_login_with_identity(
         expires_in: env.access_token_ttl_secs as i64,
         session_id: session.id,
     })
+}
+
+fn shared_oauth_client() -> Result<reqwest::Client, AppError> {
+    static CLIENT: std::sync::OnceLock<Result<reqwest::Client, String>> = std::sync::OnceLock::new();
+    CLIENT.get_or_init(|| reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .connect_timeout(std::time::Duration::from_secs(3))
+        .timeout(std::time::Duration::from_secs(10))
+        .build().map_err(|error| error.to_string()))
+        .as_ref().cloned().map_err(|error| AppError::Internal(error.clone()))
 }

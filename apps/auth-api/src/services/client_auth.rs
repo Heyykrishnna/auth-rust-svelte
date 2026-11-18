@@ -248,11 +248,14 @@ pub async fn initiate_sign_up(
 
     let existing_verified = global_identity::find_verified_email(db, &normalized).await?;
     let existing_user = user_repo::find_user_by_email(db, &normalized).await?;
-    if existing_verified.is_some() || existing_user.is_some() {
-        return Err(AppError::EmailAlreadyExists);
-    }
-
     let password_hash = hash_password_async(password.to_string()).await?;
+    if existing_verified.is_some() || existing_user.is_some() {
+        return Ok((ClientSignUpInitiatedResponse {
+            status: "pending_verification".to_string(),
+            email: normalized,
+            message: "If this email is eligible, a verification code has been sent".to_string(),
+        }, String::new()));
+    }
 
     let code = generate_otp_code();
     let clean_name = display_name.trim().to_string();
@@ -260,7 +263,7 @@ pub async fn initiate_sign_up(
         email: normalized.clone(),
         display_name: clean_name.clone(),
         password_hash,
-        code: code.clone(),
+        code: hash_token(&code),
         attempts: 0,
     };
 
@@ -296,22 +299,20 @@ pub async fn initiate_sign_up(
     let cfg = config.clone();
     let to_email = normalized.clone();
     let otp_for_mail = code.clone();
-    tokio::spawn(async move {
-        let _ = crate::services::email::send_branded_otp_email(
+    crate::services::email::send_branded_otp_email(
             &cfg,
             &brand,
             &to_email,
             &clean_name,
             &otp_for_mail,
         )
-        .await;
-    });
+        .await?;
 
     Ok((
         ClientSignUpInitiatedResponse {
             status: "pending_verification".to_string(),
             email: normalized,
-            message: "Verification code sent to your email".to_string(),
+            message: "If this email is eligible, a verification code has been sent".to_string(),
         },
         code,
     ))
@@ -354,7 +355,7 @@ pub async fn verify_sign_up_otp(
     let mut pending: PendingClientSignUp =
         serde_json::from_str(raw_payload).map_err(|e| AppError::Internal(e.to_string()))?;
 
-    if !constant_time_str_eq(&pending.code, code.trim()) {
+    if !constant_time_str_eq(&pending.code, &hash_token(code.trim())) {
         pending.attempts += 1;
         if pending.attempts >= 5 {
             auth_tx_repo::revoke_auth_transaction_in_tx(&mut tx, auth_tx.id).await?;
@@ -567,7 +568,7 @@ pub async fn resend_sign_up_otp(
         serde_json::from_str(raw_payload).map_err(|e| AppError::Internal(e.to_string()))?;
 
     let new_code = generate_otp_code();
-    pending.code = new_code.clone();
+    pending.code = hash_token(&new_code);
     pending.attempts = 0;
 
     let updated_json =
@@ -594,16 +595,14 @@ pub async fn resend_sign_up_otp(
     };
     let cfg = config.clone();
     let mail_code = new_code.clone();
-    tokio::spawn(async move {
-        let _ = crate::services::email::send_branded_otp_email(
+    crate::services::email::send_branded_otp_email(
             &cfg,
             &brand,
             &pending.email,
             &pending.display_name,
             &mail_code,
         )
-        .await;
-    });
+        .await?;
 
     Ok(new_code)
 }
@@ -1310,16 +1309,14 @@ pub async fn request_password_reset(
     };
     let cfg = config.clone();
     let token_copy = raw_token.clone();
-    tokio::spawn(async move {
-        let _ = crate::services::email::send_branded_password_reset_email(
+    crate::services::email::send_branded_password_reset_email(
             &cfg,
             &brand,
             &user.email,
             &user.display_name,
             &token_copy,
         )
-        .await;
-    });
+        .await?;
 
     Ok(Some(raw_token))
 }
@@ -1606,12 +1603,10 @@ pub async fn request_secondary_email_verification(
     }
 
     if let Some(existing_verified) = global_identity::find_verified_email(db, &normalized).await? {
-        if existing_verified.user_id != user_id {
-            return Err(AppError::EmailAlreadyExists);
-        }
+        let _ = existing_verified;
         return Ok((
             SecondaryEmailVerificationResponse {
-                status: "already_verified".to_string(),
+                status: "verification_sent".to_string(),
                 email: normalized,
             },
             String::new(),
@@ -1630,7 +1625,7 @@ pub async fn request_secondary_email_verification(
     let payload = PendingSecondaryEmailVerification {
         user_id,
         email: normalized.clone(),
-        code: code.clone(),
+        code: hash_token(&code),
         attempts: 0,
     };
     let payload_json =
@@ -1686,16 +1681,14 @@ pub async fn request_secondary_email_verification(
     let cfg = config.clone();
     let to_email = normalized.clone();
     let mail_code = code.clone();
-    tokio::spawn(async move {
-        let _ = crate::services::email::send_branded_otp_email(
+    crate::services::email::send_branded_otp_email(
             &cfg,
             &brand,
             &to_email,
             &user.display_name,
             &mail_code,
         )
-        .await;
-    });
+        .await?;
 
     Ok((
         SecondaryEmailVerificationResponse {
@@ -1739,7 +1732,7 @@ pub async fn confirm_secondary_email_verification(
         ));
     }
 
-    if !constant_time_str_eq(&pending.code, code.trim()) {
+    if !constant_time_str_eq(&pending.code, &hash_token(code.trim())) {
         pending.attempts += 1;
         if pending.attempts >= 5 {
             auth_tx_repo::revoke_auth_transaction_in_tx(&mut tx, auth_tx.id).await?;

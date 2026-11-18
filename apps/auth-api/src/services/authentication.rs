@@ -69,14 +69,8 @@ pub async fn initiate_registration(
     let to_name = display_name;
     let otp_code = code_str;
 
-    tokio::spawn(async move {
-        if let Err(err) =
-            crate::services::email::send_registration_otp(&config, &to_email, &to_name, &otp_code)
-                .await
-        {
-            tracing::error!(to = %to_email, error = %err, "Failed background registration OTP delivery");
-        }
-    });
+    crate::services::email::send_registration_otp(&config, &to_email, &to_name, &otp_code)
+                .await?;
 
     Ok(normalized)
 }
@@ -232,14 +226,8 @@ pub async fn resend_registration_otp(ctx: AuthContext<'_>, email: String) -> Res
     let to_name = pending.display_name;
     let otp_code = code_str;
 
-    tokio::spawn(async move {
-        if let Err(err) =
-            crate::services::email::send_registration_otp(&config, &to_email, &to_name, &otp_code)
-                .await
-        {
-            tracing::error!(to = %to_email, error = %err, "Failed background registration OTP resend");
-        }
-    });
+    crate::services::email::send_registration_otp(&config, &to_email, &to_name, &otp_code)
+                .await?;
 
     Ok(())
 }
@@ -643,18 +631,13 @@ pub async fn request_password_reset(ctx: AuthContext<'_>, email: String) -> Resu
         let to_name = user.display_name;
         let reset_token = token;
 
-        tokio::spawn(async move {
-            if let Err(err) = crate::services::email::send_password_reset_email(
+        crate::services::email::send_password_reset_email(
                 &config,
                 &to_email,
                 &to_name,
                 &reset_token,
             )
-            .await
-            {
-                tracing::error!(to = %to_email, error = %err, "Failed background password reset email dispatch");
-            }
-        });
+            .await?;
     }
 
     Ok(())

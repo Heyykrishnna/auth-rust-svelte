@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use crate::config::AppConfig;
 use crate::errors::AppError;
@@ -38,7 +39,7 @@ pub struct JwksDocument {
 #[derive(Debug, Clone)]
 pub struct GeneratedEs256Key {
     pub kid: String,
-    pub pkcs8_der: Vec<u8>,
+    pub pkcs8_der: Zeroizing<Vec<u8>>,
     pub public_jwk: EcPublicJwk,
 }
 
@@ -57,8 +58,8 @@ pub fn encrypt_envelope(
     kek_version: &str,
     purpose: &str,
 ) -> Result<Vec<u8>, AppError> {
-    let key_bytes = derive_kek_bytes(kek_secret);
-    let unbound = UnboundKey::new(&AES_256_GCM, &key_bytes)
+    let key_bytes = Zeroizing::new(derive_kek_bytes(kek_secret));
+    let unbound = UnboundKey::new(&AES_256_GCM, key_bytes.as_ref())
         .map_err(|_| AppError::Internal("Failed to initialize AES-256-GCM key".to_string()))?;
     let sealing_key = LessSafeKey::new(unbound);
 
@@ -85,15 +86,15 @@ pub fn decrypt_envelope(
     kek_secret: &str,
     kek_version: &str,
     purpose: &str,
-) -> Result<Vec<u8>, AppError> {
+) -> Result<Zeroizing<Vec<u8>>, AppError> {
     if ciphertext.len() <= NONCE_LEN {
         return Err(AppError::Internal(
             "Encrypted key payload is truncated".to_string(),
         ));
     }
 
-    let key_bytes = derive_kek_bytes(kek_secret);
-    let unbound = UnboundKey::new(&AES_256_GCM, &key_bytes)
+    let key_bytes = Zeroizing::new(derive_kek_bytes(kek_secret));
+    let unbound = UnboundKey::new(&AES_256_GCM, key_bytes.as_ref())
         .map_err(|_| AppError::Internal("Failed to initialize AES-256-GCM key".to_string()))?;
     let opening_key = LessSafeKey::new(unbound);
 
@@ -102,7 +103,7 @@ pub fn decrypt_envelope(
     let nonce = Nonce::assume_unique_for_key(nonce_bytes);
 
     let aad_str = format!("{purpose}:{kek_version}");
-    let mut encrypted_data = ciphertext[NONCE_LEN..].to_vec();
+    let mut encrypted_data = Zeroizing::new(ciphertext[NONCE_LEN..].to_vec());
     let plaintext = opening_key
         .open_in_place(nonce, Aad::from(aad_str.as_bytes()), &mut encrypted_data)
         .map_err(|_| {
@@ -111,14 +112,14 @@ pub fn decrypt_envelope(
             )
         })?;
 
-    Ok(plaintext.to_vec())
+    Ok(Zeroizing::new(plaintext.to_vec()))
 }
 
 pub fn generate_es256_keypair() -> Result<GeneratedEs256Key, AppError> {
     let rng = SystemRandom::new();
     let pkcs8_doc = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &rng)
         .map_err(|_| AppError::Internal("Failed to generate ES256 keypair".to_string()))?;
-    let pkcs8_der = pkcs8_doc.as_ref().to_vec();
+    let pkcs8_der = Zeroizing::new(pkcs8_doc.as_ref().to_vec());
 
     let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &pkcs8_der, &rng)
         .map_err(|_| AppError::Internal("Failed to parse generated ES256 keypair".to_string()))?;
@@ -223,7 +224,7 @@ pub async fn revoke_signing_key(db: &PgPool, kid: &str) -> Result<bool, AppError
 pub fn decrypt_signing_key_pkcs8(
     record: &SigningKeyRecord,
     config: &AppConfig,
-) -> Result<Vec<u8>, AppError> {
+) -> Result<Zeroizing<Vec<u8>>, AppError> {
     decrypt_envelope(
         &record.private_key_encrypted,
         &config.signing_key_kek,

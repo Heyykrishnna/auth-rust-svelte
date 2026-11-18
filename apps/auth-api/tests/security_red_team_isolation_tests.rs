@@ -432,11 +432,12 @@ mod live_phase10_red_team_suite {
         let ferrum_dev_alice_id = AppUserId::from(ferrum_dev_alice);
 
         let ferrum_dev_session_uuid: Uuid = sqlx::query_scalar(
-            "INSERT INTO app_sessions (environment_id, application_user_id, user_id, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '1 hour') RETURNING id",
+            "INSERT INTO app_sessions (environment_id, application_user_id, user_id, session_hash, expires_at) VALUES ($1, $2, $3, $4, NOW() + INTERVAL '1 hour') RETURNING id",
         )
         .bind(ferrum_dev_env)
         .bind(ferrum_dev_alice)
         .bind(alice_uuid)
+        .bind(Uuid::new_v4().to_string())
         .fetch_one(&pool)
         .await
         .unwrap();

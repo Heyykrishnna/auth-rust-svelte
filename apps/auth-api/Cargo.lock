@@ -164,6 +164,7 @@ dependencies = [
  "governor",
  "hex",
  "hyper",
+ "ipnet",
  "jsonwebtoken",
  "lettre",
  "metrics",
@@ -194,6 +195,7 @@ dependencies = [
  "urlencoding",
  "uuid",
  "validator",
+ "zeroize",
 ]
 
 [[package]]
@@ -3594,6 +3596,7 @@ dependencies = [
  "bitflags",
  "bytes",
  "futures-core",
+ "futures-util",
  "http 1.5.0",
  "http-body",
  "http-body-util",

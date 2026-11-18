@@ -12,6 +12,7 @@ use axum_prometheus::PrometheusMetricLayer;
 use std::sync::OnceLock;
 use std::time::Duration;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
@@ -76,6 +77,7 @@ pub fn build_router(state: AppState) -> Router {
         .layer(axum::middleware::from_fn(security_headers_middleware))
         .layer(RequestBodyLimitLayer::new(64 * 1024))
         .layer(TimeoutLayer::new(Duration::from_secs(30)))
+        .layer(CatchPanicLayer::new())
         .layer(axum::middleware::from_fn(telemetry_correlation_middleware))
         .layer(TraceLayer::new_for_http())
         .layer(PropagateRequestIdLayer::x_request_id())

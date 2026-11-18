@@ -453,6 +453,8 @@ async fn send_smtp_message(
     text_body: String,
     html_body: String,
 ) -> Result<(), AppError> {
+    static SMTP_PERMITS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(16);
+    let _permit = SMTP_PERMITS.try_acquire().map_err(|_| AppError::TooManyRequests("Email delivery capacity reached; retry shortly".to_string()))?;
     let clean_user = config.smtp_user.as_deref().map(|u| u.trim().to_string());
 
     let clean_pass = config
@@ -505,14 +507,21 @@ async fn send_smtp_message(
 
     let transport = transport_builder.build();
 
-    match transport.send(email).await {
-        Ok(_) => {
+    let result = tokio::time::timeout(std::time::Duration::from_secs(10), transport.send(email)).await;
+    match result {
+        Ok(Ok(_)) => {
+            metrics::counter!("auth_email_delivery_total", "result" => "success").increment(1);
             info!(to = to_email, "Email dispatched successfully");
             Ok(())
         }
-        Err(err) => {
+        Ok(Err(err)) => {
+            metrics::counter!("auth_email_delivery_total", "result" => "failure").increment(1);
             error!(to = to_email, error = %err, "Failed to send email via SMTP");
             Err(AppError::Internal(format!("Failed to send email: {err}")))
+        }
+        Err(_) => {
+            metrics::counter!("auth_email_delivery_total", "result" => "timeout").increment(1);
+            Err(AppError::Internal("Email delivery timed out".to_string()))
         }
     }
 }
