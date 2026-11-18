@@ -202,7 +202,28 @@ Security guarantees:
 
 ---
 
-## 5. Reference Sync Starters
+## 5. Organizations, Active-Org Context & Scoped RBAC (Phase 08)
+
+All four SDK packages support multi-tenant B2B organizations, active-organization switching, and scoped permission evaluation:
+
+- **Client Organization APIs (`@secure-auth/core/client`):**
+  - `listOrganizations()`, `createOrganization(...)`, `getOrganization(orgId)`, `updateOrganization(orgId, ...)`, `deleteOrganization(orgId)`
+  - `listOrganizationMembers(orgId)`, `updateOrganizationMemberRole(orgId, memberId, roleSlug)`, `removeOrganizationMember(orgId, memberId)`
+  - `listOrganizationInvitations(orgId)`, `createOrganizationInvitation(orgId, ...)`, `revokeOrganizationInvitation(orgId, invitationId)`, `acceptOrganizationInvitation(token)`
+  - `switchActiveOrganization(organizationId | null)` updates `app_sessions.active_organization_id` and mints a refreshed ES256 access token carrying `org_id`, `org_slug`, `org_role`, and `org_permissions`.
+  - Multi-email, OAuth account management, GDPR export (`exportAccountData()`), and account deletion (`deleteAccount()`).
+- **Scoped Authorization (`@secure-auth/core/server`, SvelteKit, React, Next.js):**
+  - `hasPermission(claims, { permission, role, orgId })` / `auth.has({ permission, role, orgId })` / `protect(state, { permission, role, orgId })` / `requireOrgPermission(locals, { permission, role, orgId })`.
+  - Organization permissions apply **only** when the active JWT `org_id` matches the target `orgId`.
+- **Framework Hooks & Components:**
+  - `@secure-auth/svelte`: `useOrganization(ctx)`, `useOrganizationList(ctx)`, `OrganizationSwitcher.svelte`, `OrganizationProfile.svelte`.
+  - `@secure-auth/react` & `@secure-auth/next`: `useOrganization()`, `useOrganizationList()`, `<OrganizationSwitcher />`, `<OrganizationProfile />`, and `<Protect permission="org:billing:write" orgId={orgId} />`.
+- **Backend Organization Sync (`@secure-auth/core/server`):**
+  - `server.listOrganizations({ updatedSince, cursor, q, limit })` and `server.iterateOrganizationsUpdatedSince(updatedSince)` paginate `/v1/backend/organizations` cleanly alongside `organization.*` outbox webhooks.
+
+---
+
+## 6. Reference Sync Starters
 
 - [`examples/ferrum-sveltekit`](../examples/ferrum-sveltekit/README.md) — SvelteKit 5 + `@secure-auth/svelte` starter demonstrating SSR auth, JIT projection upsert, idempotent version-guarded webhooks, and `scripts/reconcile-users.ts`.
 - [`examples/elysiar-nextjs`](../examples/elysiar-nextjs/README.md) — Next.js App Router + `@secure-auth/next` starter demonstrating Edge middleware verification, OIDC callback, idempotent version-guarded webhooks, Server Component `protect()`, and `scripts/reconcile-users.ts`.

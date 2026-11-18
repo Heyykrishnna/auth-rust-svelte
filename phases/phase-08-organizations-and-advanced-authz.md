@@ -1,8 +1,8 @@
 # Phase 08: Organizations, Invitations, Custom RBAC & Advanced Identity
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phase 05 (Outbox/Webhooks), Phase 06 (SDKs), Phase 07 (Developer Dashboard) completed
-- **Primary Targets:** `apps/auth-api/src/services/organizations.rs`, `apps/auth-api/src/services/authorization.rs`, `apps/auth-api/src/routes/`, `packages/*`, `apps/web/`
+- **Primary Targets:** `apps/auth-api/src/services/organizations.rs`, `apps/auth-api/src/services/identity_advanced.rs`, `apps/auth-api/src/handlers/organizations.rs`, `apps/auth-api/src/routes/control.rs`, `packages/*`, `apps/web/`
 
 ---
 
@@ -86,10 +86,26 @@ Extend the platform to support B2B / multi-team SaaS applications—giving consu
 
 ## Acceptance Criteria
 
-- [ ] Consuming B2B apps can create organizations, invite members with single-use expiring tokens, switch active organization context in JWTs, and evaluate custom org/app permissions.
-- [ ] Organization and membership changes reliably synchronize to consuming services via both HMAC-signed webhooks and `/v1/backend/organizations` reconciliation endpoints.
-- [ ] Users can safely manage multiple verified emails, link/unlink multiple OAuth providers, export their data, and delete their account with proper `user.deleted` fan-out.
-- [ ] All Phase 08 isolation, invitation replay, last-owner, and sync tests pass.
+- [x] Consuming B2B apps can create organizations, invite members with single-use expiring tokens, switch active organization context in JWTs, and evaluate custom org/app permissions.
+- [x] Organization and membership changes reliably synchronize to consuming services via both HMAC-signed webhooks and `/v1/backend/organizations` reconciliation endpoints.
+- [x] Users can safely manage multiple verified emails, link/unlink multiple OAuth providers, export their data, and delete their account with proper `user.deleted` fan-out.
+- [x] All Phase 08 isolation, invitation replay, last-owner, and sync tests pass.
+
+---
+
+## Implementation Summary
+
+- **Backend Organization & Custom RBAC Services (`apps/auth-api`):**
+  - `apps/auth-api/src/services/organizations.rs`: Environment-scoped Organization CRUD, atomic creator `org:owner` provisioning, replay-proof SHA-256 `organization_invitations` (expiry + verified-email match check), safe ownership transfer with last-owner guard (`ensure_not_last_owner`), `switch_active_organization` updating `app_sessions.active_organization_id` and re-minting ES256 JWTs with `org_id`/`org_slug`/`org_role`/`org_permissions`, custom `environment_permissions` and `environment_roles` CRUD (protecting `is_system` roles), deterministic `evaluate_scoped_permission`, and cursor-paginated `list_organizations_paginated` with `updated_since` support.
+  - `apps/auth-api/src/services/identity_advanced.rs`: Multi-email CRUD (`user_emails`) with OTP verification, primary promotion, and last-verified-email guard; multi-OAuth account linking/unlinking with sole-login-method lockout guard; GDPR JSON export (`export_user_data`); and `delete_user_account` revoking all `sso_sessions` and `app_sessions` with `user.deleted` outbox fan-out across every joined environment.
+  - `apps/auth-api/src/services/tokens.rs`, `apps/auth-api/src/repositories/tenant_rbac.rs`, `apps/auth-api/src/services/client_auth.rs`, `apps/auth-api/src/middleware/client_auth.rs`: Extended `TenantAccessTokenClaims` and refresh flow to dynamically re-resolve active organization context and permissions on refresh and org switch.
+  - `apps/auth-api/src/handlers/organizations.rs` & `apps/auth-api/src/routes/control.rs`: Wired Client (`/v1/client/organizations/*`, `/v1/client/sessions/active-organization`, `/v1/client/users/me/{emails,oauth-accounts,export}`, `DELETE /v1/client/users/me`), Backend (`/v1/backend/organizations/*`, `/v1/backend/{permissions,roles}`), and Control Plane (`/v1/control/applications/:app_id/environments/:env_kind/{organizations,permissions,roles}`) endpoints.
+- **SDK Extensions (`packages/*`):**
+  - Extended `@secure-auth/shared-types`, `@secure-auth/core`, `@secure-auth/svelte`, `@secure-auth/react`, and `@secure-auth/next` with organization client/server APIs, `iterateOrganizationsUpdatedSince`, `hasPermission` / `has({ permission, role, orgId })` / `protect(...)` / `requireOrgPermission(...)`, `useOrganization()`, `useOrganizationList()`, `<OrganizationSwitcher />`, and `<OrganizationProfile />`.
+- **Developer Control Plane UI (`apps/web`):**
+  - Added `OrganizationsPanel.svelte` (directory, create/suspend/delete, member role manager, invitation issuer with one-time token modal & revoke) and `RolesPermissionsPanel.svelte` (custom environment permissions & scoped custom role editor) integrated into `apps/web/src/routes/control/+page.svelte` using the flat matte monochrome design system (zero gradients, zero emojis).
+- **Verification:**
+  - `apps/auth-api/tests/phase08_organizations_tests.rs` (unit + live Postgres `#[ignore]` suite), `packages/{core,svelte,react,next}/test/*.test.mjs`, and `apps/web/src/lib/api/control.test.ts` + `apps/web/src/lib/control/permissions.test.ts`.
 
 ---
 
