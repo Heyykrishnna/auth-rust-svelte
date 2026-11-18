@@ -20,110 +20,55 @@
 		footer,
 		children
 	}: Props = $props();
+
+	const variantStyles: Record<string, string> = {
+		surface: 'bg-brand-surface-card border-brand-border text-brand-text-primary',
+		glass: 'bg-brand-surface-card/90 backdrop-blur-md border-brand-border text-brand-text-primary',
+		gradient: 'bg-brand-surface-card border-brand-border text-brand-text-primary',
+		light: 'bg-[#e8f0b8] border-zinc-300 text-[#11130d]'
+	};
 </script>
 
-<div class="card card-{variant} {className}">
+<div
+	class="rounded-xl overflow-hidden relative border {variantStyles[variant] ?? variantStyles.surface} {className}"
+>
 	{#if title || subtitle || headerActions}
-		<div class="card-header">
-			<div class="card-headings">
+		<div
+			class="flex items-center justify-between gap-4 px-5 py-4 border-b {variant === 'light' ? 'border-zinc-200' : 'border-brand-border'}"
+		>
+			<div class="flex flex-col gap-0.5">
 				{#if title}
-					<h3 class="card-title">{title}</h3>
+					<h3
+						class="m-0 text-[15px] font-semibold font-heading tracking-tight {variant === 'light' ? 'text-[#11130d]' : 'text-brand-text-primary'}"
+					>
+						{title}
+					</h3>
 				{/if}
 				{#if subtitle}
-					<p class="card-subtitle">{subtitle}</p>
+					<p
+						class="m-0 text-xs {variant === 'light' ? 'text-zinc-600' : 'text-brand-text-secondary'}"
+					>
+						{subtitle}
+					</p>
 				{/if}
 			</div>
 			{#if headerActions}
-				<div class="card-actions">
+				<div class="flex items-center gap-2">
 					{@render headerActions()}
 				</div>
 			{/if}
 		</div>
 	{/if}
 
-	<div class="card-body">
+	<div class="p-5">
 		{@render children()}
 	</div>
 
 	{#if footer}
-		<div class="card-footer">
+		<div
+			class="px-5 py-3.5 bg-brand-surface border-t border-brand-border flex items-center justify-between"
+		>
 			{@render footer()}
 		</div>
 	{/if}
 </div>
-
-<style>
-	.card {
-		border-radius: 12px;
-		overflow: hidden;
-		position: relative;
-		background-color: var(--color-bg-surface);
-		border: 1px solid var(--color-border);
-	}
-
-	.card-light {
-		background-color: var(--color-bg-light);
-		border-color: #d4d4d8;
-		color: var(--color-text-dark);
-	}
-
-	.card-light .card-title {
-		color: var(--color-text-dark);
-	}
-
-	.card-light .card-subtitle {
-		color: #52525b;
-	}
-
-	.card-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: 1rem;
-		padding: 1.15rem 1.35rem;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.card-light .card-header {
-		border-bottom-color: #e4e4e7;
-	}
-
-	.card-headings {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-	}
-
-	.card-title {
-		margin: 0;
-		font-size: 0.98rem;
-		font-weight: 600;
-		color: var(--color-text);
-		letter-spacing: -0.01em;
-	}
-
-	.card-subtitle {
-		margin: 0;
-		font-size: 0.82rem;
-		color: var(--color-text-muted);
-	}
-
-	.card-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.card-body {
-		padding: 1.35rem;
-	}
-
-	.card-footer {
-		padding: 0.95rem 1.35rem;
-		background-color: var(--color-bg-sidebar);
-		border-top: 1px solid var(--color-border);
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-</style>

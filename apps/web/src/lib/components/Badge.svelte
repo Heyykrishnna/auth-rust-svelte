@@ -1,92 +1,59 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+  import type { Snippet } from "svelte";
 
-	interface Props {
-		variant?: 'primary' | 'success' | 'warning' | 'danger' | 'neutral' | 'purple';
-		size?: 'sm' | 'md';
-		dot?: boolean;
-		class?: string;
-		children: Snippet;
-	}
+  interface Props {
+    variant?:
+      | "primary"
+      | "success"
+      | "warning"
+      | "danger"
+      | "neutral"
+      | "purple";
+    size?: "sm" | "md";
+    dot?: boolean;
+    class?: string;
+    children: Snippet;
+  }
 
-	let {
-		variant = 'neutral',
-		size = 'md',
-		dot = false,
-		class: className = '',
-		children
-	}: Props = $props();
+  let {
+    variant = "neutral",
+    size = "md",
+    dot = false,
+    class: className = "",
+    children,
+  }: Props = $props();
+
+  const baseClasses =
+    "inline-flex items-center gap-1.5 font-medium rounded-md tracking-wide whitespace-nowrap leading-none font-sans";
+
+  const sizeClasses: Record<string, string> = {
+    sm: "px-2 py-1 text-[11px]",
+    md: "px-2.5 py-1.5 text-xs",
+  };
+
+  const variantClasses: Record<string, string> = {
+    neutral:
+      "bg-brand-surface-raised text-brand-text-primary border border-brand-border-hover",
+    primary:
+      "bg-brand-lime text-brand-lime-ink border border-brand-lime font-semibold",
+    purple:
+      "bg-brand-lime/10 text-brand-lime border border-brand-lime/30",
+    success:
+      "bg-brand-success-soft text-brand-success-text border border-brand-success-border",
+    warning:
+      "bg-brand-warning-soft text-brand-warning-text border border-brand-warning-border",
+    danger:
+      "bg-brand-danger-soft text-brand-danger-text border border-brand-danger-border",
+  };
+
+  const classes = $derived(
+    `${baseClasses} ${sizeClasses[size] ?? sizeClasses.md} ${variantClasses[variant] ?? variantClasses.neutral} ${className}`
+  );
 </script>
 
-<span class="badge badge-{variant} badge-{size} {className}">
-	{#if dot}
-		<span class="badge-dot" aria-hidden="true"></span>
-	{/if}
-	{@render children()}
+<span class={classes}>
+  {#if dot}
+    <span class="w-1.5 h-1.5 rounded-full bg-current" aria-hidden="true"></span>
+  {/if}
+  {@render children()}
 </span>
-
-<style>
-	.badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
-		font-weight: 500;
-		border-radius: 6px;
-		letter-spacing: 0.02em;
-		white-space: nowrap;
-		line-height: 1;
-	}
-
-	.badge-sm {
-		padding: 0.25rem 0.5rem;
-		font-size: 0.7rem;
-	}
-
-	.badge-md {
-		padding: 0.32rem 0.65rem;
-		font-size: 0.75rem;
-	}
-
-	.badge-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background-color: currentColor;
-	}
-
-	.badge-neutral {
-		background-color: #1f222a;
-		color: #d4d4d8;
-		border: 1px solid #2e333d;
-	}
-
-	.badge-primary {
-		background-color: #ffffff;
-		color: #0b0c0e;
-		border: 1px solid #ffffff;
-	}
-
-	.badge-purple {
-		background-color: #242731;
-		color: #e4e4e7;
-		border: 1px solid #3c4150;
-	}
-
-	.badge-success {
-		background-color: #11241a;
-		color: #4ade80;
-		border: 1px solid #1d442e;
-	}
-
-	.badge-warning {
-		background-color: #26200f;
-		color: #facc15;
-		border: 1px solid #4b3d18;
-	}
-
-	.badge-danger {
-		background-color: #291416;
-		color: #f87171;
-		border: 1px solid #572327;
-	}
-</style>

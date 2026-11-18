@@ -45,7 +45,7 @@
 
 {#if open}
 	<div
-		class="modal-backdrop"
+		class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
 		onclick={handleBackdropClick}
 		onkeydown={(e) => {
 			if ((e.key === 'Escape' || e.key === 'Enter') && e.target === e.currentTarget && !loading) {
@@ -57,33 +57,47 @@
 		aria-label={title}
 		tabindex="-1"
 	>
-		<div class="modal-dialog">
-			<div class="modal-header">
-				<h3 class="modal-title">{title}</h3>
+		<div
+			class="bg-brand-surface-card border border-brand-border-focus rounded-xl max-w-lg w-full overflow-hidden shadow-2xl"
+		>
+			<div class="flex items-center justify-between px-5 py-4 border-b border-brand-border">
+				<h3 class="m-0 text-base font-semibold font-heading text-brand-text-primary">
+					{title}
+				</h3>
 				<button
 					type="button"
-					class="modal-close"
+					class="bg-transparent border-none text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised cursor-pointer p-1 inline-flex items-center justify-center rounded-md transition-colors"
 					onclick={oncancel}
 					disabled={loading}
 					aria-label="Close dialog"
 				>
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						aria-hidden="true"
+					>
 						<line x1="18" y1="6" x2="6" y2="18" />
 						<line x1="6" y1="6" x2="18" y2="18" />
 					</svg>
 				</button>
 			</div>
 
-			<div class="modal-content">
+			<div class="p-5 text-sm text-brand-text-secondary leading-relaxed">
 				{#if description}
-					<p class="modal-desc">{description}</p>
+					<p class="m-0 mb-3 text-brand-text-secondary">{description}</p>
 				{/if}
 				{#if children}
 					{@render children()}
 				{/if}
 			</div>
 
-			<div class="modal-footer">
+			<div
+				class="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-brand-border bg-brand-surface"
+			>
 				<Button variant="ghost" onclick={oncancel} disabled={loading}>
 					{cancelText}
 				</Button>
@@ -98,79 +112,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background-color: rgba(0, 0, 0, 0.78);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 1000;
-		padding: 1rem;
-	}
-
-	.modal-dialog {
-		background-color: var(--color-bg-surface);
-		border: 1px solid var(--color-border-hover);
-		border-radius: 12px;
-		max-width: 520px;
-		width: 100%;
-		overflow: hidden;
-	}
-
-	.modal-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 1.15rem 1.35rem;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.modal-title {
-		margin: 0;
-		font-size: 1.05rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.modal-close {
-		background: transparent;
-		border: none;
-		color: var(--color-text-muted);
-		cursor: pointer;
-		padding: 0.25rem;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 6px;
-	}
-
-	.modal-close:hover {
-		color: var(--color-text);
-		background-color: var(--color-bg-elevated);
-	}
-
-	.modal-content {
-		padding: 1.35rem;
-		color: var(--color-text-muted);
-		font-size: 0.9rem;
-		line-height: 1.5;
-	}
-
-	.modal-desc {
-		margin: 0;
-		color: var(--color-text-muted);
-	}
-
-	.modal-footer {
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 0.65rem;
-		padding: 0.95rem 1.35rem;
-		border-top: 1px solid var(--color-border);
-		background-color: var(--color-bg-sidebar);
-	}
-</style>
