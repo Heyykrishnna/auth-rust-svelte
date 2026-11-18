@@ -17,9 +17,10 @@
 
 		if (error) {
 			status = 'error';
-			errorMessage = error === 'access_denied'
-				? 'You denied access to your account.'
-				: `Authentication error: ${error}`;
+			errorMessage =
+				error === 'access_denied'
+					? 'You denied access to your account.'
+					: `Authentication error: ${error}`;
 			return;
 		}
 
@@ -43,43 +44,36 @@
 </script>
 
 <svelte:head>
-	<title>Completing Sign In — AuthApp</title>
+	<title>Completing Sign In — Signet</title>
 </svelte:head>
 
-<div class="auth-layout">
-	<div class="auth-card glass-card" style="text-align: center;">
+<div class="min-h-[70vh] flex items-center justify-center p-6">
+	<div class="max-w-md w-full p-8 rounded-xl bg-brand-surface-card border border-brand-border text-center shadow-2xl">
 		{#if status === 'loading'}
-			<div class="spinner" style="width: 3rem; height: 3rem; border-width: 3px; margin: 0 auto 1.5rem;"></div>
-			<h2>Completing sign in…</h2>
-			<p>Please wait while we authenticate you.</p>
+			<div
+				class="w-12 h-12 border-4 border-brand-lime border-r-transparent rounded-full animate-spin mx-auto mb-6"
+				aria-hidden="true"
+			></div>
+			<h2 class="text-xl font-bold font-heading text-brand-text-primary mb-2">Completing sign in…</h2>
+			<p class="text-sm text-brand-text-secondary m-0">Please wait while we authenticate you.</p>
 		{:else if status === 'success'}
-			<div class="success-icon">✓</div>
-			<h2>Successfully signed in!</h2>
-			<p>Redirecting to your dashboard…</p>
+			<div class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 bg-emerald-500/15 text-emerald-300 border-2 border-emerald-500/30">
+				✓
+			</div>
+			<h2 class="text-xl font-bold font-heading text-brand-text-primary mb-2">Successfully signed in!</h2>
+			<p class="text-sm text-brand-text-secondary m-0">Redirecting to your dashboard…</p>
 		{:else}
-			<div class="error-icon">✕</div>
-			<h2>Authentication failed</h2>
-			<p>{errorMessage}</p>
-			<a href="/login" class="btn btn-primary" style="margin-top: 1.5rem; display: inline-flex;">
+			<div class="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6 bg-rose-500/15 text-rose-300 border-2 border-rose-500/30">
+				✕
+			</div>
+			<h2 class="text-xl font-bold font-heading text-brand-text-primary mb-2">Authentication failed</h2>
+			<p class="text-sm text-brand-text-secondary mb-6">{errorMessage}</p>
+			<a
+				href="/login"
+				class="inline-flex items-center justify-center px-5 py-2.5 rounded-md font-sans text-sm font-medium bg-brand-lime text-brand-lime-ink hover:bg-brand-lime-hover no-underline transition-colors"
+			>
 				Try Again
 			</a>
 		{/if}
 	</div>
 </div>
-
-<style>
-	.success-icon, .error-icon {
-		width: 4rem;
-		height: 4rem;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 1.75rem;
-		font-weight: 700;
-		margin: 0 auto 1.5rem;
-	}
-
-	.success-icon { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 2px solid rgba(16, 185, 129, 0.3); }
-	.error-icon   { background: rgba(239, 68, 68, 0.15);  color: #fca5a5; border: 2px solid rgba(239, 68, 68, 0.3); }
-</style>
