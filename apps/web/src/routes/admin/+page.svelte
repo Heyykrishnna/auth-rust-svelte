@@ -86,23 +86,23 @@
 </script>
 
 <svelte:head>
-	<title>Admin Console — AuthPlatform</title>
+	<title>Admin Console — Signet</title>
 	<meta name="description" content="Administrative console for managing users and role assignments." />
 </svelte:head>
 
-<div class="admin-container container">
-	<div class="admin-header">
+<div class="max-w-6xl mx-auto px-6 py-8 pb-16">
+	<div class="flex flex-wrap justify-between items-start gap-4 mb-8">
 		<div>
-			<div class="admin-badge-row">
+			<div class="mb-2">
 				<Badge variant="purple" size="sm">Admin Role Required</Badge>
 			</div>
-			<h1 class="admin-title">User Management Console</h1>
-			<p class="admin-subtitle">
+			<h1 class="text-3xl font-bold font-heading text-brand-text-primary tracking-tight mb-1">User Management Console</h1>
+			<p class="text-sm text-brand-text-secondary max-w-xl leading-relaxed m-0">
 				Inspect registered platform accounts, review permissions, and manage user lifecycles directly via the Rust API.
 			</p>
 		</div>
 
-		<div class="admin-actions">
+		<div class="flex items-center gap-3">
 			<Button variant="outline" onclick={loadUsers} {loading}>
 				Refresh Users
 			</Button>
@@ -110,18 +110,18 @@
 	</div>
 
 	{#if error}
-		<div class="admin-error-box" role="alert">{error}</div>
+		<div class="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-sm mb-6 flex items-center gap-2" role="alert">{error}</div>
 	{/if}
 
-	<div class="search-bar">
+	<div class="relative mb-6 flex items-center">
 		<input
 			type="text"
 			placeholder="Search users by name, email, or UUID..."
 			bind:value={searchQuery}
-			class="search-input"
+			class="w-full pl-4 pr-10 py-3 bg-brand-surface-card border border-brand-border rounded-xl text-brand-text-primary text-sm outline-none placeholder:text-brand-text-subtle focus:border-brand-lime transition-colors"
 		/>
 		{#if searchQuery}
-			<button class="clear-search" onclick={() => (searchQuery = '')} aria-label="Clear search">
+			<button class="absolute right-3.5 bg-transparent border-none text-brand-text-muted hover:text-brand-text-primary cursor-pointer text-sm p-1" onclick={() => (searchQuery = '')} aria-label="Clear search">
 				✕
 			</button>
 		{/if}
@@ -129,64 +129,64 @@
 
 	<Card variant="glass">
 		{#if loading && users.length === 0}
-			<div class="state-message">
-				<div class="spinner"></div>
-				<p>Querying Rust API for registered users...</p>
+			<div class="text-center py-12 px-4 text-brand-text-muted flex flex-col items-center gap-3">
+				<div class="w-6 h-6 border-2 border-brand-lime border-r-transparent rounded-full animate-spin"></div>
+				<p class="m-0 text-sm">Querying Rust API for registered users...</p>
 			</div>
 		{:else if filteredUsers.length === 0}
-			<div class="state-message">
-				<p>No matching users found.</p>
+			<div class="text-center py-12 px-4 text-brand-text-muted flex flex-col items-center gap-3">
+				<p class="m-0 text-sm">No matching users found.</p>
 			</div>
 		{:else}
-			<div class="table-responsive">
-				<table class="user-table">
+			<div class="overflow-x-auto">
+				<table class="w-full border-collapse text-left">
 					<thead>
 						<tr>
-							<th>User</th>
-							<th>Status</th>
-							<th>Verification</th>
-							<th>Joined</th>
-							<th class="text-right">Actions</th>
+							<th class="px-4 py-3 text-xs uppercase tracking-wider text-brand-text-muted font-semibold border-b border-white/10">User</th>
+							<th class="px-4 py-3 text-xs uppercase tracking-wider text-brand-text-muted font-semibold border-b border-white/10">Status</th>
+							<th class="px-4 py-3 text-xs uppercase tracking-wider text-brand-text-muted font-semibold border-b border-white/10">Verification</th>
+							<th class="px-4 py-3 text-xs uppercase tracking-wider text-brand-text-muted font-semibold border-b border-white/10">Joined</th>
+							<th class="px-4 py-3 text-xs uppercase tracking-wider text-brand-text-muted font-semibold border-b border-white/10 text-right">Actions</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each filteredUsers as user (user.id)}
-							<tr class:current-user-row={user.id === authStore.user?.id}>
-								<td>
-									<div class="user-cell">
-										<div class="table-avatar">
+							<tr class="transition-colors {user.id === authStore.user?.id ? 'bg-brand-lime/[0.04]' : 'hover:bg-white/[0.02]'}">
+								<td class="px-4 py-3.5 border-b border-white/5 text-sm align-middle">
+									<div class="flex items-center gap-3">
+										<div class="w-9 h-9 rounded-full bg-brand-lime/10 text-brand-lime border border-brand-lime/20 flex items-center justify-center font-bold text-xs shrink-0">
 											{getUserInitials(user)}
 										</div>
-										<div class="user-info">
-											<span class="user-name">
+										<div class="flex flex-col gap-0.5">
+											<span class="font-semibold text-brand-text-primary text-sm">
 												{user.display_name}
 												{#if user.id === authStore.user?.id}
-													<span class="you-tag">(You)</span>
+													<span class="text-xs text-brand-lime font-medium ml-1">(You)</span>
 												{/if}
 											</span>
-											<span class="user-email">{user.email}</span>
-											<span class="user-id font-mono">{user.id}</span>
+											<span class="text-xs text-brand-text-muted">{user.email}</span>
+											<span class="text-[11px] font-mono text-brand-text-subtle">{user.id}</span>
 										</div>
 									</div>
 								</td>
-								<td>
+								<td class="px-4 py-3.5 border-b border-white/5 text-sm align-middle">
 									{#if user.status === 'active'}
 										<Badge variant="success" size="sm">Active</Badge>
 									{:else}
 										<Badge variant="warning" size="sm">{user.status}</Badge>
 									{/if}
 								</td>
-								<td>
+								<td class="px-4 py-3.5 border-b border-white/5 text-sm align-middle">
 									{#if user.email_verified}
 										<Badge variant="success" size="sm">Verified</Badge>
 									{:else}
 										<Badge variant="neutral" size="sm">Unverified</Badge>
 									{/if}
 								</td>
-								<td class="font-mono date-cell">
+								<td class="px-4 py-3.5 border-b border-white/5 text-xs font-mono text-brand-text-secondary align-middle">
 									{formatDate(user.created_at)}
 								</td>
-								<td class="text-right">
+								<td class="px-4 py-3.5 border-b border-white/5 text-sm align-middle text-right">
 									{#if user.id !== authStore.user?.id}
 										<Button
 											variant="danger"
@@ -196,7 +196,7 @@
 											Delete
 										</Button>
 									{:else}
-										<span class="protected-pill">Protected</span>
+										<span class="text-xs text-brand-text-subtle px-2 py-1 bg-white/5 rounded">Protected</span>
 									{/if}
 								</td>
 							</tr>
@@ -206,7 +206,7 @@
 			</div>
 		{/if}
 		{#snippet footer()}
-			<span class="footer-count">Total registered accounts: {filteredUsers.length}</span>
+			<span class="text-xs text-brand-text-muted">Total registered accounts: {filteredUsers.length}</span>
 		{/snippet}
 	</Card>
 </div>
@@ -221,201 +221,3 @@
 	onconfirm={executeDeleteUser}
 	oncancel={() => (userToDelete = null)}
 />
-
-<style>
-	.container {
-		max-width: 1100px;
-		margin: 0 auto;
-		padding: 2rem 1.5rem 4rem;
-	}
-
-	.admin-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: 2rem;
-		flex-wrap: wrap;
-		gap: 1rem;
-	}
-
-	.admin-badge-row {
-		margin-bottom: 0.5rem;
-	}
-
-	.admin-title {
-		font-size: 2rem;
-		font-weight: 700;
-		color: #ffffff;
-		margin: 0 0 0.4rem;
-		letter-spacing: -0.02em;
-	}
-
-	.admin-subtitle {
-		margin: 0;
-		color: #94a3b8;
-		font-size: 0.95rem;
-		max-width: 600px;
-		line-height: 1.5;
-	}
-
-	.admin-error-box {
-		padding: 1rem 1.25rem;
-		background: rgba(239, 68, 68, 0.12);
-		border: 1px solid rgba(239, 68, 68, 0.3);
-		border-radius: 10px;
-		color: #f87171;
-		font-size: 0.92rem;
-		margin-bottom: 1.5rem;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.search-bar {
-		position: relative;
-		margin-bottom: 1.5rem;
-		display: flex;
-		align-items: center;
-	}
-
-	.search-input {
-		width: 100%;
-		padding: 0.8rem 2.5rem 0.8rem 1rem;
-		background: rgba(15, 23, 42, 0.6);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 10px;
-		color: #f8fafc;
-		font-size: 0.95rem;
-		outline: none;
-		transition: border-color 0.2s ease;
-	}
-
-	.search-input:focus {
-		border-color: #818cf8;
-	}
-
-	.clear-search {
-		position: absolute;
-		right: 1rem;
-		background: transparent;
-		border: none;
-		color: #94a3b8;
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-
-	.table-responsive {
-		overflow-x: auto;
-	}
-
-	.user-table {
-		width: 100%;
-		border-collapse: collapse;
-		text-align: left;
-	}
-
-	.user-table th {
-		padding: 0.85rem 1rem;
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: #94a3b8;
-		font-weight: 600;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-	}
-
-	.user-table td {
-		padding: 1rem;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-		font-size: 0.9rem;
-		color: #cbd5e1;
-		vertical-align: middle;
-	}
-
-	.current-user-row {
-		background: rgba(99, 102, 241, 0.04);
-	}
-
-	.user-cell {
-		display: flex;
-		align-items: center;
-		gap: 0.85rem;
-	}
-
-	.table-avatar {
-		width: 38px;
-		height: 38px;
-		border-radius: 50%;
-		background-color: #23262e;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-weight: 600;
-		font-size: 0.82rem;
-		color: #ffffff;
-		flex-shrink: 0;
-	}
-
-	.user-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-	}
-
-	.user-name {
-		font-weight: 600;
-		color: #f8fafc;
-	}
-
-	.you-tag {
-		font-size: 0.75rem;
-		color: #818cf8;
-		font-weight: 500;
-	}
-
-	.user-email {
-		font-size: 0.8rem;
-		color: #94a3b8;
-	}
-
-	.user-id {
-		font-size: 0.725rem;
-		color: #64748b;
-	}
-
-	.font-mono {
-		font-family: var(--font-mono, monospace);
-	}
-
-	.date-cell {
-		font-size: 0.825rem;
-		color: #94a3b8;
-	}
-
-	.text-right {
-		text-align: right;
-	}
-
-	.protected-pill {
-		font-size: 0.75rem;
-		color: #64748b;
-		padding: 0.25rem 0.5rem;
-		background: rgba(255, 255, 255, 0.04);
-		border-radius: 4px;
-	}
-
-	.state-message {
-		text-align: center;
-		padding: 3rem 1rem;
-		color: #94a3b8;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.footer-count {
-		font-size: 0.85rem;
-		color: #94a3b8;
-	}
-</style>
