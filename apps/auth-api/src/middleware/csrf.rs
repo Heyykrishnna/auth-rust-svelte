@@ -39,6 +39,7 @@ pub async fn csrf_protection_middleware(req: Request, next: Next) -> Response {
         || path.ends_with("/refresh")
         || path.ends_with("/csrf")
         || path.starts_with("/v1/backend/")
+        || path.starts_with("/v1/client/auth/")
         || path.contains("/oidc/");
 
     if is_public_auth_route {
