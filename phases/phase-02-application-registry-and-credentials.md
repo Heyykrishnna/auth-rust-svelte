@@ -1,6 +1,6 @@
 # Phase 02: Application Registry, Environments, Credentials & Dashboard Shell
 
-- **Status:** Planned
+- **Status:** Completed
 - **Prerequisites:** Phase 01 completed (multi-tenant schema, `application_environments`, `application_credentials`, `application_domains`)
 - **Primary Targets:** `apps/auth-api/src/routes/`, `apps/auth-api/src/handlers/`, `apps/auth-api/src/middleware/`, `apps/web/`
 
@@ -99,10 +99,10 @@ Establish the foundational Control Plane dashboard structure **now** (avoiding d
 
 ## Acceptance Criteria
 
-- [ ] A developer can sign into the Dashboard, create an application, switch between `Development` and `Production` environments, copy `pk_test_*` / `sk_test_*`, and register allowed origins and redirect URIs without touching backend config files or restarting `auth-api`.
-- [ ] Dynamic CORS immediately reflects newly added or removed `allowed_origins` without server restart.
-- [ ] Secret keys are never retrievable after initial creation and are rejected immediately upon revocation.
-- [ ] All Control Plane, credential isolation, dynamic CORS, and frontend shell tests pass.
+- [x] A developer can sign into the Dashboard, create an application, switch between `Development` and `Production` environments, copy `pk_test_*` / `sk_test_*`, and register allowed origins and redirect URIs without touching backend config files or restarting `auth-api`.
+- [x] Dynamic CORS immediately reflects newly added or removed `allowed_origins` without server restart.
+- [x] Secret keys are never retrievable after initial creation and are rejected immediately upon revocation.
+- [x] All Control Plane, credential isolation, dynamic CORS, and frontend shell tests pass.
 
 ---
 

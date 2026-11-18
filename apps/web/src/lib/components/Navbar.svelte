@@ -40,6 +40,9 @@
 				<a href="/settings" class="nav-link" class:active={isActive('/settings')}>
 					Settings
 				</a>
+				<a href="/control" class="nav-link" class:active={isActive('/control')}>
+					Control Plane
+				</a>
 				{#if authStore.isAdmin}
 					<a href="/admin" class="nav-link nav-link-admin" class:active={isActive('/admin')}>
 						<span class="admin-indicator" aria-hidden="true">★</span> Admin
@@ -51,6 +54,9 @@
 				</a>
 				<a href="/login" class="nav-link" class:active={isActive('/login')}>
 					Sign In
+				</a>
+				<a href="/control" class="nav-link" class:active={isActive('/control')}>
+					Control Plane
 				</a>
 				<a href="/register" class="nav-link" class:active={isActive('/register')}>
 					Register
