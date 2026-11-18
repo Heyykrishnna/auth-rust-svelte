@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import { portalApi, type PortalAccountView } from '$lib/api/portal';
 
 	let account = $state<PortalAccountView | null>(null);
@@ -31,11 +32,8 @@
 			message = res.global_logout
 				? `Signed out everywhere (${res.revoked_app_sessions} app sessions revoked).`
 				: 'Local sign-out completed.';
-			if (res.global_logout) {
-				account = null;
-			} else {
-				await loadAccount();
-			}
+			if (res.global_logout) account = null;
+			else await loadAccount();
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Sign-out failed.';
 		} finally {
@@ -58,177 +56,169 @@
 </script>
 
 <svelte:head>
-	<title>Central SSO Account & Sign Out</title>
+	<title>SSO Account — Secure Auth</title>
 </svelte:head>
 
-<div class="portal-header">
-	<h1>Central SSO Account</h1>
-	<p class="muted">Manage active IdP sessions and connected applications.</p>
-</div>
+<AuthSplitShell
+	brandName="Secure Auth"
+	footerText="Central Identity Provider · Session Control"
+	topActionLabel="Control Plane"
+	topActionHref="/control"
+>
+	<h1 class="editorial-title">SSO Sessions</h1>
+	<p class="editorial-subtitle">Inspect connected applications and revoke active sessions.</p>
 
-{#if message}
-	<div class="alert-info" role="status">{message}</div>
-{/if}
-{#if errorMessage}
-	<div class="alert-error" role="alert">{errorMessage}</div>
-{/if}
+	{#if message}
+		<div class="status-box" role="status">{message}</div>
+	{/if}
+	{#if errorMessage}
+		<div class="editorial-alert" role="alert">{errorMessage}</div>
+	{/if}
 
-{#if loading}
-	<p class="muted">Checking active SSO session...</p>
-{:else if account}
-	<div class="identity-banner">
-		<strong>{account.user.display_name}</strong>
-		<span>{account.user.email}</span>
-	</div>
+	{#if loading}
+		<p class="editorial-subtitle">Checking active SSO session...</p>
+	{:else if account}
+		<div class="account-meta">
+			<strong>{account.user.display_name}</strong>
+			<span>{account.user.email}</span>
+		</div>
 
-	<section class="section">
-		<h2>Connected Applications ({account.connected_apps.length})</h2>
-		{#if account.connected_apps.length === 0}
-			<p class="muted">No connected applications yet.</p>
-		{:else}
-			<ul class="list">
-				{#each account.connected_apps as app}
+		<div class="block">
+			<h2 class="block-title">Connected Applications ({account.connected_apps.length})</h2>
+			{#if account.connected_apps.length === 0}
+				<p class="quiet">No connected applications.</p>
+			{:else}
+				<ul class="item-list">
+					{#each account.connected_apps as app}
+						<li>
+							<div>
+								<strong>{app.application_name}</strong>
+								<span>{app.environment_kind}</span>
+							</div>
+							<span class="pill">{app.active_sessions} active</span>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+
+		<div class="block">
+			<h2 class="block-title">Active SSO Sessions ({account.sso_sessions.length})</h2>
+			<ul class="item-list">
+				{#each account.sso_sessions as sess}
 					<li>
 						<div>
-							<strong>{app.application_name}</strong>
-							<span class="sub">{app.environment_kind}</span>
+							<strong>{sess.is_current ? 'Current browser' : 'Other device'}</strong>
+							<span>{sess.ip_address ?? 'Unknown IP'}</span>
 						</div>
-						<span class="pill">{app.active_sessions} active</span>
+						<button type="button" class="revoke-btn" disabled={busy} onclick={() => handleRevokeSso(sess.id)}>
+							Revoke
+						</button>
 					</li>
 				{/each}
 			</ul>
-		{/if}
-	</section>
+		</div>
 
-	<section class="section">
-		<h2>Active SSO Sessions ({account.sso_sessions.length})</h2>
-		<ul class="list">
-			{#each account.sso_sessions as sess}
-				<li>
-					<div>
-						<strong>{sess.is_current ? 'Current browser' : 'Other device'}</strong>
-						<span class="sub">{sess.ip_address ?? 'Unknown IP'}</span>
-					</div>
-					<button type="button" class="btn-link" disabled={busy} onclick={() => handleRevokeSso(sess.id)}>
-						Revoke
-					</button>
-				</li>
-			{/each}
-		</ul>
-	</section>
-
-	<div class="actions">
-		<button type="button" class="btn-danger" disabled={busy} onclick={() => handleSignOut(true)}>
-			{busy ? 'Signing out...' : 'Sign out of all applications'}
-		</button>
-	</div>
-{/if}
+		<div class="editorial-actions-footer">
+			<span class="quiet">Global sign-out revokes all app sessions</span>
+			<button type="button" class="editorial-circle-cta" disabled={busy} onclick={() => handleSignOut(true)}>
+				{busy ? '...' : 'SIGN OUT'}
+			</button>
+		</div>
+	{/if}
+</AuthSplitShell>
 
 <style>
-	.portal-header {
-		text-align: center;
+	.status-box {
+		padding: 0.75rem 0.9rem;
+		border: 1px solid #1d442e;
+		background-color: #11241a;
+		color: #4ade80;
+		border-radius: 6px;
+		font-size: 0.82rem;
 		margin-bottom: 1.25rem;
 	}
-	h1 {
-		font-size: 1.35rem;
-		margin: 0 0 0.35rem;
-	}
-	h2 {
-		font-size: 0.9rem;
-		color: #cbd5e1;
-		margin: 0 0 0.6rem;
-	}
-	.muted {
-		color: #94a3b8;
-		font-size: 0.88rem;
-		margin: 0;
-	}
-	.identity-banner {
+
+	.account-meta {
 		display: flex;
 		flex-direction: column;
-		padding: 0.85rem 1rem;
-		border-radius: 10px;
-		background: rgba(99, 102, 241, 0.14);
-		border: 1px solid rgba(99, 102, 241, 0.35);
+		padding-bottom: 1rem;
+		margin-bottom: 1.25rem;
+		border-bottom: 1px solid #23262e;
+	}
+
+	.account-meta strong {
+		color: #ffffff;
+		font-size: 0.95rem;
+	}
+
+	.account-meta span {
+		color: #71717a;
+		font-size: 0.8rem;
+	}
+
+	.block {
 		margin-bottom: 1.25rem;
 	}
-	.identity-banner span {
-		font-size: 0.82rem;
-		color: #c7d2fe;
+
+	.block-title {
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: #71717a;
+		margin-bottom: 0.55rem;
 	}
-	.section {
-		margin-bottom: 1.25rem;
-	}
-	.list {
+
+	.item-list {
 		list-style: none;
 		padding: 0;
 		margin: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+		border-top: 1px solid #23262e;
 	}
-	.list li {
+
+	.item-list li {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 0.65rem 0.85rem;
-		border-radius: 10px;
-		background: rgba(15, 23, 42, 0.7);
-		border: 1px solid rgba(148, 163, 184, 0.18);
+		padding: 0.65rem 0;
+		border-bottom: 1px solid #23262e;
 	}
-	.list li div {
+
+	.item-list li div {
 		display: flex;
 		flex-direction: column;
 	}
-	.sub {
-		font-size: 0.76rem;
-		color: #94a3b8;
+
+	.item-list li strong {
+		font-size: 0.85rem;
+		color: #f4f4f5;
 	}
-	.pill {
+
+	.item-list li span {
 		font-size: 0.75rem;
-		padding: 0.2rem 0.55rem;
-		border-radius: 999px;
-		background: rgba(16, 185, 129, 0.15);
-		color: #6ee7b7;
+		color: #71717a;
 	}
-	.btn-link {
+
+	.pill {
+		font-size: 0.72rem;
+		color: #d4d4d8;
+		border: 1px solid #2e2e34;
+		padding: 0.15rem 0.5rem;
+		border-radius: 4px;
+	}
+
+	.revoke-btn {
 		background: transparent;
-		border: none;
-		color: #fca5a5;
-		cursor: pointer;
-		font-size: 0.82rem;
-	}
-	.actions {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-	.btn-danger {
-		padding: 0.78rem 1rem;
-		border-radius: 10px;
-		border: none;
-		background: #dc2626;
-		color: #ffffff;
-		font-weight: 600;
+		border: 1px solid #572327;
+		color: #f87171;
+		border-radius: 4px;
+		padding: 0.25rem 0.6rem;
+		font-size: 0.75rem;
 		cursor: pointer;
 	}
-	.alert-info {
-		background: rgba(16, 185, 129, 0.15);
-		border: 1px solid rgba(16, 185, 129, 0.4);
-		color: #a7f3d0;
-		padding: 0.75rem 1rem;
-		border-radius: 10px;
-		margin-bottom: 1rem;
-		font-size: 0.875rem;
-	}
-	.alert-error {
-		background: rgba(239, 68, 68, 0.14);
-		border: 1px solid rgba(239, 68, 68, 0.4);
-		color: #fecaca;
-		padding: 0.75rem 1rem;
-		border-radius: 10px;
-		margin-bottom: 1rem;
-		font-size: 0.875rem;
+
+	.quiet {
+		font-size: 0.78rem;
+		color: #71717a;
 	}
 </style>
-

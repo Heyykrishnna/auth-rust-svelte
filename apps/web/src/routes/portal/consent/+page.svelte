@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
+	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import { portalApi, type PortalTransactionContext } from '$lib/api/portal';
 	import { describeOidcScopes, resolvePortalBrandTheme } from '$lib/portal/state';
 
@@ -53,144 +54,89 @@
 </script>
 
 <svelte:head>
-	<title>Continue to {brand.appName}</title>
+	<title>Authorize {brand.appName}</title>
 </svelte:head>
 
-{#if loading}
-	<p class="muted">Loading application permissions...</p>
-{:else if !txContext}
-	<div class="alert-error" role="alert">{errorMessage || 'Invalid consent link.'}</div>
-{:else}
-	<div class="portal-header">
-		<h1>Continue to {brand.appName}?</h1>
-		{#if txContext.active_user}
-			<p class="muted">
-				Signed in as <strong>{txContext.active_user.email}</strong>
-			</p>
+<AuthSplitShell
+	brandName={brand.appName}
+	logoUrl={brand.logoUrl}
+	footerText="Central Identity Provider · Application Authorization"
+	topActionLabel={txContext ? 'Switch account' : undefined}
+	topActionHref={txContext ? `/portal/login?tx=${encodeURIComponent(txContext.tx_id)}` : undefined}
+>
+	{#if loading}
+		<p class="editorial-subtitle">Loading requested permissions...</p>
+	{:else if !txContext}
+		<h1 class="editorial-title">Authorize</h1>
+		<div class="editorial-alert" role="alert">{errorMessage || 'Invalid consent link.'}</div>
+	{:else}
+		<h1 class="editorial-title">Authorize</h1>
+		<p class="editorial-subtitle">
+			{brand.appName} requests access
+			{#if txContext.active_user}
+				for <strong>{txContext.active_user.email}</strong>
+			{/if}
+		</p>
+
+		{#if errorMessage}
+			<div class="editorial-alert" role="alert">{errorMessage}</div>
 		{/if}
-	</div>
 
-	{#if errorMessage}
-		<div class="alert-error" role="alert">{errorMessage}</div>
-	{/if}
-
-	<div class="scope-box">
-		<p class="scope-heading">{brand.appName} will receive access to:</p>
-		<ul>
+		<ul class="scope-list">
 			{#each scopeDescriptions as item}
-				<li>
+				<li class="scope-row">
 					<strong>{item.title}</strong>
 					<span>{item.description}</span>
 				</li>
 			{/each}
 		</ul>
-	</div>
 
-	<div class="actions">
-		<button
-			type="button"
-			class="btn-primary"
-			style={`background-color: ${brand.primaryColor}`}
-			disabled={submitting}
-			onclick={() => decide(true)}
-		>
-			{submitting ? 'Authorizing...' : `Allow & continue to ${brand.appName}`}
-		</button>
-		<button type="button" class="btn-secondary" disabled={submitting} onclick={() => decide(false)}>
-			Cancel
-		</button>
-	</div>
+		<div class="editorial-actions-footer">
+			<button
+				type="button"
+				class="editorial-oauth-btn"
+				disabled={submitting}
+				onclick={() => decide(false)}
+			>
+				Deny access
+			</button>
 
-	<div class="portal-links">
-		<a href={`/portal/login?tx=${encodeURIComponent(txContext.tx_id)}`}>Switch account</a>
-	</div>
-{/if}
+			<button
+				type="button"
+				class="editorial-circle-cta"
+				disabled={submitting}
+				onclick={() => decide(true)}
+			>
+				{submitting ? '...' : 'ALLOW'}
+			</button>
+		</div>
+	{/if}
+</AuthSplitShell>
 
 <style>
-	.portal-header {
-		text-align: center;
-		margin-bottom: 1.25rem;
-	}
-	h1 {
-		font-size: 1.35rem;
-		margin: 0 0 0.4rem;
-	}
-	.muted {
-		color: #94a3b8;
-		font-size: 0.9rem;
-		margin: 0;
-	}
-	.alert-error {
-		background: rgba(239, 68, 68, 0.14);
-		border: 1px solid rgba(239, 68, 68, 0.4);
-		color: #fecaca;
-		padding: 0.75rem 1rem;
-		border-radius: 10px;
-		margin-bottom: 1rem;
-		font-size: 0.875rem;
-	}
-	.scope-box {
-		background: rgba(15, 23, 42, 0.65);
-		border: 1px solid rgba(148, 163, 184, 0.2);
-		border-radius: 12px;
-		padding: 1rem;
-		margin-bottom: 1.25rem;
-	}
-	.scope-heading {
-		margin: 0 0 0.75rem;
-		font-size: 0.85rem;
-		color: #cbd5e1;
-	}
-	ul {
+	.scope-list {
 		list-style: none;
 		padding: 0;
 		margin: 0;
+		border-top: 1px solid #23262e;
+	}
+
+	.scope-row {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.2rem;
+		padding: 0.85rem 0;
+		border-bottom: 1px solid #23262e;
 	}
-	li {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-	}
-	li strong {
-		font-size: 0.9rem;
-		color: #f8fafc;
-	}
-	li span {
-		font-size: 0.8rem;
-		color: #94a3b8;
-	}
-	.actions {
-		display: flex;
-		flex-direction: column;
-		gap: 0.65rem;
-	}
-	.btn-primary {
-		padding: 0.78rem 1rem;
-		border: none;
-		border-radius: 10px;
+
+	.scope-row strong {
+		font-size: 0.88rem;
+		font-weight: 500;
 		color: #ffffff;
-		font-weight: 600;
-		cursor: pointer;
 	}
-	.btn-secondary {
-		padding: 0.72rem 1rem;
-		border-radius: 10px;
-		border: 1px solid rgba(148, 163, 184, 0.3);
-		background: transparent;
-		color: #e2e8f0;
-		cursor: pointer;
-	}
-	.portal-links {
-		margin-top: 1.25rem;
-		text-align: center;
-		font-size: 0.85rem;
-	}
-	.portal-links a {
-		color: #a5b4fc;
-		text-decoration: none;
+
+	.scope-row span {
+		font-size: 0.78rem;
+		color: #71717a;
 	}
 </style>
-
