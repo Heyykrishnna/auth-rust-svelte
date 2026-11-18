@@ -1,837 +1,936 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
-	import Card from '$lib/components/Card.svelte';
-	import Input from '$lib/components/Input.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
+	import OverviewPanel from '$lib/components/control/OverviewPanel.svelte';
+	import AuthConfigPanel from '$lib/components/control/AuthConfigPanel.svelte';
+	import UsersDirectoryPanel from '$lib/components/control/UsersDirectoryPanel.svelte';
+	import OrganizationsPanel from '$lib/components/control/OrganizationsPanel.svelte';
+	import RolesPermissionsPanel from '$lib/components/control/RolesPermissionsPanel.svelte';
+	import WebhooksPanel from '$lib/components/control/WebhooksPanel.svelte';
+	import KeysDomainsPanel from '$lib/components/control/KeysDomainsPanel.svelte';
+	import AuditLogsPanel from '$lib/components/control/AuditLogsPanel.svelte';
+	import TeamSecurityPanel from '$lib/components/control/TeamSecurityPanel.svelte';
 	import { controlApi } from '$lib/api/control';
 	import type {
 		ApplicationDomainDto,
 		CredentialSummaryDto,
-		EnrollmentPolicy
+		EnvironmentOverviewDto,
+		OAuthProviderConfigDto
 	} from '$lib/api/types';
 	import {
-		maskSecretPrefix,
-		validateDomainForEnv,
-		validateOriginForEnv,
-		validateRedirectUriForEnv,
-		validateSlug
-	} from '$lib/control/validation';
+		canDeleteApplication,
+		canEditEnvironmentSettings,
+		canMutateEnvironment,
+		getInitials
+	} from '$lib/control/permissions';
+	import { validateSlug } from '$lib/control/validation';
 	import {
 		controlStore,
 		selectApplication,
+		selectEnvironmentKind,
+		selectWorkspace,
 		setApplications,
+		setDeveloper,
 		showOneTimeSecret
 	} from '$lib/stores/control.svelte';
 
-	type TabKey = 'overview' | 'keys' | 'domains';
+	type SectionId =
+		| 'overview'
+		| 'auth'
+		| 'keys'
+		| 'users'
+		| 'organizations'
+		| 'roles'
+		| 'webhooks'
+		| 'audit'
+		| 'team'
+		| 'security';
 
-	let activeTab = $state<TabKey>('overview');
+	let activeSection = $state<SectionId>('overview');
+	let mobileSidebarOpen = $state(false);
+
+	let overview = $state<EnvironmentOverviewDto | null>(null);
+	let providers = $state<OAuthProviderConfigDto[]>([]);
 	let credentials = $state<CredentialSummaryDto[]>([]);
 	let domains = $state<ApplicationDomainDto[]>([]);
-	let loadingEnvResources = $state(false);
+	let loadingEnv = $state(false);
 
-	let showCreateAppModal = $state(false);
+	let createAppModalOpen = $state(false);
 	let newAppName = $state('');
 	let newAppSlug = $state('');
-	let newAppRedirect = $state('http://localhost:5173/auth/callback');
+	let newAppRedirect = $state('http://localhost:5174/auth/callback');
+	let createAppError = $state('');
 	let creatingApp = $state(false);
 
-	let envPolicy = $state<EnrollmentPolicy>('consent_required');
-	let envSessionTtl = $state('604800');
-	let envAccessTtl = $state('300');
-	let envRequireVerified = $state(true);
-	let savingSettings = $state(false);
+	const activeRole = $derived(controlStore.activeWorkspace?.role ?? 'viewer');
+	const allowMutate = $derived(canMutateEnvironment(activeRole));
+	const allowPolicyEdit = $derived(canEditEnvironmentSettings(activeRole));
+	const allowDeleteApp = $derived(canDeleteApplication(activeRole));
 
-	let newCredName = $state('');
-	let newCredType = $state<'secret' | 'publishable'>('secret');
-	let selectedScopes = $state<string[]>(['users:read', 'sync:read']);
-	let creatingCred = $state(false);
+	const sectionTitles: Record<SectionId, string> = {
+		overview: 'Overview',
+		auth: 'Authentication & SSO',
+		keys: 'API Keys & Domains',
+		users: 'Users & Sessions',
+		organizations: 'Organizations',
+		roles: 'Roles & Permissions',
+		webhooks: 'Webhooks & Sync',
+		audit: 'Audit Logs',
+		team: 'Team & Roles',
+		security: 'Account Security'
+	};
 
-	let newDomain = $state('');
-	let newOriginsText = $state('');
-	let newRedirectsText = $state('');
-	let domainValidationError = $state('');
-	let creatingDomain = $state(false);
-
-	const availableScopes = [
-		'users:read',
-		'users:write',
-		'sessions:read',
-		'sessions:revoke',
-		'orgs:read',
-		'orgs:manage',
-		'sync:read'
-	];
-
-	async function loadEnvironmentResources() {
-		const app = controlStore.activeApplication;
-		const env = controlStore.activeEnvironment;
-		if (!app || !env) {
+	async function loadActiveEnvironmentData() {
+		const app = controlStore.activeApplication?.application;
+		if (!app) {
+			overview = null;
+			providers = [];
 			credentials = [];
 			domains = [];
 			return;
 		}
-		envPolicy = env.enrollment_policy;
-		envSessionTtl = String(env.session_ttl_secs);
-		envAccessTtl = String(env.access_token_ttl_secs);
-		envRequireVerified = env.require_email_verification;
-
-		loadingEnvResources = true;
+		loadingEnv = true;
 		try {
-			const [credsRes, domainsRes] = await Promise.all([
-				controlApi.listCredentials(app.application.id, env.kind),
-				controlApi.listDomains(app.application.id, env.kind)
+			const [ov, prov, creds, doms] = await Promise.all([
+				controlApi.getOverview(app.id, controlStore.selectedEnvKind),
+				controlApi.listOAuthProviders(app.id, controlStore.selectedEnvKind),
+				controlApi.listCredentials(app.id, controlStore.selectedEnvKind),
+				controlApi.listDomains(app.id, controlStore.selectedEnvKind)
 			]);
-			credentials = credsRes;
-			domains = domainsRes;
+			overview = ov;
+			providers = prov;
+			credentials = creds;
+			domains = doms;
 		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to load environment details', 'error');
+			addToast(err instanceof Error ? err.message : 'Failed to load environment state', 'error');
 		} finally {
-			loadingEnvResources = false;
+			loadingEnv = false;
 		}
 	}
 
 	$effect(() => {
-		const appId = controlStore.activeApplication?.application.id;
-		const envKind = controlStore.selectedEnvKind;
-		if (controlStore.isAuthenticated && appId && envKind) {
-			loadEnvironmentResources();
-		}
+		const _appId = controlStore.activeApplication?.application.id;
+		const _env = controlStore.selectedEnvKind;
+		void _appId;
+		void _env;
+		loadActiveEnvironmentData();
 	});
 
-	async function refreshApps() {
+	async function refreshWorkspaceApplications() {
 		const wsId = controlStore.activeWorkspace?.id;
 		if (!wsId) return;
 		const apps = await controlApi.listApplications(wsId);
 		setApplications(apps);
+		await loadActiveEnvironmentData();
 	}
 
-	async function handleCreateApp() {
-		const ws = controlStore.activeWorkspace;
-		if (!ws) return;
+	async function handleWorkspaceChange(e: Event) {
+		const wsId = (e.currentTarget as HTMLSelectElement).value;
+		selectWorkspace(wsId);
+		try {
+			const apps = await controlApi.listApplications(wsId);
+			setApplications(apps);
+		} catch (err) {
+			addToast(err instanceof Error ? err.message : 'Failed to load applications', 'error');
+		}
+	}
+
+	async function handleCreateApplication() {
+		createAppError = '';
+		const wsId = controlStore.activeWorkspace?.id;
+		if (!wsId) return;
 		const slugErr = validateSlug(newAppSlug);
 		if (slugErr) {
-			addToast(slugErr, 'error');
+			createAppError = slugErr;
 			return;
 		}
-		if (newAppRedirect.trim()) {
-			const uriErr = validateRedirectUriForEnv('development', newAppRedirect);
-			if (uriErr) {
-				addToast(uriErr, 'error');
-				return;
-			}
-		}
-
 		creatingApp = true;
 		try {
 			const created = await controlApi.createApplication({
-				workspace_id: ws.id,
+				workspace_id: wsId,
 				name: newAppName.trim(),
 				slug: newAppSlug.trim().toLowerCase(),
 				initial_dev_redirect_uri: newAppRedirect.trim() || undefined
 			});
-			await refreshApps();
-			selectApplication(created.application.id);
-			showCreateAppModal = false;
+			createAppModalOpen = false;
 			newAppName = '';
 			newAppSlug = '';
 			showOneTimeSecret({
-				title: `${created.application.name} — Initial Development Credentials`,
+				title: `Application '${created.application.name}' Provisioned`,
 				publishableKey: created.development_publishable_key,
 				secretKey: created.initial_development_secret_key
 			});
-			addToast(`Application ${created.application.name} created`, 'success');
+			await refreshWorkspaceApplications();
+			selectApplication(created.application.id);
+			addToast('Application created with development and production environments', 'success');
 		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to create application', 'error');
+			createAppError = err instanceof Error ? err.message : 'Failed to create application';
 		} finally {
 			creatingApp = false;
 		}
 	}
 
-	async function handleSaveEnvironmentSettings(e: SubmitEvent) {
-		e.preventDefault();
-		const app = controlStore.activeApplication;
-		const env = controlStore.activeEnvironment;
-		if (!app || !env) return;
-
-		savingSettings = true;
+	async function handleSignOut() {
 		try {
-			await controlApi.updateEnvironment(app.application.id, env.kind, {
-				enrollment_policy: envPolicy,
-				session_ttl_secs: Number(envSessionTtl),
-				access_token_ttl_secs: Number(envAccessTtl),
-				require_email_verification: envRequireVerified
-			});
-			await refreshApps();
-			addToast(`Saved ${env.kind} environment settings`, 'success');
-		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to update environment', 'error');
+			await controlApi.signOut();
 		} finally {
-			savingSettings = false;
+			setDeveloper(null);
+			addToast('Signed out of Control Plane', 'info');
+			goto('/control/login');
 		}
 	}
 
-	async function handleToggleAppStatus() {
-		const app = controlStore.activeApplication?.application;
-		if (!app) return;
-		const nextStatus = app.status === 'active' ? 'suspended' : 'active';
-		try {
-			await controlApi.updateApplication(app.id, { status: nextStatus });
-			await refreshApps();
-			addToast(`Application ${nextStatus}`, 'info');
-		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to update status', 'error');
-		}
-	}
-
-	async function handleDeleteApp() {
-		const app = controlStore.activeApplication?.application;
-		if (!app) return;
-		try {
-			await controlApi.deleteApplication(app.id);
-			await refreshApps();
-			addToast(`Application ${app.name} deleted and credentials revoked`, 'info');
-		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to delete application', 'error');
-		}
-	}
-
-	function toggleScope(scope: string) {
-		if (selectedScopes.includes(scope)) {
-			selectedScopes = selectedScopes.filter((s) => s !== scope);
-		} else {
-			selectedScopes = [...selectedScopes, scope];
-		}
-	}
-
-	async function handleCreateCredential(e: SubmitEvent) {
-		e.preventDefault();
-		const app = controlStore.activeApplication;
-		const env = controlStore.activeEnvironment;
-		if (!app || !env) return;
-
-		creatingCred = true;
-		try {
-			const res = await controlApi.createCredential(app.application.id, env.kind, {
-				credential_type: newCredType,
-				name: newCredName.trim(),
-				scopes: newCredType === 'secret' ? selectedScopes : undefined
-			});
-			newCredName = '';
-			await loadEnvironmentResources();
-			if (res.secret_plaintext) {
-				showOneTimeSecret({
-					title: `${res.credential.name} (${env.kind})`,
-					secretKey: res.secret_plaintext
-				});
-			} else {
-				addToast('Publishable key created', 'success');
-			}
-		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to create credential', 'error');
-		} finally {
-			creatingCred = false;
-		}
-	}
-
-	async function handleRotateCredential(credId: string, name: string) {
-		const app = controlStore.activeApplication;
-		const env = controlStore.activeEnvironment;
-		if (!app || !env) return;
-		try {
-			const res = await controlApi.rotateCredential(app.application.id, env.kind, credId, 0);
-			await loadEnvironmentResources();
-			if (res.secret_plaintext) {
-				showOneTimeSecret({
-					title: `Rotated Secret Key — ${name}`,
-					secretKey: res.secret_plaintext
-				});
-			}
-		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to rotate secret key', 'error');
-		}
-	}
-
-	async function handleRevokeCredential(credId: string) {
-		const app = controlStore.activeApplication;
-		const env = controlStore.activeEnvironment;
-		if (!app || !env) return;
-		try {
-			await controlApi.revokeCredential(app.application.id, env.kind, credId);
-			await loadEnvironmentResources();
-			addToast('Credential revoked immediately', 'info');
-		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to revoke credential', 'error');
-		}
-	}
-
-	async function handleAddDomain(e: SubmitEvent) {
-		e.preventDefault();
-		const app = controlStore.activeApplication;
-		const env = controlStore.activeEnvironment;
-		if (!app || !env) return;
-
-		domainValidationError = '';
-		const domainErr = validateDomainForEnv(env.kind, newDomain);
-		if (domainErr) {
-			domainValidationError = domainErr;
-			return;
-		}
-
-		const origins = newOriginsText
-			.split('\n')
-			.map((s) => s.trim())
-			.filter(Boolean);
-		for (const origin of origins) {
-			const err = validateOriginForEnv(env.kind, origin);
-			if (err) {
-				domainValidationError = `Origin "${origin}": ${err}`;
-				return;
-			}
-		}
-
-		const redirects = newRedirectsText
-			.split('\n')
-			.map((s) => s.trim())
-			.filter(Boolean);
-		for (const uri of redirects) {
-			const err = validateRedirectUriForEnv(env.kind, uri);
-			if (err) {
-				domainValidationError = `Redirect URI "${uri}": ${err}`;
-				return;
-			}
-		}
-
-		creatingDomain = true;
-		try {
-			await controlApi.createDomain(app.application.id, env.kind, {
-				domain: newDomain.trim(),
-				allowed_origins: origins,
-				redirect_uris: redirects
-			});
-			newDomain = '';
-			newOriginsText = '';
-			newRedirectsText = '';
-			await loadEnvironmentResources();
-			addToast('Domain and dynamic CORS origins updated', 'success');
-		} catch (err) {
-			domainValidationError = err instanceof Error ? err.message : 'Failed to register domain';
-		} finally {
-			creatingDomain = false;
-		}
-	}
-
-	async function handleDeleteDomain(domainId: string) {
-		const app = controlStore.activeApplication;
-		const env = controlStore.activeEnvironment;
-		if (!app || !env) return;
-		try {
-			await controlApi.deleteDomain(app.application.id, env.kind, domainId);
-			await loadEnvironmentResources();
-			addToast('Domain removed and CORS cache invalidated', 'info');
-		} catch (err) {
-			addToast(err instanceof Error ? err.message : 'Failed to delete domain', 'error');
-		}
+	function selectNav(section: SectionId) {
+		activeSection = section;
+		mobileSidebarOpen = false;
 	}
 </script>
 
 <svelte:head>
-	<title>Developer Control Plane — AuthPlatform</title>
+	<title>{sectionTitles[activeSection]} — Secure Auth Control Plane</title>
 </svelte:head>
 
-<div class="control-header">
-	<div>
-		<h1 class="page-title">
-			{controlStore.activeApplication?.application.name ?? 'Applications'}
-		</h1>
-		<p class="page-sub">
-			Register applications, isolate dev & prod credentials, and configure live CORS origins and OIDC redirect URIs.
-		</p>
+<div class="console-shell">
+	<aside class="sidebar" class:sidebar-open={mobileSidebarOpen} aria-label="Control Plane navigation">
+		<div class="sidebar-brand">
+			<div class="brand-mark">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+					<line x1="12" y1="2" x2="12" y2="22" />
+					<line x1="2" y1="12" x2="22" y2="12" />
+					<line x1="5" y1="5" x2="19" y2="19" />
+					<line x1="19" y1="5" x2="5" y2="19" />
+				</svg>
+				<span>Secure Auth</span>
+			</div>
+			<button
+				type="button"
+				class="mobile-close"
+				onclick={() => (mobileSidebarOpen = false)}
+				aria-label="Close sidebar"
+			>
+				Close
+			</button>
+		</div>
+
+		<div class="context-selectors">
+			<label class="selector-field">
+				<span>Workspace</span>
+				<select
+					aria-label="Workspace selector"
+					value={controlStore.activeWorkspace?.id ?? ''}
+					onchange={handleWorkspaceChange}
+				>
+					{#each controlStore.workspaces as ws}
+						<option value={ws.id}>{ws.name}</option>
+					{/each}
+				</select>
+			</label>
+
+			<div class="app-selector-row">
+				<label class="selector-field flex-1">
+					<span>Application</span>
+					<select
+						aria-label="Application selector"
+						value={controlStore.activeApplication?.application.id ?? ''}
+						onchange={(e) => selectApplication((e.currentTarget as HTMLSelectElement).value)}
+					>
+						{#if controlStore.applications.length === 0}
+							<option value="">No applications</option>
+						{:else}
+							{#each controlStore.applications as item}
+								<option value={item.application.id}>{item.application.name}</option>
+							{/each}
+						{/if}
+					</select>
+				</label>
+				{#if allowMutate}
+					<button
+						type="button"
+						class="new-app-btn"
+						title="Create application"
+						aria-label="Create application"
+						onclick={() => {
+							createAppError = '';
+							createAppModalOpen = true;
+						}}
+					>
+						+
+					</button>
+				{/if}
+			</div>
+
+			<div class="env-switch" role="group" aria-label="Environment switcher">
+				<button
+					type="button"
+					class:active-dev={controlStore.selectedEnvKind === 'development'}
+					onclick={() => selectEnvironmentKind('development')}
+				>
+					Development
+				</button>
+				<button
+					type="button"
+					class:active-prod={controlStore.selectedEnvKind === 'production'}
+					onclick={() => selectEnvironmentKind('production')}
+				>
+					Production
+				</button>
+			</div>
+		</div>
+
+		<nav class="nav-groups" aria-label="Dashboard sections">
+			<div class="nav-group">
+				<span class="nav-label">Workspace</span>
+				<button type="button" class="nav-item" class:active={activeSection === 'overview'} onclick={() => selectNav('overview')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+					</svg>
+					Overview
+				</button>
+				<button type="button" class="nav-item" class:active={activeSection === 'auth'} onclick={() => selectNav('auth')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+					</svg>
+					Auth &amp; SSO
+				</button>
+				<button type="button" class="nav-item" class:active={activeSection === 'keys'} onclick={() => selectNav('keys')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<circle cx="8" cy="15" r="4" /><path d="M10.85 12.15 19 4" /><path d="m18 5 2 2" /><path d="m15 8 2 2" />
+					</svg>
+					Keys &amp; Domains
+				</button>
+			</div>
+
+			<div class="nav-group">
+				<span class="nav-label">Directory</span>
+				<button type="button" class="nav-item" class:active={activeSection === 'users'} onclick={() => selectNav('users')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+					</svg>
+					Users
+					{#if overview}
+						<span class="nav-count">{overview.total_users}</span>
+					{/if}
+				</button>
+				<button type="button" class="nav-item" class:active={activeSection === 'organizations'} onclick={() => selectNav('organizations')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<path d="M3 21h18" /><path d="M5 21V7l8-4v18" /><path d="M19 21V11l-6-4" /><path d="M9 9v.01" /><path d="M9 13v.01" /><path d="M9 17v.01" />
+					</svg>
+					Organizations
+				</button>
+				<button type="button" class="nav-item" class:active={activeSection === 'webhooks'} onclick={() => selectNav('webhooks')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+					</svg>
+					Webhooks &amp; Sync
+				</button>
+			</div>
+
+			<div class="nav-group">
+				<span class="nav-label">Security</span>
+				<button type="button" class="nav-item" class:active={activeSection === 'roles'} onclick={() => selectNav('roles')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 9h10" /><path d="M7 13h6" /><path d="M7 17h4" />
+					</svg>
+					Roles &amp; Permissions
+				</button>
+				<button type="button" class="nav-item" class:active={activeSection === 'audit'} onclick={() => selectNav('audit')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+					</svg>
+					Audit Logs
+				</button>
+				<button type="button" class="nav-item" class:active={activeSection === 'team'} onclick={() => selectNav('team')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+					</svg>
+					Team &amp; Roles
+				</button>
+				<button type="button" class="nav-item" class:active={activeSection === 'security'} onclick={() => selectNav('security')}>
+					<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+						<circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+					</svg>
+					Account Security
+				</button>
+			</div>
+		</nav>
+
+		<div class="sidebar-footer">
+			{#if controlStore.developer}
+				<div class="dev-card">
+					<span class="dev-avatar">
+						{getInitials(controlStore.developer.display_name, controlStore.developer.email)}
+					</span>
+					<div class="dev-meta">
+						<strong>{controlStore.developer.display_name || 'Developer'}</strong>
+						<span>{controlStore.developer.email}</span>
+					</div>
+				</div>
+				<button type="button" class="signout-btn" onclick={handleSignOut}>Sign out</button>
+			{/if}
+		</div>
+	</aside>
+
+	<div class="workspace-stage">
+		<header class="utility-bar">
+			<div class="utility-left">
+				<button
+					type="button"
+					class="mobile-menu-btn"
+					onclick={() => (mobileSidebarOpen = true)}
+					aria-label="Open navigation menu"
+				>
+					Menu
+				</button>
+				<div class="breadcrumbs">
+					<span>{controlStore.activeWorkspace?.name ?? 'Workspace'}</span>
+					<span class="sep">/</span>
+					{#if controlStore.activeApplication}
+						<span>{controlStore.activeApplication.application.name}</span>
+						<span class="sep">/</span>
+					{/if}
+					<strong>{sectionTitles[activeSection]}</strong>
+				</div>
+			</div>
+
+			<div class="utility-right">
+				<Badge variant={controlStore.selectedEnvKind === 'production' ? 'success' : 'warning'} size="sm" dot>
+					{controlStore.selectedEnvKind === 'production' ? 'Production' : 'Development'}
+				</Badge>
+				<Badge variant="neutral" size="sm">{activeRole}</Badge>
+			</div>
+		</header>
+
+		<main class="main-canvas">
+			{#if !allowMutate}
+				<div class="readonly-banner" role="status">
+					Read-only access: your workspace role is <strong>{activeRole}</strong>. Contact a workspace admin to perform mutations.
+				</div>
+			{/if}
+
+			{#if activeSection === 'team' && controlStore.activeWorkspace && controlStore.developer}
+				<TeamSecurityPanel
+					mode="team"
+					workspaceId={controlStore.activeWorkspace.id}
+					workspaceName={controlStore.activeWorkspace.name}
+					actorRole={activeRole}
+					currentDeveloperId={controlStore.developer.id}
+				/>
+			{:else if activeSection === 'security' && controlStore.activeWorkspace && controlStore.developer}
+				<TeamSecurityPanel
+					mode="security"
+					workspaceId={controlStore.activeWorkspace.id}
+					workspaceName={controlStore.activeWorkspace.name}
+					actorRole={activeRole}
+					currentDeveloperId={controlStore.developer.id}
+				/>
+			{:else if !controlStore.activeApplication || !controlStore.activeEnvironment}
+				<div class="empty-app-state">
+					<h1>Create your first application</h1>
+					<p>Every application provisions isolated Development and Production environments with separate API keys, users, domains, and webhooks.</p>
+					{#if allowMutate}
+						<Button variant="primary" onclick={() => (createAppModalOpen = true)}>Create Application</Button>
+					{/if}
+				</div>
+			{:else if activeSection === 'overview'}
+				<OverviewPanel
+					{overview}
+					loading={loadingEnv}
+					appName={controlStore.activeApplication.application.name}
+					appSlug={controlStore.activeApplication.application.slug}
+					onRefresh={loadActiveEnvironmentData}
+				/>
+			{:else if activeSection === 'auth'}
+				<AuthConfigPanel
+					appId={controlStore.activeApplication.application.id}
+					appName={controlStore.activeApplication.application.name}
+					envKind={controlStore.selectedEnvKind}
+					environment={controlStore.activeEnvironment}
+					{providers}
+					canEditPolicies={allowPolicyEdit}
+					canEditProviders={allowMutate}
+					onSaved={refreshWorkspaceApplications}
+				/>
+			{:else if activeSection === 'users'}
+				<UsersDirectoryPanel
+					appId={controlStore.activeApplication.application.id}
+					envKind={controlStore.selectedEnvKind}
+					canMutate={allowMutate}
+				/>
+			{:else if activeSection === 'organizations'}
+				<OrganizationsPanel
+					appId={controlStore.activeApplication.application.id}
+					envKind={controlStore.selectedEnvKind}
+					canMutate={allowMutate}
+				/>
+			{:else if activeSection === 'roles'}
+				<RolesPermissionsPanel
+					appId={controlStore.activeApplication.application.id}
+					envKind={controlStore.selectedEnvKind}
+					canMutate={allowMutate}
+				/>
+			{:else if activeSection === 'webhooks'}
+				<WebhooksPanel
+					appId={controlStore.activeApplication.application.id}
+					envKind={controlStore.selectedEnvKind}
+					canMutate={allowMutate}
+				/>
+			{:else if activeSection === 'keys'}
+				<KeysDomainsPanel
+					appId={controlStore.activeApplication.application.id}
+					appName={controlStore.activeApplication.application.name}
+					envKind={controlStore.selectedEnvKind}
+					{credentials}
+					{domains}
+					canMutate={allowMutate}
+					canDeleteApp={allowDeleteApp}
+					onReload={loadActiveEnvironmentData}
+					onAppDeleted={refreshWorkspaceApplications}
+				/>
+			{:else if activeSection === 'audit'}
+				<AuditLogsPanel
+					appId={controlStore.activeApplication.application.id}
+					envKind={controlStore.selectedEnvKind}
+				/>
+			{/if}
+		</main>
 	</div>
-	<Button variant="primary" onclick={() => (showCreateAppModal = true)}>+ New Application</Button>
 </div>
 
-{#if !controlStore.activeApplication || !controlStore.activeEnvironment}
-	<Card
-		title="Create Your First Application"
-		subtitle="Every application gets isolated Development and Production environments automatically."
-	>
-		<p class="empty-copy">
-			Click <strong>+ New Application</strong> to mint your initial <code>pk_test_*</code> and
-			<code>sk_test_*</code> keys and connect your first project.
-		</p>
-		<Button variant="primary" onclick={() => (showCreateAppModal = true)}>
-			Launch Application Wizard
-		</Button>
-	</Card>
-{:else}
-	<div class="tab-bar" role="tablist">
-		<button
-			type="button"
-			role="tab"
-			aria-selected={activeTab === 'overview'}
-			class="tab-btn"
-			class:active={activeTab === 'overview'}
-			onclick={() => (activeTab = 'overview')}
-		>
-			Overview & Settings
-		</button>
-		<button
-			type="button"
-			role="tab"
-			aria-selected={activeTab === 'keys'}
-			class="tab-btn"
-			class:active={activeTab === 'keys'}
-			onclick={() => (activeTab = 'keys')}
-		>
-			API Keys ({credentials.filter((c) => !c.revoked_at).length})
-		</button>
-		<button
-			type="button"
-			role="tab"
-			aria-selected={activeTab === 'domains'}
-			class="tab-btn"
-			class:active={activeTab === 'domains'}
-			onclick={() => (activeTab = 'domains')}
-		>
-			Domains & Redirects ({domains.length})
-		</button>
-	</div>
-
-	{#if activeTab === 'overview'}
-		<div class="grid-two">
-			<Card
-				title="Environment Policy ({controlStore.activeEnvironment.kind})"
-				subtitle="Changes apply immediately to this environment without restarting auth-api."
-			>
-				<form class="stack" onsubmit={handleSaveEnvironmentSettings}>
-					<label class="field">
-						<span>First-Time SSO Enrollment Policy</span>
-						<select bind:value={envPolicy}>
-							<option value="consent_required">Consent Required (Recommended)</option>
-							<option value="auto_join">Auto Join (First-Party Suite)</option>
-							<option value="invite_only">Invite Only</option>
-						</select>
-					</label>
-
-					<Input
-						id="env-access-ttl"
-						type="number"
-						label="Access Token TTL (seconds, 60–86400)"
-						bind:value={envAccessTtl}
-					/>
-					<Input
-						id="env-session-ttl"
-						type="number"
-						label="Session TTL (seconds)"
-						bind:value={envSessionTtl}
-					/>
-
-					<label class="checkbox-row">
-						<input type="checkbox" bind:checked={envRequireVerified} />
-						<span>Require verified email before issuing sessions</span>
-					</label>
-
-					<Button type="submit" variant="primary" loading={savingSettings}>
-						Save Environment Settings
-					</Button>
-				</form>
-			</Card>
-
-			<Card title="Application Lifecycle" subtitle="Slug: {controlStore.activeApplication.application.slug}">
-				<div class="stack">
-					<div class="meta-row">
-						<span>Application ID</span>
-						<code>{controlStore.activeApplication.application.id}</code>
-					</div>
-					<div class="meta-row">
-						<span>Environment ID</span>
-						<code>{controlStore.activeEnvironment.id}</code>
-					</div>
-					<div class="meta-row">
-						<span>Status</span>
-						<Badge
-							variant={controlStore.activeApplication.application.status === 'active'
-								? 'success'
-								: 'warning'}
-						>
-							{controlStore.activeApplication.application.status}
-						</Badge>
-					</div>
-
-					<div class="action-row">
-						<Button variant="outline" onclick={handleToggleAppStatus}>
-							{controlStore.activeApplication.application.status === 'active'
-								? 'Suspend Application'
-								: 'Reactivate Application'}
-						</Button>
-						<Button variant="danger" onclick={handleDeleteApp}>Delete Application</Button>
-					</div>
-				</div>
-			</Card>
-		</div>
-	{:else if activeTab === 'keys'}
-		<div class="grid-two">
-			<Card title="Mint New Credential" subtitle="Secret keys are displayed in plaintext exactly once.">
-				<form class="stack" onsubmit={handleCreateCredential}>
-					<label class="field">
-						<span>Credential Type</span>
-						<select bind:value={newCredType}>
-							<option value="secret">Secret Key (Server-Side sk_*)</option>
-							<option value="publishable">Publishable Key (Client SDK pk_*)</option>
-						</select>
-					</label>
-
-					<Input
-						id="cred-name"
-						label="Credential Label"
-						bind:value={newCredName}
-						placeholder="Ferrum Backend Sync"
-						required
-					/>
-
-					{#if newCredType === 'secret'}
-						<div class="field">
-							<span>Permission Scopes</span>
-							<div class="scope-grid">
-								{#each availableScopes as scope}
-									<label class="checkbox-row">
-										<input
-											type="checkbox"
-											checked={selectedScopes.includes(scope)}
-											onchange={() => toggleScope(scope)}
-										/>
-										<code>{scope}</code>
-									</label>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					<Button type="submit" variant="primary" loading={creatingCred}>
-						Generate {newCredType === 'secret' ? 'Secret Key' : 'Publishable Key'}
-					</Button>
-				</form>
-			</Card>
-
-			<Card title="Active & Historical Keys" subtitle={loadingEnvResources ? 'Refreshing...' : ''}>
-				<div class="stack">
-					{#each credentials as cred}
-						<div class="item-row">
-							<div class="item-meta">
-								<div class="item-head">
-									<strong>{cred.name}</strong>
-									<Badge variant={cred.revoked_at ? 'neutral' : 'primary'}>
-										{cred.revoked_at ? 'Revoked' : cred.credential_type}
-									</Badge>
-								</div>
-								<code class="key-preview">
-									{cred.public_key ?? maskSecretPrefix(cred.key_prefix)}
-								</code>
-								{#if cred.scopes.length > 0}
-									<span class="sub-meta">Scopes: {cred.scopes.join(', ')}</span>
-								{/if}
-								<span class="sub-meta">
-									Last used: {cred.last_used_at ? new Date(cred.last_used_at).toLocaleString() : 'Never'}
-								</span>
-							</div>
-							{#if !cred.revoked_at}
-								<div class="row-actions">
-									{#if cred.credential_type === 'secret'}
-										<Button
-											variant="outline"
-											size="sm"
-											onclick={() => handleRotateCredential(cred.id, cred.name)}
-										>
-											Rotate
-										</Button>
-									{/if}
-									<Button
-										variant="danger"
-										size="sm"
-										onclick={() => handleRevokeCredential(cred.id)}
-									>
-										Revoke
-									</Button>
-								</div>
-							{/if}
-						</div>
-					{:else}
-						<p class="empty-copy">No credentials found for this environment.</p>
-					{/each}
-				</div>
-			</Card>
-		</div>
-	{:else}
-		<div class="grid-two">
-			<Card
-				title="Register Domain & Origins ({controlStore.activeEnvironment.kind})"
-				subtitle={controlStore.activeEnvironment.kind === 'production'
-					? 'Production strictly requires https:// origins and exact redirect URIs.'
-					: 'Development permits http://localhost:<port> and https:// origins.'}
-			>
-				<form class="stack" onsubmit={handleAddDomain}>
-					{#if domainValidationError}
-						<div class="form-error" role="alert">{domainValidationError}</div>
-					{/if}
-
-					<Input
-						id="domain-host"
-						label="Hostname"
-						bind:value={newDomain}
-						placeholder={controlStore.activeEnvironment.kind === 'production'
-							? 'ferrum.app'
-							: 'localhost:5173'}
-						required
-					/>
-
-					<label class="field">
-						<span>Allowed CORS Origins (one per line)</span>
-						<textarea
-							rows="3"
-							bind:value={newOriginsText}
-							placeholder={controlStore.activeEnvironment.kind === 'production'
-								? 'https://ferrum.app'
-								: 'http://localhost:5173'}
-						></textarea>
-					</label>
-
-					<label class="field">
-						<span>Exact OIDC Redirect URIs (one per line)</span>
-						<textarea
-							rows="3"
-							bind:value={newRedirectsText}
-							placeholder={controlStore.activeEnvironment.kind === 'production'
-								? 'https://ferrum.app/auth/callback'
-								: 'http://localhost:5173/auth/callback'}
-						></textarea>
-					</label>
-
-					<Button type="submit" variant="primary" loading={creatingDomain}>
-						Save Domain & Update Live CORS
-					</Button>
-				</form>
-			</Card>
-
-			<Card title="Registered Domains" subtitle="Changes invalidate CORS caches immediately.">
-				<div class="stack">
-					{#each domains as dom}
-						<div class="item-row">
-							<div class="item-meta">
-								<div class="item-head">
-									<strong>{dom.domain}</strong>
-									<Badge variant={dom.is_verified ? 'success' : 'warning'}>
-										{dom.is_verified ? 'Verified' : 'DNS Verification Pending'}
-									</Badge>
-								</div>
-								{#if dom.verification_token}
-									<code class="sub-meta">TXT: {dom.verification_token}</code>
-								{/if}
-								<span class="sub-meta">
-									Origins: {dom.allowed_origins.length > 0 ? dom.allowed_origins.join(', ') : 'None'}
-								</span>
-								<span class="sub-meta">
-									Redirects: {dom.redirect_uris.length > 0 ? dom.redirect_uris.join(', ') : 'None'}
-								</span>
-							</div>
-							<Button variant="danger" size="sm" onclick={() => handleDeleteDomain(dom.id)}>
-								Remove
-							</Button>
-						</div>
-					{:else}
-						<p class="empty-copy">No domains registered in this environment yet.</p>
-					{/each}
-				</div>
-			</Card>
-		</div>
-	{/if}
-{/if}
-
 <Modal
-	open={showCreateAppModal}
-	title="Register New Application"
-	description="Creates isolated Development and Production environments, default roles, and initial API keys."
+	open={createAppModalOpen}
+	title="Create Application"
+	description="Provision a new tenant application with isolated Development and Production environments."
 	confirmText="Create Application"
 	loading={creatingApp}
-	onconfirm={handleCreateApp}
-	oncancel={() => (showCreateAppModal = false)}
+	onconfirm={handleCreateApplication}
+	oncancel={() => (createAppModalOpen = false)}
 >
-	<div class="stack">
-		<Input
-			id="wizard-app-name"
-			label="Application Name"
-			bind:value={newAppName}
-			placeholder="Ferrum"
-			required
-		/>
-		<Input
-			id="wizard-app-slug"
-			label="Application Slug"
-			bind:value={newAppSlug}
-			placeholder="ferrum"
-			required
-		/>
-		<Input
-			id="wizard-app-redirect"
-			label="Initial Development Redirect URI (Optional)"
-			bind:value={newAppRedirect}
-			placeholder="http://localhost:5173/auth/callback"
-		/>
+	<div class="modal-fields">
+		{#if createAppError}
+			<p class="error-text" role="alert">{createAppError}</p>
+		{/if}
+		<label class="modal-field">
+			<span>Application Name</span>
+			<input type="text" bind:value={newAppName} placeholder="Ferrum" required />
+		</label>
+		<label class="modal-field">
+			<span>Application Slug</span>
+			<input type="text" bind:value={newAppSlug} placeholder="ferrum" required />
+		</label>
+		<label class="modal-field">
+			<span>Initial Development Redirect URI (Optional)</span>
+			<input type="url" bind:value={newAppRedirect} placeholder="http://localhost:5174/auth/callback" />
+		</label>
 	</div>
 </Modal>
 
 <style>
-	.control-header {
+	.console-shell {
+		display: grid;
+		grid-template-columns: 256px 1fr;
+		min-height: 100vh;
+		background-color: #0b0c0e;
+		color: #f4f4f5;
+	}
+
+	.sidebar {
+		background-color: #111215;
+		border-right: 1px solid #1f2228;
+		padding: 1.15rem 0.95rem;
+		display: flex;
+		flex-direction: column;
+		gap: 1.15rem;
+		position: sticky;
+		top: 0;
+		height: 100vh;
+		overflow-y: auto;
+	}
+
+	.sidebar-brand {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 1rem;
-		flex-wrap: wrap;
-		margin-bottom: 1.5rem;
+		padding: 0 0.35rem;
 	}
 
-	.page-title {
-		margin: 0 0 0.25rem;
-		font-size: 1.75rem;
-		color: #f8fafc;
-	}
-
-	.page-sub {
-		margin: 0;
-		color: #94a3b8;
-		font-size: 0.92rem;
-	}
-
-	.tab-bar {
+	.brand-mark {
 		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 1.5rem;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-		padding-bottom: 0.5rem;
+		align-items: center;
+		gap: 0.55rem;
+		font-weight: 600;
+		font-size: 0.95rem;
+		color: #ffffff;
 	}
 
-	.tab-btn {
+	.mobile-close,
+	.mobile-menu-btn {
+		display: none;
 		background: transparent;
-		border: 1px solid transparent;
-		color: #94a3b8;
-		font-weight: 600;
-		font-size: 0.9rem;
-		padding: 0.5rem 0.95rem;
-		border-radius: 8px;
+		border: 1px solid #2e333d;
+		color: #d4d4d8;
+		border-radius: 6px;
+		padding: 0.28rem 0.6rem;
+		font-size: 0.76rem;
 		cursor: pointer;
 	}
 
-	.tab-btn.active {
-		color: #ffffff;
-		background: rgba(99, 102, 241, 0.18);
-		border-color: rgba(99, 102, 241, 0.4);
-	}
-
-	.grid-two {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-		gap: 1.5rem;
-	}
-
-	.stack {
+	.context-selectors {
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.65rem;
+		padding-bottom: 1rem;
+		border-bottom: 1px solid #1f2228;
 	}
 
-	.field {
+	.selector-field {
 		display: flex;
 		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.selector-field span {
+		font-size: 0.66rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: #71717a;
+	}
+
+	.selector-field select {
+		width: 100%;
+		background-color: #15171b;
+		border: 1px solid #23262e;
+		border-radius: 6px;
+		padding: 0.42rem 0.55rem;
+		color: #f4f4f5;
+		font-size: 0.8rem;
+		outline: none;
+	}
+
+	.app-selector-row {
+		display: flex;
+		align-items: flex-end;
 		gap: 0.4rem;
-		font-size: 0.875rem;
-		color: #cbd5e1;
 	}
 
-	select,
-	textarea {
-		background: rgba(15, 23, 42, 0.8);
-		color: #f8fafc;
-		border: 1px solid rgba(255, 255, 255, 0.14);
-		border-radius: 8px;
-		padding: 0.6rem 0.75rem;
-		font-family: inherit;
-		font-size: 0.875rem;
+	.flex-1 {
+		flex: 1;
 	}
 
-	.checkbox-row {
+	.new-app-btn {
+		width: 32px;
+		height: 32px;
+		background-color: #15171b;
+		border: 1px solid #2e333d;
+		border-radius: 6px;
+		color: #ffffff;
+		font-size: 1rem;
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+
+	.new-app-btn:hover {
+		border-color: #ffffff;
+	}
+
+	.env-switch {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		background-color: #0b0c0e;
+		border: 1px solid #23262e;
+		border-radius: 6px;
+		padding: 2px;
+	}
+
+	.env-switch button {
+		background: transparent;
+		border: none;
+		color: #71717a;
+		font-size: 0.74rem;
+		font-weight: 500;
+		padding: 0.34rem 0.4rem;
+		border-radius: 4px;
+		cursor: pointer;
+	}
+
+	.env-switch button.active-dev {
+		background-color: #26200f;
+		color: #facc15;
+	}
+
+	.env-switch button.active-prod {
+		background-color: #11241a;
+		color: #4ade80;
+	}
+
+	.nav-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 1.1rem;
+		flex: 1;
+	}
+
+	.nav-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.18rem;
+	}
+
+	.nav-label {
+		font-size: 0.66rem;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: #52525b;
+		padding: 0 0.55rem 0.25rem;
+	}
+
+	.nav-item {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.875rem;
-		color: #cbd5e1;
+		gap: 0.6rem;
+		width: 100%;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: 6px;
+		padding: 0.5rem 0.6rem;
+		color: #a1a1aa;
+		font-size: 0.84rem;
+		font-weight: 500;
+		text-align: left;
+		cursor: pointer;
 	}
 
-	.scope-grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 0.5rem;
+	.nav-item:hover {
+		background-color: #181a20;
+		color: #f4f4f5;
 	}
 
-	.meta-row,
-	.item-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 1rem;
-		padding: 0.85rem;
-		border-radius: 10px;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid rgba(255, 255, 255, 0.06);
+	.nav-item.active {
+		background-color: #1c1f26;
+		border-color: #2c303a;
+		color: #ffffff;
 	}
 
-	.item-meta {
+	.nav-count {
+		margin-left: auto;
+		font-size: 0.7rem;
+		font-family: var(--font-mono);
+		color: #71717a;
+		background-color: #15171b;
+		padding: 0.1rem 0.4rem;
+		border-radius: 4px;
+	}
+
+	.sidebar-footer {
+		border-top: 1px solid #1f2228;
+		padding-top: 0.85rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.35rem;
+		gap: 0.6rem;
+	}
+
+	.dev-card {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+
+	.dev-avatar {
+		width: 30px;
+		height: 30px;
+		border-radius: 9999px;
+		background-color: #ffffff;
+		color: #0b0c0e;
+		font-size: 0.72rem;
+		font-weight: 600;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.dev-meta {
+		display: flex;
+		flex-direction: column;
 		min-width: 0;
 	}
 
-	.item-head {
+	.dev-meta strong {
+		font-size: 0.8rem;
+		color: #f4f4f5;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.dev-meta span {
+		font-size: 0.7rem;
+		color: #71717a;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.signout-btn {
+		background-color: #15171b;
+		border: 1px solid #23262e;
+		color: #a1a1aa;
+		border-radius: 6px;
+		padding: 0.4rem 0.6rem;
+		font-size: 0.76rem;
+		cursor: pointer;
+	}
+
+	.signout-btn:hover {
+		color: #ffffff;
+		border-color: #343944;
+	}
+
+	.workspace-stage {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.utility-bar {
+		height: 54px;
+		padding: 0 1.75rem;
+		border-bottom: 1px solid #1f2228;
+		background-color: #0b0c0e;
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: 1rem;
+		position: sticky;
+		top: 0;
+		z-index: 30;
 	}
 
-	.key-preview {
-		font-size: 0.8rem;
-		color: #e2e8f0;
-		word-break: break-all;
-	}
-
-	.sub-meta {
-		font-size: 0.78rem;
-		color: #94a3b8;
-		word-break: break-all;
-	}
-
-	.row-actions,
-	.action-row {
+	.utility-left,
+	.utility-right {
 		display: flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.65rem;
 	}
 
-	.empty-copy {
-		color: #94a3b8;
-		font-size: 0.9rem;
-		margin: 0 0 1rem;
+	.breadcrumbs {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		font-size: 0.82rem;
+		color: #71717a;
 	}
 
-	.form-error {
-		padding: 0.75rem 1rem;
+	.breadcrumbs strong {
+		color: #f4f4f5;
+		font-weight: 500;
+	}
+
+	.sep {
+		color: #3f3f46;
+	}
+
+	.main-canvas {
+		padding: 1.75rem 2rem 3rem;
+		max-width: 1320px;
+		width: 100%;
+		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+	}
+
+	.readonly-banner {
+		padding: 0.7rem 1rem;
+		background-color: #26200f;
+		border: 1px solid #4b3d18;
+		color: #facc15;
 		border-radius: 8px;
-		background: rgba(239, 68, 68, 0.12);
-		border: 1px solid rgba(239, 68, 68, 0.35);
-		color: #fca5a5;
-		font-size: 0.875rem;
+		font-size: 0.82rem;
+	}
+
+	.empty-app-state {
+		padding: 4rem 2rem;
+		text-align: center;
+		background-color: #15171b;
+		border: 1px solid #23262e;
+		border-radius: 12px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.85rem;
+	}
+
+	.empty-app-state h1 {
+		font-size: 1.45rem;
+		margin: 0;
+	}
+
+	.empty-app-state p {
+		max-width: 480px;
+		font-size: 0.88rem;
+		color: #a1a1aa;
+		margin: 0;
+	}
+
+	.modal-fields {
+		display: flex;
+		flex-direction: column;
+		gap: 0.85rem;
+		margin-top: 0.75rem;
+	}
+
+	.modal-field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+
+	.modal-field span {
+		font-size: 0.74rem;
+		color: #a1a1aa;
+	}
+
+	.modal-field input {
+		background-color: #0b0c0e;
+		border: 1px solid #23262e;
+		border-radius: 6px;
+		padding: 0.55rem 0.75rem;
+		color: #f4f4f5;
+		font-size: 0.84rem;
+		outline: none;
+	}
+
+	@media (max-width: 960px) {
+		.console-shell {
+			grid-template-columns: 1fr;
+		}
+
+		.sidebar {
+			position: fixed;
+			left: -280px;
+			width: 268px;
+			z-index: 800;
+			transition: left 180ms ease;
+		}
+
+		.sidebar.sidebar-open {
+			left: 0;
+		}
+
+		.mobile-close,
+		.mobile-menu-btn {
+			display: inline-flex;
+		}
+
+		.utility-bar {
+			padding: 0 1rem;
+		}
+
+		.main-canvas {
+			padding: 1.25rem 1rem 2.5rem;
+		}
 	}
 </style>
-
