@@ -2,6 +2,8 @@
 
 export {
 	AuthProvider,
+	OrganizationProfile,
+	OrganizationSwitcher,
 	Protect,
 	SignIn,
 	SignUp,
@@ -12,6 +14,8 @@ export {
 	configureReactRuntime,
 	createReactAuth,
 	useAuth,
+	useOrganization,
+	useOrganizationList,
 	usePermissions,
 	useSession,
 	useUser
@@ -20,6 +24,8 @@ export {
 export type {
 	AuthGateProps,
 	AuthProviderProps,
+	OrganizationProfileProps,
+	OrganizationSwitcherProps,
 	ProtectProps,
 	ReactAuthContextValue,
 	ReactAuthSdk,

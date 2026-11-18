@@ -7,7 +7,12 @@ import {
 	type OidcTokenResponse,
 	type TenantAccessTokenClaims
 } from '@secure-auth/core';
-import { createAuthServer, type AuthServer } from '@secure-auth/core/server';
+import {
+	createAuthServer,
+	hasPermission as evaluateScopedPermission,
+	type AuthServer,
+	type PermissionCheckInput
+} from '@secure-auth/core/server';
 import {
 	createWebhookRouter,
 	type WebhookHandlersMap
@@ -44,12 +49,16 @@ export interface NextAuthResult {
 	appUserId: string | null;
 	sessionId: string | null;
 	orgId: string | null;
+	orgSlug: string | null;
+	orgRole: string | null;
+	orgPermissions: string[];
 	roles: string[];
 	permissions: string[];
 	version: number | null;
 	claims: TenantAccessTokenClaims | null;
 	hasPermission(permission: string): boolean;
 	hasRole(role: string): boolean;
+	has(check: PermissionCheckInput): boolean;
 }
 
 export interface NextCallbackRouteConfig {
@@ -79,30 +88,40 @@ function emptyNextAuthResult(): NextAuthResult {
 		appUserId: null,
 		sessionId: null,
 		orgId: null,
+		orgSlug: null,
+		orgRole: null,
+		orgPermissions: [],
 		roles: [],
 		permissions: [],
 		version: null,
 		claims: null,
 		hasPermission: () => false,
-		hasRole: () => false
+		hasRole: () => false,
+		has: () => false
 	};
 }
 
 function claimsToNextAuthResult(claims: TenantAccessTokenClaims): NextAuthResult {
 	const roles = [...claims.roles];
 	const permissions = [...claims.permissions];
+	const orgPermissions = [...(claims.org_permissions ?? [])];
 	return {
 		isAuthenticated: true,
 		userId: claims.sub,
 		appUserId: claims.app_user_id,
 		sessionId: claims.sid,
 		orgId: claims.org_id ?? null,
+		orgSlug: claims.org_slug ?? null,
+		orgRole: claims.org_role ?? null,
+		orgPermissions,
 		roles,
 		permissions,
 		version: claims.ver,
 		claims,
-		hasPermission: (permission: string) => permissions.includes(permission),
-		hasRole: (role: string) => roles.includes(role)
+		hasPermission: (permission: string) =>
+			permissions.includes(permission) || orgPermissions.includes(permission),
+		hasRole: (role: string) => roles.includes(role) || claims.org_role === role,
+		has: (check: PermissionCheckInput) => evaluateScopedPermission(claims, check)
 	};
 }
 
@@ -162,19 +181,20 @@ function parseCookiesFromHeader(header: string | null): Map<string, string> {
 
 export function protect(
 	authState: NextAuthResult,
-	requirements: { permission?: string; role?: string } = {}
+	requirements: PermissionCheckInput = {}
 ): NextAuthResult {
 	if (!authState.isAuthenticated) {
 		throw new AuthSdkError('UNAUTHORIZED', 'Authentication required');
 	}
-	if (requirements.permission && !authState.hasPermission(requirements.permission)) {
-		throw new AuthSdkError(
-			'FORBIDDEN',
-			`Missing required permission '${requirements.permission}'`
-		);
-	}
-	if (requirements.role && !authState.hasRole(requirements.role)) {
-		throw new AuthSdkError('FORBIDDEN', `Missing required role '${requirements.role}'`);
+	if (requirements.permission || requirements.role) {
+		if (!authState.has(requirements)) {
+			throw new AuthSdkError(
+				'FORBIDDEN',
+				`Missing required authorization (${requirements.permission ?? requirements.role})`
+			);
+		}
+	} else if (requirements.orgId && authState.orgId !== requirements.orgId) {
+		throw new AuthSdkError('FORBIDDEN', `Active organization must match '${requirements.orgId}'`);
 	}
 	return authState;
 }

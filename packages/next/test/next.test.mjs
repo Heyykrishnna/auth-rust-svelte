@@ -260,6 +260,60 @@ test('Next.js App Router server helpers support auth(), currentUser(), protect()
 	assert.equal(received, 1);
 });
 
+test('Phase 08: Next.js auth() and protect() verify org_id, org_role, and org_permissions claims', async () => {
+	const key = await createSigningKey('kid-next-org');
+	const now = Math.floor(Date.now() / 1000);
+	const orgToken = await signAccessToken(key, {
+		iss: 'https://auth.example.test',
+		sub: 'usr_org_1',
+		aud: 'elysiar',
+		azp: 'pub-elysiar',
+		app_user_id: 'au_org_1',
+		sid: 'sid_org_1',
+		org_id: 'org_alpha',
+		org_slug: 'alpha',
+		org_role: 'org:admin',
+		org_permissions: ['org:billing:write'],
+		roles: ['user'],
+		permissions: ['profile.read'],
+		amr: ['pwd'],
+		acr: 'aal1',
+		ver: 1,
+		iat: now,
+		exp: now + 600,
+		jti: 'jti_org_1'
+	});
+
+	const nextServer = createNextAuthServer({
+		issuerUrl: 'https://auth.example.test',
+		audience: 'elysiar',
+		fetch: async () =>
+			new Response(JSON.stringify({ keys: [key.jwk] }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' }
+			})
+	});
+
+	const state = await nextServer.auth({
+		get: (name) => (name === 'sa_access_token' ? { value: orgToken } : undefined)
+	});
+	assert.equal(state.isAuthenticated, true);
+	assert.equal(state.orgId, 'org_alpha');
+	assert.equal(state.orgSlug, 'alpha');
+	assert.equal(state.orgRole, 'org:admin');
+	assert.equal(state.has({ permission: 'org:billing:write', orgId: 'org_alpha' }), true);
+	assert.equal(state.has({ permission: 'org:billing:write', orgId: 'org_beta' }), false);
+
+	assert.equal(
+		protect(state, { permission: 'org:billing:write', orgId: 'org_alpha' }).orgId,
+		'org_alpha'
+	);
+	assert.throws(
+		() => protect(state, { permission: 'org:billing:write', orgId: 'org_beta' }),
+		(err) => err instanceof AuthSdkError && err.code === 'FORBIDDEN'
+	);
+});
+
 test('Edge Runtime compliance: compiled next dist bundle imports zero Node built-ins', () => {
 	const bannedImportPattern =
 		/(?:from|import)\s*\(?\s*['"](?:node:|fs|crypto|http|https|net|tls|path|stream|buffer|os|child_process|zlib|url|util)['"]/;
