@@ -3,7 +3,7 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-COPY packages/shared-types ./packages/shared-types
+COPY packages ./packages
 COPY vendor/picomatch ./vendor/picomatch
 COPY apps/web/package.json ./apps/web/package.json
 
@@ -19,7 +19,7 @@ RUN apk upgrade --no-cache
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-COPY packages/shared-types ./packages/shared-types
+COPY packages ./packages
 COPY vendor/picomatch ./vendor/picomatch
 COPY apps/web/package.json ./apps/web/package.json
 RUN npm ci --omit=dev --ignore-scripts && \
