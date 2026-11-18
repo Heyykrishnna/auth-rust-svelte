@@ -518,7 +518,7 @@ pub async fn verify_legacy_es256_access_token(
         .ok_or_else(|| AppError::InvalidToken("Unknown or revoked signing key".to_string()))?;
     let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
         .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
-    let decoding_key = cached_decoding_key(jwk)?;
+    let decoding_key = cached_decoding_key(&jwk)?;
     let mut validation = Validation::new(Algorithm::ES256);
     validation.validate_exp = true;
 
@@ -547,7 +547,7 @@ pub async fn verify_legacy_es256_refresh_token(
         .ok_or_else(|| AppError::InvalidToken("Unknown or revoked signing key".to_string()))?;
     let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
         .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
-    let decoding_key = cached_decoding_key(jwk)?;
+    let decoding_key = cached_decoding_key(&jwk)?;
     let mut validation = Validation::new(Algorithm::ES256);
     validation.validate_exp = true;
 
