@@ -30,6 +30,8 @@ pub struct TenantAccessTokenClaims {
     pub sid: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub org_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
     pub roles: Vec<String>,
     pub permissions: Vec<String>,
     pub amr: Vec<String>,
@@ -104,6 +106,7 @@ pub fn issue_es256_access_token_with_key(
         app_user_id: input.app_user_id.to_string(),
         sid: input.session_id.to_string(),
         org_id: input.active_organization_id.map(|id| id.to_string()),
+        scope: None,
         roles: input.roles,
         permissions: input.permissions,
         amr: input.amr,
@@ -146,6 +149,137 @@ pub async fn issue_tenant_access_token(
     let active_key = signing_keys::ensure_active_signing_key(db, config).await?;
     let pkcs8_der = signing_keys::decrypt_signing_key_pkcs8(&active_key, config)?;
     issue_es256_access_token_with_key(input, &active_key.kid, &pkcs8_der)
+}
+
+pub async fn issue_tenant_access_token_with_scope(
+    db: &PgPool,
+    config: &AppConfig,
+    input: IssueAccessTokenInput<'_>,
+    scope: &str,
+) -> Result<(String, TenantAccessTokenClaims), AppError> {
+    let active_key = signing_keys::ensure_active_signing_key(db, config).await?;
+    let pkcs8_der = signing_keys::decrypt_signing_key_pkcs8(&active_key, config)?;
+    let now = Utc::now().timestamp();
+    let claims = TenantAccessTokenClaims {
+        iss: input.issuer_url.to_string(),
+        sub: input.user_id.to_string(),
+        aud: input.environment_id.to_string(),
+        azp: input.authorized_party.to_string(),
+        app_user_id: input.app_user_id.to_string(),
+        sid: input.session_id.to_string(),
+        org_id: input.active_organization_id.map(|id| id.to_string()),
+        scope: Some(scope.to_string()),
+        roles: input.roles,
+        permissions: input.permissions,
+        amr: input.amr,
+        acr: input.acr,
+        ver: input.version,
+        iat: now,
+        exp: now + input.ttl_secs,
+        jti: Uuid::new_v4().to_string(),
+    };
+
+    let mut header = Header::new(Algorithm::ES256);
+    header.kid = Some(active_key.kid);
+    header.typ = Some(ACCESS_TOKEN_TYP.to_string());
+
+    let encoding_key = EncodingKey::from_ec_der(&pkcs8_der);
+    let token = encode(&header, &claims, &encoding_key)
+        .map_err(|e| AppError::TokenCreation(e.to_string()))?;
+
+    Ok((token, claims))
+}
+
+pub async fn issue_tenant_id_token(
+    db: &PgPool,
+    config: &AppConfig,
+    claims: &IdTokenClaims,
+) -> Result<String, AppError> {
+    let active_key = signing_keys::ensure_active_signing_key(db, config).await?;
+    let pkcs8_der = signing_keys::decrypt_signing_key_pkcs8(&active_key, config)?;
+    issue_es256_id_token_with_key(claims, &active_key.kid, &pkcs8_der)
+}
+
+pub async fn verify_any_tenant_access_token(
+    db: &PgPool,
+    config: &AppConfig,
+    token: &str,
+) -> Result<TenantAccessTokenClaims, AppError> {
+    let header =
+        decode_header(token).map_err(|e| AppError::InvalidToken(format!("Malformed JWT: {e}")))?;
+
+    if header.alg != Algorithm::ES256 {
+        return Err(AppError::InvalidToken(
+            "Unsupported JWT signing algorithm".to_string(),
+        ));
+    }
+    if header.typ.as_deref() != Some(ACCESS_TOKEN_TYP) {
+        return Err(AppError::InvalidToken("Invalid token type".to_string()));
+    }
+    let kid = header
+        .kid
+        .as_deref()
+        .ok_or_else(|| AppError::InvalidToken("Missing kid header".to_string()))?;
+
+    let key_record = key_repo::find_verifiable_signing_key_by_kid(db, kid)
+        .await?
+        .ok_or_else(|| AppError::InvalidToken("Unknown or revoked signing key".to_string()))?;
+
+    let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
+        .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
+
+    let decoding_key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
+        .map_err(|e| AppError::InvalidToken(format!("Invalid JWK components: {e}")))?;
+
+    let mut validation = Validation::new(Algorithm::ES256);
+    validation.validate_exp = true;
+    validation.validate_aud = false;
+    validation.set_issuer(&[config.issuer_url.as_str()]);
+
+    decode::<TenantAccessTokenClaims>(token, &decoding_key, &validation)
+        .map(|data| data.claims)
+        .map_err(|e| AppError::InvalidToken(e.to_string()))
+}
+
+pub async fn verify_tenant_id_token_hint(
+    db: &PgPool,
+    config: &AppConfig,
+    token: &str,
+) -> Result<IdTokenClaims, AppError> {
+    let header =
+        decode_header(token).map_err(|e| AppError::InvalidToken(format!("Malformed JWT: {e}")))?;
+
+    if header.alg != Algorithm::ES256 {
+        return Err(AppError::InvalidToken(
+            "Unsupported ID token signing algorithm".to_string(),
+        ));
+    }
+    if header.typ.as_deref() != Some(ID_TOKEN_TYP) {
+        return Err(AppError::InvalidToken("Invalid ID token type".to_string()));
+    }
+    let kid = header
+        .kid
+        .as_deref()
+        .ok_or_else(|| AppError::InvalidToken("Missing kid header".to_string()))?;
+
+    let key_record = key_repo::find_verifiable_signing_key_by_kid(db, kid)
+        .await?
+        .ok_or_else(|| AppError::InvalidToken("Unknown or revoked signing key".to_string()))?;
+
+    let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
+        .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
+
+    let decoding_key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
+        .map_err(|e| AppError::InvalidToken(format!("Invalid JWK components: {e}")))?;
+
+    let mut validation = Validation::new(Algorithm::ES256);
+    validation.validate_exp = false;
+    validation.validate_aud = false;
+    validation.set_issuer(&[config.issuer_url.as_str()]);
+
+    decode::<IdTokenClaims>(token, &decoding_key, &validation)
+        .map(|data| data.claims)
+        .map_err(|e| AppError::InvalidToken(e.to_string()))
 }
 
 pub fn verify_es256_access_token_with_jwk(
