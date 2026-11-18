@@ -42,6 +42,8 @@ pub enum DomainEventType {
     OrganizationMemberUpdated,
     #[serde(rename = "organization.member_removed")]
     OrganizationMemberRemoved,
+    #[serde(rename = "webhook.test")]
+    WebhookTest,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,6 +54,7 @@ pub enum AggregateType {
     AppSession,
     Organization,
     OrganizationMember,
+    WebhookEndpoint,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

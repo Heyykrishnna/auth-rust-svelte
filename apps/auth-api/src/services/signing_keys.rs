@@ -16,6 +16,7 @@ use crate::repositories::signing_keys::{self as key_repo, SigningKeyRecord};
 
 pub const SIGNING_KEY_AAD_PURPOSE: &str = "signing_key";
 pub const OAUTH_SECRET_AAD_PURPOSE: &str = "oauth_client_secret";
+pub const WEBHOOK_SECRET_AAD_PURPOSE: &str = "webhook_signing_secret";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EcPublicJwk {
