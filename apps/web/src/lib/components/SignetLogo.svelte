@@ -31,8 +31,12 @@
     style={`height: ${height}px`}
   />
 {:else}
-  <span class="inline-flex items-center gap-2 text-brand-text-primary {className}">
+  <span
+    class="inline-flex items-center gap-2 text-brand-text-primary {className}"
+  >
     <SignetMark size={Math.round(height * 0.9)} />
-    <span class="font-heading font-bold text-base tracking-tight leading-none">{label}</span>
+    <span class="font-heading font-bold text-base tracking-tight leading-none"
+      >{label}</span
+    >
   </span>
 {/if}

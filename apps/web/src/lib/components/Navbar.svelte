@@ -28,7 +28,9 @@
   }
 </script>
 
-<header class="sticky top-0 z-50 bg-brand-surface/95 backdrop-blur-md border-b border-brand-border">
+<header
+  class="sticky top-0 z-50 bg-brand-surface/95 backdrop-blur-md border-b border-brand-border"
+>
   <div class="max-w-7xl mx-auto px-6 h-15 flex items-center justify-between">
     <a
       href={authStore.isAuthenticated ? "/dashboard" : "/"}
@@ -42,26 +44,42 @@
       {#if authStore.isAuthenticated}
         <a
           href="/dashboard"
-          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive('/dashboard') ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover' : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive(
+            '/dashboard',
+          )
+            ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover'
+            : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
         >
           Dashboard
         </a>
         <a
           href="/settings"
-          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive('/settings') ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover' : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive(
+            '/settings',
+          )
+            ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover'
+            : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
         >
           Settings
         </a>
         <a
           href="/control"
-          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive('/control') ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover' : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive(
+            '/control',
+          )
+            ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover'
+            : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
         >
           Control Plane
         </a>
         {#if authStore.isAdmin}
           <a
             href="/admin"
-            class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive('/admin') ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover' : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
+            class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive(
+              '/admin',
+            )
+              ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover'
+              : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
           >
             Admin
           </a>
@@ -69,25 +87,40 @@
       {:else}
         <a
           href="/"
-          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {page.url.pathname === '/' ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover' : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {page
+            .url.pathname === '/'
+            ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover'
+            : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
         >
           Overview
         </a>
         <a
           href="/control"
-          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive('/control') ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover' : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive(
+            '/control',
+          )
+            ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover'
+            : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
         >
           Control Plane
         </a>
         <a
           href="/login"
-          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive('/login') ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover' : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive(
+            '/login',
+          )
+            ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover'
+            : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
         >
           Sign In
         </a>
         <a
           href="/register"
-          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive('/register') ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover' : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
+          class="text-sm font-medium px-3 py-1.5 rounded-md transition-colors border no-underline {isActive(
+            '/register',
+          )
+            ? 'text-brand-text-primary bg-brand-surface-raised border-brand-border-hover'
+            : 'text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised border-transparent'}"
         >
           Create Account
         </a>
@@ -96,7 +129,9 @@
 
     <div class="flex items-center gap-3">
       {#if authStore.isAuthenticated && authStore.user}
-        <div class="flex items-center gap-2.5 pl-1 pr-2.5 py-1 rounded-full bg-brand-surface-card border border-brand-border">
+        <div
+          class="flex items-center gap-2.5 pl-1 pr-2.5 py-1 rounded-full bg-brand-surface-card border border-brand-border"
+        >
           <div
             class="size-7 rounded-full bg-brand-lime text-brand-lime-ink flex items-center justify-center font-heading font-bold text-xs select-none"
             title={authStore.user.email}
@@ -104,7 +139,9 @@
             {getUserInitials(authStore.user)}
           </div>
           <div class="hidden md:flex items-center gap-2">
-            <span class="text-xs font-medium text-brand-text-primary max-w-[140px] truncate">
+            <span
+              class="text-xs font-medium text-brand-text-primary max-w-35 truncate"
+            >
               {formatUserDisplayName(authStore.user)}
             </span>
             <Badge variant="neutral" size="sm">
@@ -123,9 +160,7 @@
           Sign Out
         </Button>
       {:else}
-        <Button size="sm" href="/control/login">
-          Console
-        </Button>
+        <Button size="sm" href="/control/login">Console</Button>
       {/if}
     </div>
   </div>

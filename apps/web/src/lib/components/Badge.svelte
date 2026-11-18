@@ -36,8 +36,7 @@
       "bg-brand-surface-raised text-brand-text-primary border border-brand-border-hover",
     primary:
       "bg-brand-lime text-brand-lime-ink border border-brand-lime font-semibold",
-    purple:
-      "bg-brand-lime/10 text-brand-lime border border-brand-lime/30",
+    purple: "bg-brand-lime/10 text-brand-lime border border-brand-lime/30",
     success:
       "bg-brand-success-soft text-brand-success-text border border-brand-success-border",
     warning:
@@ -47,7 +46,7 @@
   };
 
   const classes = $derived(
-    `${baseClasses} ${sizeClasses[size] ?? sizeClasses.md} ${variantClasses[variant] ?? variantClasses.neutral} ${className}`
+    `${baseClasses} ${sizeClasses[size] ?? sizeClasses.md} ${variantClasses[variant] ?? variantClasses.neutral} ${className}`,
   );
 </script>
 
