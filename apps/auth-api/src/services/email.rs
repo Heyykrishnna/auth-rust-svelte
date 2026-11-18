@@ -107,6 +107,73 @@ pub async fn send_branded_otp_email(
     .await
 }
 
+fn escape_html(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+pub async fn send_organization_invitation_email(
+    config: &AppConfig,
+    brand: &EmailBrand,
+    to_email: &str,
+    org_name: &str,
+    role_slug: &str,
+    invitation_token: &str,
+) -> Result<(), AppError> {
+    let host = match &config.smtp_host {
+        Some(h) if !h.trim().is_empty() => h.trim(),
+        _ => {
+            warn!(
+                to = to_email,
+                org = org_name,
+                "SMTP host not configured; skipping organization invitation email dispatch"
+            );
+            return Ok(());
+        }
+    };
+
+    let from_header = if config.smtp_from.contains('<') {
+        config.smtp_from.clone()
+    } else {
+        format!("{} <{}>", brand.app_name, config.smtp_from)
+    };
+    let subject = format!("You have been invited to join {}", org_name);
+    let accept_url = format!(
+        "{}/portal/login?invitation_token={}",
+        config.issuer_url.trim_end_matches('/'),
+        invitation_token
+    );
+    let safe_org = escape_html(org_name);
+    let safe_role = escape_html(role_slug);
+    let safe_brand = escape_html(&brand.app_name);
+    let safe_token = escape_html(invitation_token);
+    let safe_url = escape_html(&accept_url);
+
+    let text_body = format!(
+        "You have been invited to join {} on {} with the role {}.\n\nAccept your invitation: {}\n\nInvitation token: {}\n\nThis invitation is single-use and expires automatically.",
+        org_name, brand.app_name, role_slug, accept_url, invitation_token
+    );
+    let html_body = format!(
+        "<!DOCTYPE html><html><body style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0b0c0e;color:#f3f4f6;padding:32px;\"><div style=\"max-width:520px;margin:0 auto;background:#15171b;border:1px solid #23262e;border-radius:8px;padding:32px;\"><p style=\"color:#9ca3af;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px;\">{safe_brand}</p><h2 style=\"color:#ffffff;margin:0 0 12px;font-size:20px;\">Join {safe_org}</h2><p style=\"color:#d1d5db;font-size:14px;line-height:1.5;margin:0 0 20px;\">You have been invited to join <strong>{safe_org}</strong> with role <code>{safe_role}</code>.</p><a href=\"{safe_url}\" style=\"display:inline-block;background:#ffffff;color:#0b0c0e;text-decoration:none;font-weight:600;padding:10px 18px;border-radius:6px;font-size:14px;\">Accept Invitation</a><p style=\"color:#9ca3af;font-size:12px;margin:24px 0 6px;\">Or use your one-time invitation token:</p><div style=\"font-family:monospace;font-size:12px;background:#0b0c0e;border:1px solid #23262e;padding:10px 12px;border-radius:6px;word-break:break-all;color:#f3f4f6;\">{safe_token}</div></div></body></html>"
+    );
+
+    send_smtp_message(
+        config,
+        host,
+        from_header,
+        to_email.to_string(),
+        to_email,
+        subject,
+        text_body,
+        html_body,
+    )
+    .await
+}
+
 pub async fn send_branded_password_reset_email(
     config: &AppConfig,
     brand: &EmailBrand,
