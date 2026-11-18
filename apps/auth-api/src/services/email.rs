@@ -137,14 +137,15 @@ fn render_verification_email(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Verify your email address</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&amp;family=Manrope:wght@700&amp;display=swap">
 </head>
-<body style="margin: 0; padding: 0; background: #0c0d0b; color: #f5f6f0; font-family: Arial, sans-serif;">
+<body style="margin: 0; padding: 0; background: #0c0d0b; color: #f5f6f0; font-family: 'Inter', Arial, sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#0c0d0b">
     <tr><td align="center" style="padding: 36px 16px;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#161814" style="max-width: 560px; border: 1px solid #373d31; border-top: 3px solid {accent}; border-radius: 16px;">
         <tr><td style="padding: 36px 24px;">
-          <p style="margin: 0; color: #e6f18c; text-align: center; font-size: 34px; font-weight: 700; letter-spacing: -1px; overflow-wrap: anywhere;">{name}</p>
-          <h1 style="margin: 20px 0 0; color: #f5f6f0; text-align: center; font-size: 24px; line-height: 1.25;">Verify your email address</h1>
+          <p style="margin: 0; color: #e6f18c; text-align: center; font-family: 'Manrope', Arial, sans-serif; font-size: 34px; font-weight: 700; letter-spacing: -1px; overflow-wrap: anywhere;">{name}</p>
+          <h1 style="margin: 20px 0 0; color: #f5f6f0; text-align: center; font-family: 'Manrope', Arial, sans-serif; font-size: 24px; line-height: 1.25;">Verify your email address</h1>
           <p style="margin: 28px 0 20px; color: #a3a89a; font-size: 16px; line-height: 1.5;">Enter this code in the verification screen to continue.</p>
           <p style="margin: 0 0 10px; color: #f5f6f0; font-size: 14px; font-weight: bold;">Your verification code</p>
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#eef6bd" style="border-radius: 10px;">
@@ -507,5 +508,33 @@ async fn send_smtp_message(
             metrics::counter!("auth_email_delivery_total", "result" => "timeout").increment(1);
             Err(AppError::Internal("Email delivery timed out".to_string()))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{render_verification_email, EmailBrand};
+
+    #[test]
+    fn verification_email_uses_the_configured_expiry_and_escapes_branding() {
+        let brand = EmailBrand::from_environment_branding(
+            &serde_json::json!({
+                "app_name": "Team <Example>",
+                "primary_color": "#no",
+                "support_email": "help@example.test",
+            }),
+            "Signet",
+        );
+        let (text, html) = render_verification_email(&brand, "650050", 900);
+        for body in [&text, &html] {
+            assert!(body.contains("650050"));
+            assert!(body.contains("This code expires in 15 minutes."));
+        }
+        assert!(html.contains("Team &lt;Example&gt;"));
+        assert!(!html.contains("Team <Example>"));
+        assert!(html.contains("mailto:help@example.test"));
+        assert!(html.contains("border-top: 3px solid #e6f18c"));
+        assert!(html.contains("font-family: 'Manrope'"));
+        assert!(html.contains("font-family: 'Inter'"));
     }
 }

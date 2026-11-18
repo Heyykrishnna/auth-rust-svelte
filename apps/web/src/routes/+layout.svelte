@@ -1,4 +1,7 @@
 <script lang="ts">
+  import "@fontsource-variable/inter";
+  import "@fontsource-variable/manrope";
+  import "@fontsource-variable/jetbrains-mono";
   import "../app.css";
   import { page } from "$app/state";
   import Navbar from "$lib/components/Navbar.svelte";
