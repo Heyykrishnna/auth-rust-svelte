@@ -31,11 +31,14 @@ pub async fn csrf_protection_middleware(req: Request, next: Next) -> Response {
     let path = req.uri().path();
     let is_public_auth_route = path.ends_with("/register")
         || path.ends_with("/login")
+        || path.ends_with("/sign-up")
+        || path.ends_with("/sign-in")
         || path.ends_with("/forgot-password")
         || path.ends_with("/reset-password")
         || path.ends_with("/verify-code")
         || path.ends_with("/refresh")
         || path.ends_with("/csrf")
+        || path.starts_with("/v1/backend/")
         || path.contains("/oidc/");
 
     if is_public_auth_route {
@@ -69,7 +72,9 @@ fn has_session_cookie(headers: &axum::http::HeaderMap) -> bool {
             cookie_str.split(';').any(|s| {
                 if let Some((name, _)) = s.trim().split_once('=') {
                     let trimmed = name.trim();
-                    trimmed == "session_token" || trimmed == "access_token"
+                    trimmed == "session_token"
+                        || trimmed == "access_token"
+                        || trimmed == "dev_session_token"
                 } else {
                     false
                 }
