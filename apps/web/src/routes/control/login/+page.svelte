@@ -3,7 +3,7 @@
 	import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
 	import { controlApi } from '$lib/api/control';
-	import { setApplications, setDeveloper, setWorkspaces } from '$lib/stores/control.svelte';
+	import { setDeveloper, setWorkspaces } from '$lib/stores/control.svelte';
 
 	let mode = $state<'signin' | 'signup'>('signin');
 	let email = $state('');
@@ -33,10 +33,6 @@
 			setDeveloper(res.developer);
 			const workspaces = await controlApi.listWorkspaces();
 			setWorkspaces(workspaces);
-			if (workspaces[0]) {
-				const apps = await controlApi.listApplications(workspaces[0].id);
-				setApplications(apps);
-			}
 			addToast(
 				mode === 'signup' ? 'Developer workspace created' : 'Signed in to Control Plane',
 				'success'

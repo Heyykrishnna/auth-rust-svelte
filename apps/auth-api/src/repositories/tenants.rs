@@ -137,6 +137,40 @@ where
     Ok(())
 }
 
+pub async fn rename_workspace<'e, E>(
+    executor: E,
+    workspace_id: WorkspaceId,
+    developer_id: DeveloperId,
+    name: &str,
+) -> Result<Option<WorkspaceWithRole>, AppError>
+where
+    E: PgExecutor<'e>,
+{
+    let workspace = sqlx::query_as::<_, WorkspaceWithRole>(
+        r#"
+        WITH editor AS (
+            SELECT workspace_id, role
+            FROM developer_workspace_members
+            WHERE workspace_id = $1 AND developer_id = $2 AND role IN ('owner', 'admin')
+            FOR SHARE
+        )
+        UPDATE developer_workspaces AS workspace
+        SET name = $3, updated_at = now()
+        FROM editor
+        WHERE workspace.id = editor.workspace_id AND workspace.status != 'deleted'
+        RETURNING workspace.id, workspace.slug, workspace.name, workspace.status,
+                  editor.role, workspace.created_at
+        "#,
+    )
+    .bind(workspace_id)
+    .bind(developer_id)
+    .bind(name)
+    .fetch_optional(executor)
+    .await?;
+
+    Ok(workspace)
+}
+
 pub async fn list_developer_workspaces<'e, E>(
     executor: E,
     developer_id: DeveloperId,

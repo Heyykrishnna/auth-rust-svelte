@@ -130,7 +130,7 @@ curl --fail http://localhost:8080/health
 curl --fail http://localhost:8080/ready
 ```
 
-Open the [Developer Control Plane](http://localhost:3000/control/login) to create a developer account and configure an application. Hosted portal sign-in starts from an OIDC authorization transaction; opening the portal directly does not create one.
+Open the [Developer Control Plane](http://localhost:3000/control/login) to create a developer account. In a workspace, use **Applications** to create or open an application, **Team** to manage access for registered developer accounts, and **Settings** to view the workspace ID or rename the workspace as an owner or admin. Hosted portal sign-in starts from an OIDC authorization transaction; opening the portal directly does not create one.
 
 ### 4. Run the webhook worker when needed
 

@@ -76,6 +76,17 @@
     --color-text: var(--color-brand-text-primary);
     --color-text-muted: var(--color-brand-text-secondary);
   }
+
+  .workspace-theme.workspace-accent {
+    --color-brand-lime: #8cdaa1;
+    --color-brand-lime-hover: #a3e9b4;
+    --color-brand-lime-soft: #c5f0cf;
+    --color-brand-lime-ink: #14251a;
+    --color-brand-success: #8cdaa1;
+    --color-brand-success-soft: #18291e;
+    --color-brand-success-border: #31533d;
+    --color-brand-success-text: #b1e8bf;
+  }
 }
 
 @layer base {

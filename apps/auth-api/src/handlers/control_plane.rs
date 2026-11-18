@@ -51,6 +51,11 @@ pub struct CreateWorkspaceRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct UpdateWorkspaceRequest {
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ListApplicationsQuery {
     pub workspace_id: Option<WorkspaceId>,
 }
@@ -173,16 +178,20 @@ pub async fn create_workspace(
     dev: AuthenticatedDeveloper,
     Json(body): Json<CreateWorkspaceRequest>,
 ) -> Result<(StatusCode, Json<WorkspaceWithRole>), AppError> {
-    let clean_name = body.name.trim();
-    if clean_name.len() < 2 || clean_name.len() > 120 {
-        return Err(AppError::Validation(
-            "Workspace name must be between 2 and 120 characters".to_string(),
-        ));
-    }
+    let clean_name = validate_workspace_name(&body.name)?;
     let clean_slug = domain_service::validate_slug(&body.slug)?;
 
     let mut tx = begin_tx(&state.db).await?;
-    let ws = tenant_repo::create_workspace(&mut *tx, &clean_slug, clean_name).await?;
+    let ws = tenant_repo::create_workspace(&mut *tx, &clean_slug, clean_name)
+        .await
+        .map_err(|err| match err {
+            AppError::Database(sqlx::Error::Database(db_err))
+                if db_err.code().as_deref() == Some("23505") =>
+            {
+                AppError::Validation(format!("Workspace slug '{clean_slug}' is already taken"))
+            }
+            other => other,
+        })?;
     tenant_repo::add_workspace_member(&mut *tx, ws.id, dev.developer_id, WorkspaceRole::Owner)
         .await?;
     commit_tx(tx).await?;
@@ -198,6 +207,41 @@ pub async fn create_workspace(
             created_at: ws.created_at,
         }),
     ))
+}
+
+fn validate_workspace_name(name: &str) -> Result<&str, AppError> {
+    let name = name.trim();
+    if !(2..=120).contains(&name.chars().count()) || name.chars().any(char::is_control) {
+        return Err(AppError::Validation(
+            "Use 2 to 120 characters and no control characters in the workspace name".to_string(),
+        ));
+    }
+    Ok(name)
+}
+
+pub async fn update_workspace(
+    State(state): State<AppState>,
+    dev: AuthenticatedDeveloper,
+    Path(workspace_id): Path<WorkspaceId>,
+    Json(body): Json<UpdateWorkspaceRequest>,
+) -> Result<Json<WorkspaceWithRole>, AppError> {
+    let name = validate_workspace_name(&body.name)?;
+    let mut tx = begin_tx(&state.db).await?;
+    let updated = tenant_repo::rename_workspace(&mut *tx, workspace_id, dev.developer_id, name)
+        .await?
+        .ok_or_else(|| AppError::Forbidden("You cannot edit this workspace".to_string()))?;
+    tenant_repo::record_control_audit_log(
+        &mut *tx,
+        None,
+        dev.developer_id,
+        "WORKSPACE_RENAMED",
+        "developer_workspace",
+        Some(workspace_id.into_inner()),
+        json!({}),
+    )
+    .await?;
+    commit_tx(tx).await?;
+    Ok(Json(updated))
 }
 
 pub async fn create_application(

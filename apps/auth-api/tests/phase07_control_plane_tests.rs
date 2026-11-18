@@ -196,7 +196,7 @@ mod live_phase07_control_plane_suite {
     #[tokio::test]
     #[ignore = "requires TEST_DATABASE_URL pointing to PostgreSQL 16"]
     async fn test_phase07_rbac_and_cross_workspace_isolation() {
-        let (app, _db) = build_test_app().await;
+        let (app, db) = build_test_app().await;
         let suffix = Uuid::new_v4().simple().to_string();
 
         let (owner_token, ws_a_id) = sign_up_dev(
@@ -314,5 +314,58 @@ mod live_phase07_control_plane_suite {
         )
         .await;
         assert_eq!(outsider_audit.status(), StatusCode::FORBIDDEN);
+
+        let path = format!("/v1/control/workspaces/{ws_a_id}");
+        let rename = |token: &str, name: &str| {
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(&path)
+                .header("authorization", format!("Bearer {token}"))
+                .header("content-type", "application/json")
+                .body(Body::from(json!({ "name": name }).to_string()))
+                .unwrap()
+        };
+        let member = read_json(add_viewer).await;
+        let editor_id = member["developer_id"].as_str().unwrap();
+        for token in [&viewer_token, &outsider_token] {
+            let denied = send_request(&app, rename(token, "Unauthorized change")).await;
+            assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+        }
+
+        let invalid = send_request(&app, rename(&owner_token, "   ")).await;
+        assert_eq!(invalid.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        let renamed = send_request(&app, rename(&owner_token, "  Studio workspace  ")).await;
+        assert_eq!(renamed.status(), StatusCode::OK);
+        let updated = read_json(renamed).await;
+        assert_eq!(updated["id"], ws_a_id.to_string());
+        assert_eq!(updated["role"], "owner");
+        assert_eq!(updated["name"], "Studio workspace");
+
+        let promoted = send_request(
+            &app,
+            Request::builder()
+                .method(Method::PATCH)
+                .uri(format!("{path}/members/{editor_id}"))
+                .header("authorization", format!("Bearer {owner_token}"))
+                .header("content-type", "application/json")
+                .body(Body::from(json!({ "role": "admin" }).to_string()))
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(promoted.status(), StatusCode::OK);
+
+        let renamed = send_request(&app, rename(&viewer_token, "Studio and Labs")).await;
+        assert_eq!(renamed.status(), StatusCode::OK);
+        let admin_update = read_json(renamed).await;
+        assert_eq!(admin_update["role"], "admin");
+        assert_eq!(admin_update["slug"], updated["slug"]);
+
+        let persisted =
+            sqlx::query_scalar::<_, String>("SELECT name FROM developer_workspaces WHERE id = $1")
+                .bind(ws_a_id)
+                .fetch_one(&db)
+                .await
+                .unwrap();
+        assert_eq!(persisted, "Studio and Labs");
     }
 }

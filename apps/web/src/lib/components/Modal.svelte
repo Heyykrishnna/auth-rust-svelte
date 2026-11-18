@@ -34,39 +34,41 @@
 		}
 	}
 
-	function handleKeyDown(e: KeyboardEvent) {
-		if (e.key === 'Escape' && open && !loading) {
-			oncancel();
-		}
+	let dialog = $state<HTMLDialogElement>();
+
+	$effect(() => {
+		if (open && dialog && !dialog.open) dialog.showModal();
+		if (!open && dialog?.open) dialog.close();
+	});
+
+	function handleCancel(event: Event) {
+		event.preventDefault();
+		if (!loading) oncancel();
 	}
 </script>
 
-<svelte:window onkeydown={handleKeyDown} />
-
-{#if open}
-	<div
-		class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-		onclick={handleBackdropClick}
-		onkeydown={(e) => {
-			if ((e.key === 'Escape' || e.key === 'Enter') && e.target === e.currentTarget && !loading) {
-				oncancel();
-			}
-		}}
-		role="dialog"
-		aria-modal="true"
-		aria-label={title}
-		tabindex="-1"
-	>
+<dialog
+	bind:this={dialog}
+	class="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-auto rounded-xl border-0 bg-transparent p-0 text-brand-text-primary backdrop:bg-black/80"
+	aria-label={title}
+	oncancel={handleCancel}
+	onclick={handleBackdropClick}
+>
+	{#if open}
 		<div
-			class="bg-brand-surface-card border border-brand-border-focus rounded-xl max-w-lg w-full overflow-hidden shadow-2xl"
+			class="w-full max-w-lg overflow-hidden rounded-xl border border-brand-border-focus bg-brand-surface-card shadow-2xl"
 		>
-			<div class="flex items-center justify-between px-5 py-4 border-b border-brand-border">
-				<h3 class="m-0 text-base font-semibold font-heading text-brand-text-primary">
+			<div
+				class="flex items-center justify-between border-b border-brand-border px-5 py-4"
+			>
+				<h3
+					class="m-0 font-heading text-base font-semibold text-brand-text-primary"
+				>
 					{title}
 				</h3>
 				<button
 					type="button"
-					class="bg-transparent border-none text-brand-text-muted hover:text-brand-text-primary hover:bg-brand-surface-raised cursor-pointer p-1 inline-flex items-center justify-center rounded-md transition-colors"
+					class="inline-flex cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-1 text-brand-text-muted transition-colors hover:bg-brand-surface-raised hover:text-brand-text-primary"
 					onclick={oncancel}
 					disabled={loading}
 					aria-label="Close dialog"
@@ -86,7 +88,7 @@
 				</button>
 			</div>
 
-			<div class="p-5 text-sm text-brand-text-secondary leading-relaxed">
+			<div class="p-5 text-sm leading-relaxed text-brand-text-secondary">
 				{#if description}
 					<p class="m-0 mb-3 text-brand-text-secondary">{description}</p>
 				{/if}
@@ -96,7 +98,7 @@
 			</div>
 
 			<div
-				class="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-brand-border bg-brand-surface"
+				class="flex items-center justify-end gap-2.5 border-t border-brand-border bg-brand-surface px-5 py-3.5"
 			>
 				<Button variant="ghost" onclick={oncancel} disabled={loading}>
 					{cancelText}
@@ -104,11 +106,12 @@
 				<Button
 					variant={variant === 'danger' ? 'danger' : 'primary'}
 					onclick={onconfirm}
+					disabled={loading}
 					{loading}
 				>
 					{confirmText}
 				</Button>
 			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</dialog>

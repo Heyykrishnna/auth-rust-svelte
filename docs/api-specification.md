@@ -115,6 +115,7 @@ Authenticated via Developer session + Workspace RBAC (`owner`, `admin`, `develop
 
 - `/v1/control/auth/*` — Developer sign-up, sign-in, sign-out, session management
 - `/v1/control/workspaces/*` — Workspaces & team member role management
+- `PATCH /v1/control/workspaces/{workspace_id}` — Update the workspace display name with `{"name":"New name"}`. Owners and admins can rename a workspace. The response includes the updated workspace and the caller’s role.
 - `/v1/control/applications` & `/:app_id` — Application CRUD & suspension
 - `/v1/control/applications/:app_id/environments/:env_kind` — Environment settings, enrollment policy, branding
 - `/v1/control/applications/:app_id/environments/:env_kind/credentials` — Publishable & secret key creation/rotation/revocation
