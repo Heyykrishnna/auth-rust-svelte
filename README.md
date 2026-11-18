@@ -96,7 +96,7 @@ For native development or local checks, also install Node.js 24 LTS with npm, Ru
 ```bash
 git clone https://github.com/Heyykrishnna/auth-rust-svelte.git
 cd auth-rust-svelte
-cp .env.example .env
+npm run setup:env
 ```
 
 Review `.env` before starting. Its sample database, Redis, and Grafana credentials are for local development. Generate separate values for `JWT_SECRET` and `SIGNING_KEY_KEK`, each at least 32 characters long:

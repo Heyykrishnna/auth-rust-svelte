@@ -1,0 +1,67 @@
+[
+  {
+    "action": "Swatinem/rust-cache",
+    "ref": "v2",
+    "sha": "d1527c8f67ef9af357290475d4af4b0fab8f12e0"
+  },
+  {
+    "action": "actions/checkout",
+    "ref": "v7",
+    "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+  },
+  {
+    "action": "actions/setup-node",
+    "ref": "v7",
+    "sha": "949feb2413d6458794dcd2491c4babbbce0c15c1"
+  },
+  {
+    "action": "actions/upload-artifact",
+    "ref": "v7",
+    "sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+  },
+  {
+    "action": "aquasecurity/trivy-action",
+    "ref": "v0.36.0",
+    "sha": "ed142fd0673e97e23eac54620cfb913e5ce36c25"
+  },
+  {
+    "action": "azure/setup-helm",
+    "ref": "v4.3.0",
+    "sha": "b9e51907a09c216f16ebe8536097933489208112"
+  },
+  {
+    "action": "docker/build-push-action",
+    "ref": "v7",
+    "sha": "c3c9e263c25d99ce0380d002d59b67737d91b0dc"
+  },
+  {
+    "action": "docker/login-action",
+    "ref": "v4",
+    "sha": "8aa5831fb8d48d8f76594c7ddde61ae58019f550"
+  },
+  {
+    "action": "docker/setup-buildx-action",
+    "ref": "v4",
+    "sha": "f87e5991a6d7451dcb8d9637bfbc97413f497069"
+  },
+  {
+    "action": "dtolnay/rust-toolchain",
+    "ref": "1.96.0",
+    "sha": "3cfd829add0beb9cf7406e52147d74ad3db19d01"
+  },
+  {
+    "action": "github/codeql-action/upload-sarif",
+    "ref": "v4",
+    "sha": "33d7b85da1a04171e211befe2c739303b9a4c066"
+  },
+  {
+    "action": "gitleaks/gitleaks-action",
+    "ref": "v2",
+    "sha": "ff98106e4c7b2bc287b24eaf42907196329070c7"
+  },
+  {
+    "action": "imranismail/setup-kustomize",
+    "ref": "v2",
+    "sha": "2ba527d4d055ab63514ba50a99456fc35684947f"
+  }
+]

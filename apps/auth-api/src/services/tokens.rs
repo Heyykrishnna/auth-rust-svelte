@@ -295,8 +295,7 @@ pub async fn verify_any_tenant_access_token(
     let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
         .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
 
-    let decoding_key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
-        .map_err(|e| AppError::InvalidToken(format!("Invalid JWK components: {e}")))?;
+    let decoding_key = cached_decoding_key(&jwk)?;
 
     let mut validation = Validation::new(Algorithm::ES256);
     validation.validate_exp = true;
@@ -336,8 +335,7 @@ pub async fn verify_tenant_id_token_hint(
     let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
         .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
 
-    let decoding_key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
-        .map_err(|e| AppError::InvalidToken(format!("Invalid JWK components: {e}")))?;
+    let decoding_key = cached_decoding_key(&jwk)?;
 
     let mut validation = Validation::new(Algorithm::ES256);
     validation.validate_exp = false;
@@ -367,8 +365,7 @@ pub fn verify_es256_access_token_with_jwk(
         return Err(AppError::InvalidToken("Invalid token type".to_string()));
     }
 
-    let decoding_key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
-        .map_err(|e| AppError::InvalidToken(format!("Invalid JWK components: {e}")))?;
+    let decoding_key = cached_decoding_key(jwk)?;
 
     let mut validation = Validation::new(Algorithm::ES256);
     validation.validate_exp = true;
@@ -398,8 +395,7 @@ pub fn verify_es256_id_token_with_jwk(
         return Err(AppError::InvalidToken("Invalid ID token type".to_string()));
     }
 
-    let decoding_key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
-        .map_err(|e| AppError::InvalidToken(format!("Invalid JWK components: {e}")))?;
+    let decoding_key = cached_decoding_key(jwk)?;
 
     let mut validation = Validation::new(Algorithm::ES256);
     validation.validate_exp = true;
@@ -522,8 +518,7 @@ pub async fn verify_legacy_es256_access_token(
         .ok_or_else(|| AppError::InvalidToken("Unknown or revoked signing key".to_string()))?;
     let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
         .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
-    let decoding_key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
-        .map_err(|e| AppError::InvalidToken(format!("Invalid JWK components: {e}")))?;
+    let decoding_key = cached_decoding_key(jwk)?;
     let mut validation = Validation::new(Algorithm::ES256);
     validation.validate_exp = true;
 
@@ -552,8 +547,7 @@ pub async fn verify_legacy_es256_refresh_token(
         .ok_or_else(|| AppError::InvalidToken("Unknown or revoked signing key".to_string()))?;
     let jwk: EcPublicJwk = serde_json::from_value(key_record.public_jwk)
         .map_err(|e| AppError::Internal(format!("Corrupted public JWK: {e}")))?;
-    let decoding_key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
-        .map_err(|e| AppError::InvalidToken(format!("Invalid JWK components: {e}")))?;
+    let decoding_key = cached_decoding_key(jwk)?;
     let mut validation = Validation::new(Algorithm::ES256);
     validation.validate_exp = true;
 
@@ -690,4 +684,30 @@ pub fn validate_email_verification_token(
     decode::<EmailVerificationClaims>(token, &key, &validation)
         .map(|data| data.claims)
         .map_err(|e| AppError::InvalidToken(e.to_string()))
+}
+
+fn cached_decoding_key(jwk: &EcPublicJwk) -> Result<DecodingKey, AppError> {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static KEYS: OnceLock<Mutex<HashMap<(String, String), DecodingKey>>> = OnceLock::new();
+    let identity = (jwk.x.clone(), jwk.y.clone());
+    let keys = KEYS.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(key) = keys
+        .lock()
+        .map_err(|_| AppError::Internal("JWT key cache unavailable".to_string()))?
+        .get(&identity)
+        .cloned()
+    {
+        return Ok(key);
+    }
+    let key = DecodingKey::from_ec_components(&jwk.x, &jwk.y)
+        .map_err(|error| AppError::InvalidToken(format!("Invalid JWK components: {error}")))?;
+    let mut cache = keys
+        .lock()
+        .map_err(|_| AppError::Internal("JWT key cache unavailable".to_string()))?;
+    if cache.len() >= 256 {
+        cache.clear();
+    }
+    cache.insert(identity, key.clone());
+    Ok(key)
 }
