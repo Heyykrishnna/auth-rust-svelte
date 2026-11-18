@@ -129,7 +129,6 @@ fn test_last_owner_and_account_lockout_guards() {
 
 #[cfg(test)]
 mod live_phase08_organizations_suite {
-    use auth_api::config::AppConfig;
     use auth_api::models::{AppUserId, EnvironmentId, OrganizationId, UserId};
     use auth_api::services::organizations::{
         self, CreateEnvironmentRoleInput, CreateInvitationInput, CreateOrganizationInput,
@@ -139,7 +138,7 @@ mod live_phase08_organizations_suite {
     use uuid::Uuid;
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "requires TEST_DATABASE_URL pointing to PostgreSQL 16"]
     async fn test_live_org_isolation_invitations_rbac_and_sync() {
         let db_url = match std::env::var("TEST_DATABASE_URL") {
             Ok(v) if !v.trim().is_empty() => v,
@@ -150,11 +149,11 @@ mod live_phase08_organizations_suite {
             .connect(&db_url)
             .await
             .unwrap();
-        let _cfg = AppConfig::from_env().unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
 
         let suffix = Uuid::new_v4().to_string()[..8].to_string();
         let dev_id: Uuid = sqlx::query_scalar(
-            "INSERT INTO developers (email, password_hash, full_name) VALUES ($1, 'hash', 'Phase08 Dev') RETURNING id",
+            "INSERT INTO developers (email, password_hash, display_name) VALUES ($1, 'hash', 'Phase08 Dev') RETURNING id",
         )
         .bind(format!("p08-dev-{suffix}@example.com"))
         .fetch_one(&pool)
@@ -162,11 +161,10 @@ mod live_phase08_organizations_suite {
         .unwrap();
 
         let ws_id: Uuid = sqlx::query_scalar(
-            "INSERT INTO workspaces (name, slug, created_by) VALUES ($1, $2, $3) RETURNING id",
+            "INSERT INTO developer_workspaces (name, slug) VALUES ($1, $2) RETURNING id",
         )
         .bind(format!("P08 WS {suffix}"))
         .bind(format!("p08-ws-{suffix}"))
-        .bind(dev_id)
         .fetch_one(&pool)
         .await
         .unwrap();
@@ -182,16 +180,18 @@ mod live_phase08_organizations_suite {
         .unwrap();
 
         let env_a_uuid: Uuid = sqlx::query_scalar(
-            "INSERT INTO application_environments (application_id, kind, name) VALUES ($1, 'development', 'Dev') RETURNING id",
+            "INSERT INTO application_environments (application_id, kind, slug) VALUES ($1, 'development', $2) RETURNING id",
         )
         .bind(app_id)
+        .bind(format!("p08-dev-env-{suffix}"))
         .fetch_one(&pool)
         .await
         .unwrap();
         let env_b_uuid: Uuid = sqlx::query_scalar(
-            "INSERT INTO application_environments (application_id, kind, name) VALUES ($1, 'production', 'Prod') RETURNING id",
+            "INSERT INTO application_environments (application_id, kind, slug) VALUES ($1, 'production', $2) RETURNING id",
         )
         .bind(app_id)
+        .bind(format!("p08-prod-env-{suffix}"))
         .fetch_one(&pool)
         .await
         .unwrap();
