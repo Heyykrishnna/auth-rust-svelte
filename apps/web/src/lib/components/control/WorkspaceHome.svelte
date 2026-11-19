@@ -81,7 +81,7 @@
 </svelte:head>
 
 <div
-	class="workspace-theme workspace-accent grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-brand-surface text-brand-text-primary lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]"
+	class="workspace-theme grid min-h-dvh grid-cols-[minmax(0,1fr)] bg-brand-surface text-brand-text-primary lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]"
 >
 	<aside
 		class="flex min-w-0 flex-col gap-5 border-b border-brand-border bg-brand-surface-card p-4 lg:sticky lg:top-0 lg:h-dvh lg:border-r lg:border-b-0"
@@ -129,7 +129,7 @@
 				/>
 				<button
 					type="button"
-					class="inline-grid size-9 shrink-0 place-items-center rounded-lg text-brand-text-secondary transition-colors hover:text-white hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-[#296FF0] cursor-pointer bg-transparent border-0 p-0 text-xl font-light leading-none"
+					class="inline-grid size-9 shrink-0 place-items-center rounded-lg text-brand-text-secondary transition-colors hover:text-white hover:bg-brand-surface-raised focus-visible:outline-2 focus-visible:outline-action-focus cursor-pointer bg-transparent border-0 p-0 text-xl font-light leading-none"
 					aria-label="Create workspace"
 					title="Create workspace"
 					onclick={onCreateWorkspace}
