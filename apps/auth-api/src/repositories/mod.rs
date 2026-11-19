@@ -1,3 +1,4 @@
+pub mod account_security;
 pub mod audit_logs;
 pub mod auth_transactions;
 pub mod authorization;
