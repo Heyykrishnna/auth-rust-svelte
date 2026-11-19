@@ -88,7 +88,7 @@ anyhow = "1"
 
 webauthn-rs = { version = "0.5.5", features = ["danger-allow-state-serialisation"] }
 
-validator = { version = "0.20", features = ["derive"] }
+validator = { version = "0.21", features = ["derive"] }
 
 tower_governor = { version = "0.4", features = ["axum"] }
 governor = "0.6"
