@@ -424,6 +424,84 @@ pub async fn send_password_reset_email(
     .await
 }
 
+pub fn smtp_configured(config: &AppConfig) -> bool {
+    config
+        .smtp_host
+        .as_deref()
+        .is_some_and(|host| !host.trim().is_empty())
+}
+
+pub async fn send_developer_recovery_email(
+    config: &AppConfig,
+    recipient: &str,
+    link: &str,
+    expiry_seconds: u64,
+) -> Result<(), AppError> {
+    let minutes = expiry_seconds / 60;
+    let subject = "Reset your Signet developer password";
+    let text = format!("Use this link within {minutes} minutes to reset your developer password. If you did not request a reset, you can ignore this message.\n\n{link}");
+    let html = format!("<p>Use the link within {minutes} minutes to reset your developer password.</p><p><a href=\"{}\">Reset developer password</a></p><p>If you did not request a reset, you can ignore this message.</p>", escape_html(link));
+    send_developer_email(config, recipient, subject, text, html).await
+}
+
+pub async fn send_developer_signin_email(
+    config: &AppConfig,
+    recipient: &str,
+    suspicious: bool,
+) -> Result<(), AppError> {
+    let subject = if suspicious {
+        "Unusual Signet developer sign-in"
+    } else {
+        "Signet developer sign-in"
+    };
+    let text = if suspicious {
+        "An unusual sign-in was detected on your Signet developer account. Open the Developer Console directly and review Account Security. If you do not recognize the activity, end the session and update your password."
+    } else {
+        "A sign-in occurred on your Signet developer account. Open the Developer Console directly to review your active sessions in Account Security."
+    };
+    send_developer_email(
+        config,
+        recipient,
+        subject,
+        text.to_string(),
+        format!("<p>{text}</p>"),
+    )
+    .await
+}
+
+async fn send_developer_email(
+    config: &AppConfig,
+    recipient: &str,
+    subject: &str,
+    text: String,
+    html: String,
+) -> Result<(), AppError> {
+    let host = config
+        .smtp_host
+        .as_deref()
+        .map(str::trim)
+        .filter(|host| !host.is_empty())
+        .ok_or_else(|| {
+            AppError::Internal("Developer email transport is unavailable".to_string())
+        })?;
+    let sender = if config.smtp_from.contains('<') {
+        config.smtp_from.clone()
+    } else {
+        format!("{} <{}>", config.smtp_from_name, config.smtp_from)
+    };
+    send_smtp_message(
+        config,
+        host,
+        sender,
+        recipient.to_string(),
+        recipient,
+        subject.to_string(),
+        text,
+        html,
+    )
+    .await
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn send_smtp_message(
     config: &AppConfig,
@@ -496,12 +574,12 @@ async fn send_smtp_message(
     match result {
         Ok(Ok(_)) => {
             metrics::counter!("auth_email_delivery_total", "result" => "success").increment(1);
-            info!(to = to_email, "Email dispatched successfully");
+            info!("Email dispatched successfully");
             Ok(())
         }
         Ok(Err(err)) => {
             metrics::counter!("auth_email_delivery_total", "result" => "failure").increment(1);
-            error!(to = to_email, error = %err, "Failed to send email via SMTP");
+            error!("Failed to send email via SMTP");
             Err(AppError::Internal(format!("Failed to send email: {err}")))
         }
         Err(_) => {

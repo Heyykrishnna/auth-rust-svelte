@@ -16,6 +16,9 @@ pub async fn purge_expired_records(pool: &PgPool, retention_days: u32) -> Result
         "DELETE FROM webhook_deliveries WHERE id IN (SELECT id FROM webhook_deliveries WHERE status IN ('succeeded', 'failed', 'dead_letter') AND updated_at < NOW() - make_interval(days => $1::int) ORDER BY updated_at LIMIT 500 FOR UPDATE SKIP LOCKED)",
         "DELETE FROM outbox_events WHERE id IN (SELECT e.id FROM outbox_events e WHERE e.status IN ('published', 'dead_letter') AND e.updated_at < NOW() - make_interval(days => $1::int) AND NOT EXISTS (SELECT 1 FROM webhook_deliveries d WHERE d.outbox_event_id = e.id AND d.status IN ('pending', 'processing', 'retrying')) ORDER BY e.updated_at LIMIT 500 FOR UPDATE SKIP LOCKED)",
         "DELETE FROM authentication_transactions WHERE id IN (SELECT id FROM authentication_transactions WHERE expires_at < NOW() - INTERVAL '1 day' ORDER BY expires_at LIMIT 500 FOR UPDATE SKIP LOCKED)",
+        "DELETE FROM developer_sessions WHERE id IN (SELECT id FROM developer_sessions WHERE expires_at < NOW() ORDER BY expires_at LIMIT 500 FOR UPDATE SKIP LOCKED)",
+        "DELETE FROM developer_trusted_devices WHERE id IN (SELECT id FROM developer_trusted_devices WHERE expires_at < NOW() ORDER BY expires_at LIMIT 500 FOR UPDATE SKIP LOCKED)",
+        "DELETE FROM developer_password_resets WHERE developer_id IN (SELECT developer_id FROM developer_password_resets WHERE expires_at < NOW() ORDER BY expires_at LIMIT 500 FOR UPDATE SKIP LOCKED)",
     ] {
         let result = if statement.contains("$1") {
             sqlx::query(statement).bind(days).execute(&mut *transaction).await?
