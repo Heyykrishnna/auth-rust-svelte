@@ -75,13 +75,22 @@ mod live_phase07_control_plane_suite {
     use serde_json::{json, Value};
     use sqlx::postgres::PgPoolOptions;
     use std::net::SocketAddr;
+    use std::sync::atomic::{AtomicU8, Ordering};
     use std::sync::Arc;
     use tower::ServiceExt;
     use uuid::Uuid;
 
-    async fn send_request(app: &axum::Router, mut req: Request<Body>) -> axum::response::Response {
+    async fn send_request(app: &axum::Router, req: Request<Body>) -> axum::response::Response {
+        send_request_from(app, req, [127, 0, 0, 1]).await
+    }
+
+    async fn send_request_from(
+        app: &axum::Router,
+        mut req: Request<Body>,
+        ip: [u8; 4],
+    ) -> axum::response::Response {
         req.extensions_mut()
-            .insert(ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 40107))));
+            .insert(ConnectInfo(SocketAddr::from((ip, 40107))));
         app.clone().oneshot(req).await.unwrap()
     }
 
@@ -158,7 +167,9 @@ mod live_phase07_control_plane_suite {
     }
 
     async fn sign_up_dev(app: &axum::Router, email: &str, workspace: &str) -> (String, Uuid) {
-        let res = send_request(
+        static NEXT_TEST_PEER: AtomicU8 = AtomicU8::new(2);
+        let peer = [127, 0, 0, NEXT_TEST_PEER.fetch_add(1, Ordering::Relaxed)];
+        let res = send_request_from(
             app,
             Request::builder()
                 .method(Method::POST)
@@ -174,6 +185,7 @@ mod live_phase07_control_plane_suite {
                     .to_string(),
                 ))
                 .unwrap(),
+            peer,
         )
         .await;
         assert_eq!(res.status(), StatusCode::CREATED);
@@ -192,6 +204,219 @@ mod live_phase07_control_plane_suite {
         let ws_body = read_json(ws_res).await;
         let ws_id = Uuid::parse_str(ws_body[0]["id"].as_str().unwrap()).unwrap();
         (token, ws_id)
+    }
+
+    #[tokio::test]
+    #[ignore = "requires TEST_DATABASE_URL and TEST_REDIS_URL"]
+    async fn developer_security_uses_console_authentication_and_revokes_owned_sessions() {
+        let (app, _) = build_test_app().await;
+        let email = format!("security-{}@example.test", Uuid::new_v4());
+        let (token, _) = sign_up_dev(&app, &email, "Developer security").await;
+        let (other_token, _) = sign_up_dev(
+            &app,
+            &format!("other-{}@example.test", Uuid::new_v4()),
+            "Other workspace",
+        )
+        .await;
+        let auth = "/v1/control/auth";
+        let overview_url = format!("{auth}/security");
+        let me_url = format!("{auth}/me");
+
+        let request = |method, uri: &str, token: &str| {
+            Request::builder()
+                .method(method)
+                .uri(uri)
+                .header("authorization", format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap()
+        };
+        let signed_in = send_request(
+            &app,
+            Request::builder()
+                .method(Method::POST)
+                .uri(format!("{auth}/sign-in"))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({ "email": email, "password": "StrongPassword123!" }).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(signed_in.status(), StatusCode::OK);
+        let body = read_json(signed_in).await;
+        let second_token = body["token"].as_str().unwrap();
+
+        let response = send_request(
+            &app,
+            Request::builder()
+                .uri(&overview_url)
+                .header("cookie", format!("dev_session_token={token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["cache-control"], "no-store");
+        let overview = read_json(response).await;
+        let sessions = overview["sessions"].as_array().unwrap();
+        assert_eq!(sessions.len(), 2);
+        assert_eq!(sessions[0]["current"], true);
+        assert_eq!(
+            overview["recent_activity"][0]["event"],
+            "DEVELOPER_SIGNED_IN"
+        );
+
+        let id = sessions[1]["id"].as_str().unwrap();
+        let revoke_url = format!("{overview_url}/sessions/{id}");
+        let response = send_request(&app, request(Method::DELETE, &revoke_url, &other_token)).await;
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let response = send_request(&app, request(Method::DELETE, &revoke_url, &token)).await;
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        let response = send_request(&app, request(Method::GET, &me_url, second_token)).await;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        let response = send_request(
+            &app,
+            request(Method::GET, "/api/users/security/summary", &token),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        let response = send_request(&app, request(Method::GET, &me_url, &token)).await;
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let change_password = |current_password: &str| {
+            Request::builder()
+                .method(Method::POST)
+                .uri(format!("{auth}/change-password"))
+                .header("authorization", format!("Bearer {token}"))
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({
+                        "current_password": current_password,
+                        "new_password": "UpdatedFixturePassword456!"
+                    })
+                    .to_string(),
+                ))
+                .unwrap()
+        };
+        let response = send_request(&app, change_password("IncorrectPassword")).await;
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        let response = send_request(&app, change_password("StrongPassword123!")).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let response = send_request(&app, request(Method::GET, &overview_url, &token)).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let overview = read_json(response).await;
+        assert_eq!(
+            overview["recent_activity"][0]["event"],
+            "DEVELOPER_PASSWORD_CHANGED"
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires TEST_DATABASE_URL and TEST_REDIS_URL"]
+    async fn developer_authenticator_and_backup_codes_are_enforced_at_sign_in() {
+        use auth_api::services::account_security::{base32_decode, compute_totp_code};
+        use chrono::Utc;
+
+        let (app, _) = build_test_app().await;
+        let email = format!("authenticator-{}@example.test", Uuid::new_v4());
+        let password = "StrongPassword123!";
+        let (token, _) = sign_up_dev(&app, &email, "Authenticator tests").await;
+        let request = |method, path: &str, bearer: Option<&str>, body: Value| {
+            let mut request = Request::builder()
+                .method(method)
+                .uri(path)
+                .header("content-type", "application/json");
+            if let Some(bearer) = bearer {
+                request = request.header("authorization", format!("Bearer {bearer}"));
+            }
+            request
+                .body(Body::from(body.to_string()))
+                .expect("valid developer security request")
+        };
+
+        let mut peer = 20;
+        let mut run = |req: Request<Body>| {
+            peer += 1;
+            send_request_from(&app, req, [198, 51, 100, peer])
+        };
+        let security = "/v1/control/auth/security";
+        let start = format!("{security}/totp/start");
+        let result = run(request(Method::POST, &start, Some(&token), json!({}))).await;
+        assert_eq!(result.status(), StatusCode::FORBIDDEN);
+        assert_eq!(read_json(result).await["error"]["code"], "STEP_UP_REQUIRED");
+
+        let verify = format!("{security}/step-up");
+        let result = run(request(
+            Method::POST,
+            &verify,
+            Some(&token),
+            json!({ "password": password }),
+        ))
+        .await;
+        assert_eq!(result.status(), StatusCode::OK);
+
+        let result = run(request(Method::POST, &start, Some(&token), json!({}))).await;
+        assert_eq!(result.status(), StatusCode::OK);
+        assert_eq!(result.headers()["cache-control"], "no-store");
+        let enrollment = read_json(result).await;
+        let secret = base32_decode(enrollment["secret"].as_str().unwrap()).unwrap();
+        let code = compute_totp_code(&secret, Utc::now().timestamp() as u64);
+        let finish = format!("{security}/totp/finish");
+        let result = run(request(
+            Method::POST,
+            &finish,
+            Some(&token),
+            json!({ "code": &code }),
+        ))
+        .await;
+        assert_eq!(result.status(), StatusCode::OK);
+        let backup = read_json(result).await;
+        let codes = backup["codes"].as_array().unwrap();
+        assert_eq!(codes.len(), 10);
+
+        let login = "/v1/control/auth/sign-in";
+        let result = run(request(
+            Method::POST,
+            login,
+            None,
+            json!({ "email": &email, "password": password }),
+        ))
+        .await;
+        assert_eq!(result.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            read_json(result).await["error"]["code"],
+            "SECOND_FACTOR_REQUIRED"
+        );
+        let result = run(request(
+            Method::POST,
+            login,
+            None,
+            json!({
+                "email": &email, "password": password, "second_factor_code": code
+            }),
+        ))
+        .await;
+        assert_eq!(
+            read_json(result).await["error"]["code"],
+            "INVALID_SECOND_FACTOR"
+        );
+
+        let backup_login =
+            json!({ "email": &email, "password": password, "second_factor_code": codes[0] });
+        let result = run(request(Method::POST, login, None, backup_login.clone())).await;
+        assert_eq!(result.status(), StatusCode::OK);
+        let result = run(request(Method::POST, login, None, backup_login)).await;
+        assert_eq!(
+            read_json(result).await["error"]["code"],
+            "INVALID_SECOND_FACTOR"
+        );
+
+        let result = run(request(Method::GET, security, Some(&token), json!(null))).await;
+        assert_eq!(result.status(), StatusCode::OK);
+        let overview = read_json(result).await;
+        assert_eq!(overview["totp_enabled"], true);
+        assert_eq!(overview["backup_codes_remaining"], 9);
+        assert_eq!(overview["sessions"].as_array().unwrap().len(), 2);
     }
 
     #[tokio::test]
