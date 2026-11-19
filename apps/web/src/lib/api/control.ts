@@ -1,4 +1,5 @@
 import { apiClient, type RequestOptions } from './client';
+import type { DeveloperProtection } from './developer-security';
 import type {
 	AnalyticsWindow,
 	ApplicationDomainDto,
@@ -46,13 +47,37 @@ function toQueryString(params: Record<string, string | number | boolean | undefi
 	return str ? `?${str}` : '';
 }
 
+export interface DeveloperSession {
+	trusted_device: string | null;
+	id: string;
+	ip_address: string | null;
+	user_agent: string | null;
+	created_at: string;
+	current: boolean;
+}
+
+export interface DeveloperSecurityActivity {
+	flags: string[];
+	id: string;
+	event: string;
+	ip_address: string | null;
+	user_agent: string | null;
+	created_at: string;
+}
+
+export interface DeveloperSecurityOverview extends DeveloperProtection {
+	sessions: DeveloperSession[];
+	recent_activity: DeveloperSecurityActivity[];
+	brute_force_protection: boolean;
+}
+
 export const controlApi = {
 	signUp: (
 		payload: { email: string; password: string; display_name: string; workspace_name?: string },
 		options?: RequestOptions
 	) => apiClient.post<DeveloperAuthResponse>('/v1/control/auth/sign-up', payload, options),
 
-	signIn: (payload: { email: string; password: string }, options?: RequestOptions) =>
+	signIn: (payload: { email: string; password: string; second_factor_code?: string }, options?: RequestOptions) =>
 		apiClient.post<DeveloperAuthResponse>('/v1/control/auth/sign-in', payload, options),
 
 	signOut: (options?: RequestOptions) =>
@@ -65,6 +90,12 @@ export const controlApi = {
 		payload: { current_password: string; new_password: string },
 		options?: RequestOptions
 	) => apiClient.post<{ message: string }>('/v1/control/auth/change-password', payload, options),
+
+	securityOverview: () =>
+		apiClient.get<DeveloperSecurityOverview>('/v1/control/auth/security'),
+
+	revokeDeveloperSession: (id: string) =>
+		apiClient.delete<void>(`/v1/control/auth/security/sessions/${encodeURIComponent(id)}`),
 
 	listWorkspaces: (options?: RequestOptions) =>
 		apiClient.get<WorkspaceSummary[]>('/v1/control/workspaces', options),
