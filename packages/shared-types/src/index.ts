@@ -637,3 +637,184 @@ export interface EnvironmentAnalyticsDto {
   provider_breakdown: ProviderBreakdownDto;
   series: AnalyticsSeriesPointDto[];
 }
+
+export interface UserSecuritySettings {
+  user_id: string;
+  mfa_enabled: boolean;
+  two_factor_method: string;
+  recovery_email: string | null;
+  recovery_phone: string | null;
+  security_notifications_enabled: boolean;
+  notify_new_login: boolean;
+  notify_suspicious_activity: boolean;
+  notify_security_changes: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateSecuritySettingsRequest {
+  recovery_email?: string | null;
+  recovery_phone?: string | null;
+  security_notifications_enabled?: boolean;
+  notify_new_login?: boolean;
+  notify_suspicious_activity?: boolean;
+  notify_security_changes?: boolean;
+}
+
+export interface TotpEnrollResponse {
+  secret: string;
+  qr_uri: string;
+}
+
+export interface VerifyTotpRequest {
+  code: string;
+}
+
+export interface PasskeyInfo {
+  id: string;
+  credential_id: string;
+  name: string;
+  aaguid?: string | null;
+  created_at: string;
+  last_used_at?: string | null;
+}
+
+export interface PasskeyRegistrationOptions {
+  challenge: string;
+  rp_name: string;
+  rp_id: string;
+  user_id: string;
+  user_email: string;
+  user_display_name: string;
+}
+
+export interface VerifyPasskeyRegistrationRequest {
+  credential_id: string;
+  public_key_spki: string;
+  name: string;
+  client_data_json?: string;
+}
+
+export interface BackupCodesResponse {
+  codes: string[];
+  remaining_count: number;
+}
+
+export interface VerifyBackupCodeRequest {
+  code: string;
+}
+
+export interface StepUpChallengeRequest {
+  password?: string;
+  totp_code?: string;
+  backup_code?: string;
+}
+
+export interface StepUpTokenResponse {
+  step_up_token: string;
+  expires_in: number;
+}
+
+export interface DeviceInfo {
+  id: string;
+  device_name: string;
+  device_type: 'desktop' | 'mobile' | 'tablet' | 'browser' | string;
+  trusted: boolean;
+  trusted_until?: string | null;
+  last_ip?: string | null;
+  last_location?: string | null;
+  last_active_at: string;
+  is_current: boolean;
+}
+
+export interface SecurityAlertInfo {
+  id: string;
+  alert_type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical' | string;
+  title: string;
+  description: string;
+  ip_address?: string | null;
+  location?: string | null;
+  resolved: boolean;
+  created_at: string;
+}
+
+export interface LoginHistoryEntry {
+  id: string;
+  timestamp: string;
+  ip_address?: string | null;
+  location?: string | null;
+  device_name?: string | null;
+  event: string;
+  status: string;
+  suspicious: boolean;
+  reasons: string[];
+}
+
+export interface BruteForceStatus {
+  protected: boolean;
+  failed_attempts_past_24h: number;
+  consecutive_failures: number;
+  max_attempts_threshold: number;
+  is_locked: boolean;
+  lockout_expires_at?: string | null;
+}
+
+export interface CredentialStuffingStatus {
+  detection_active: boolean;
+  risk_level: string;
+  stuffing_events_blocked_7d: number;
+  analyzed_subnets_count: number;
+}
+
+export interface ImpossibleTravelStatus {
+  detection_active: boolean;
+  anomalies_detected_30d: number;
+  velocity_threshold_kmh: number;
+  last_calculated_velocity_kmh?: number | null;
+  last_hop_description?: string | null;
+}
+
+export interface IpReputationResult {
+  ip: string;
+  score: number;
+  risk_level: string;
+  classification: string;
+  is_datacenter: boolean;
+  is_vpn_proxy: boolean;
+  is_tor: boolean;
+  asn?: string | null;
+  country?: string | null;
+  city?: string | null;
+}
+
+export interface ThreatIntelligenceReport {
+  ato_risk_score: number;
+  ato_risk_level: 'low' | 'guarded' | 'elevated' | 'critical' | string;
+  brute_force_status: BruteForceStatus;
+  credential_stuffing_status: CredentialStuffingStatus;
+  impossible_travel_status: ImpossibleTravelStatus;
+  ip_reputation: IpReputationResult;
+  active_alerts_count: number;
+  recommendations: string[];
+}
+
+export interface AccountRecoveryStatus {
+  primary_email: string;
+  recovery_email?: string | null;
+  recovery_phone?: string | null;
+  backup_codes_remaining: number;
+  mfa_enabled: boolean;
+  passkeys_count: number;
+  recovery_readiness_score: number;
+  recommendations: string[];
+}
+
+export interface SecuritySummaryResponse {
+  settings: UserSecuritySettings;
+  passkeys: PasskeyInfo[];
+  backup_codes_count: number;
+  threat_report: ThreatIntelligenceReport;
+  recovery_status: AccountRecoveryStatus;
+  active_alerts: SecurityAlertInfo[];
+}
