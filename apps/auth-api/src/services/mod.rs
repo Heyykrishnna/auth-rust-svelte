@@ -1,3 +1,4 @@
+pub mod account_security;
 pub mod analytics;
 pub mod audit;
 pub mod authentication;
@@ -9,6 +10,7 @@ pub mod control_ops;
 pub mod control_plane;
 pub mod cookies;
 pub mod credentials;
+pub mod developer_security;
 pub mod domains;
 pub mod email;
 pub mod identity_advanced;
