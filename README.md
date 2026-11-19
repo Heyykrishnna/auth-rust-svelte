@@ -343,6 +343,7 @@ phases/                 Implementation milestones and acceptance criteria
 | [Authentication](docs/authentication.md)                   | Authentication and token lifecycle                              |
 | [OIDC provider](docs/oidc-provider.md)                     | Hosted authentication and SSO integration                       |
 | [Service synchronization](docs/service-synchronization.md) | Reconciliation, webhooks, and consumer guidance                 |
+| [Developer account security](docs/developer-account-security.md) | Authenticators, recovery, devices, and sign-in protection |
 | [Migrations](docs/migrations.md)                           | Database migration workflow                                     |
 | [Security](docs/security.md)                               | Security controls, scanning, and dependency maintenance         |
 | [Threat model](docs/threat-model.md)                       | Trust boundaries and attack scenarios                           |
