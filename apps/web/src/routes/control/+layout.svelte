@@ -32,7 +32,8 @@
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 401) {
 				setDeveloper(null);
-				await goto('/control/login', { replace: true });
+				const returnTo = page.url.pathname + page.url.search;
+				await goto(`/control/login?${new URLSearchParams({ returnTo })}`, { replace: true });
 			} else {
 				loadError =
 					err instanceof Error
@@ -45,7 +46,7 @@
 	}
 
 	onMount(() => {
-		if (page.url.pathname !== '/control/login') void hydrateControlPlane();
+		if (!page.url.pathname.startsWith('/control/login')) void hydrateControlPlane();
 		else initializing = false;
 	});
 
@@ -60,7 +61,7 @@
 </script>
 
 {#if page.url.pathname.startsWith('/control/login')}
-	{@render children()}
+	<div class="workspace-theme">{@render children()}</div>
 {:else if initializing}
 	<div
 		class="flex min-h-screen items-center justify-center bg-[#0b0c0e] text-sm text-zinc-400"
@@ -69,7 +70,7 @@
 	</div>
 {:else if loadError}
 	<div
-		class="workspace-theme workspace-accent grid min-h-dvh content-center justify-items-center gap-4 bg-brand-surface p-6 text-brand-text-primary"
+		class="workspace-theme grid min-h-dvh content-center justify-items-center gap-4 bg-brand-surface p-6 text-brand-text-primary"
 	>
 		<p role="alert">{loadError}</p>
 		<Button onclick={hydrateControlPlane}>Try again</Button>
@@ -78,7 +79,7 @@
 	{@render children()}
 {/if}
 
-<div class="workspace-theme workspace-accent">
+<div class="workspace-theme">
 	<Modal
 		open={controlStore.revealedSecret !== null}
 		title={controlStore.revealedSecret?.title ?? 'One-Time Secret Key'}

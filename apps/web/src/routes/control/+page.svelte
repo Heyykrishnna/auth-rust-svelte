@@ -201,7 +201,7 @@
 {/if}
 
 {#if create === 'workspace' || (create === 'application' && workspace && canMutateEnvironment(workspace.role))}
-	<div class="workspace-theme workspace-accent">
+	<div class="workspace-theme">
 		<CreateWorkspaceResource
 			workspaceId={create === 'application' ? workspaceId : undefined}
 			onApplicationCreated={handleApplicationCreated}

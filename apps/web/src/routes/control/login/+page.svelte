@@ -1,14 +1,20 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import SelectionRow from '$lib/components/SelectionRow.svelte';
   import AuthSplitShell from '$lib/components/AuthSplitShell.svelte';
 	import { addToast } from '$lib/components/Toast.svelte';
+	import { ApiError } from '$lib/api/client';
+	import OtpInput from '$lib/components/OtpInput.svelte';
 	import { controlApi } from '$lib/api/control';
 	import { setDeveloper, setWorkspaces } from '$lib/stores/control.svelte';
 
 	let mode = $state<'signin' | 'signup'>('signin');
 	let email = $state('');
 	let password = $state('');
+	let factorRequired = $state(false);
+	let usingBackup = $state(false);
+	let factorCode = $state('');
 	let displayName = $state('');
 	let workspaceName = $state('');
 	let showPassword = $state(false);
@@ -29,7 +35,7 @@
 							display_name: displayName.trim(),
 							workspace_name: workspaceName.trim() || undefined
 						})
-					: await controlApi.signIn({ email: email.trim(), password });
+					: await controlApi.signIn({ email: email.trim(), password, second_factor_code: factorRequired ? factorCode.trim() : undefined });
 
 			setDeveloper(res.developer);
 			const workspaces = await controlApi.listWorkspaces();
@@ -38,13 +44,28 @@
 				mode === 'signup' ? 'Developer workspace created' : 'Signed in to Control Plane',
 				'success'
 			);
-			goto('/control');
+			const next = page.url.searchParams.get('returnTo');
+			await goto(next?.startsWith('/control?') ? next : '/control');
 		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Authentication failed';
+			if (err instanceof ApiError && (err.code === 'SECOND_FACTOR_REQUIRED' || err.code === 'INVALID_SECOND_FACTOR')) {
+				factorRequired = true;
+				factorCode = '';
+				if (err.code === 'INVALID_SECOND_FACTOR') errorMessage = err.message;
+			} else {
+				errorMessage = err instanceof Error ? err.message : 'Authentication failed';
+			}
 		} finally {
 			submitting = false;
 		}
 	}
+	function switchMode() {
+		mode = mode === 'signin' ? 'signup' : 'signin';
+		factorRequired = false;
+		factorCode = '';
+		usingBackup = false;
+		errorMessage = '';
+	}
+
 </script>
 
 <svelte:head>
@@ -55,10 +76,7 @@
 	brandName="Signet"
 	footerText="Signet Control Plane · Multi-Tenant Identity Infrastructure"
 	topActionLabel={mode === 'signin' ? 'Create an account' : 'Sign in'}
-	onTopAction={() => {
-		mode = mode === 'signin' ? 'signup' : 'signin';
-		errorMessage = '';
-	}}
+	onTopAction={switchMode}
 >
 	<h1 class="editorial-title">{mode === 'signin' ? 'Login' : 'Create Account'}</h1>
 	<p class="editorial-subtitle">
@@ -137,7 +155,24 @@
 		</div>
 
 		{#if mode === 'signin'}
+			{#if factorRequired}
+				<div class="grid gap-2">
+					{#if usingBackup}
+						<label class="grid gap-1.5 text-sm font-medium">
+							Backup code
+							<input class="editorial-input" autocomplete="one-time-code" maxlength="27" bind:value={factorCode} required />
+						</label>
+					{:else}
+						<p class="text-sm font-medium">Authenticator code</p>
+						<OtpInput bind:value={factorCode} disabled={submitting} />
+					{/if}
+					<button class="editorial-quiet-link justify-self-start" type="button" onclick={() => { usingBackup = !usingBackup; factorCode = ''; errorMessage = ''; }}>
+						{usingBackup ? 'Use an authenticator code' : 'Use a backup code'}
+					</button>
+				</div>
+			{/if}
 			<div class="editorial-meta-row">
+				<a href="/control/login/recovery" class="editorial-quiet-link">Forgot password?</a>
 				<SelectionRow label="Remember me" bind:checked={rememberMe} />
 				<a href="/login" class="editorial-quiet-link">End-user sign in</a>
 			</div>
@@ -156,10 +191,7 @@
 				<button
 					type="button"
 					class="text-white hover:underline font-medium bg-transparent border-0 p-0 cursor-pointer text-sm"
-					onclick={() => {
-						mode = mode === 'signin' ? 'signup' : 'signin';
-						errorMessage = '';
-					}}
+					onclick={switchMode}
 				>
 					{mode === 'signin' ? 'Need a developer workspace? Sign up' : 'Already registered? Sign in'}
 				</button>

@@ -55,4 +55,4 @@
   </div>
 {/if}
 
-<Toast />
+<Toast monochrome={page.url.pathname.startsWith("/control")} />
