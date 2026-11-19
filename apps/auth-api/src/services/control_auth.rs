@@ -1,6 +1,5 @@
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use chrono::Utc;
-use deadpool_redis::Pool as RedisPool;
 use jsonwebtoken::{
     decode, decode_header, encode, Algorithm as JwtAlgorithm, DecodingKey, EncodingKey, Header,
     Validation,
@@ -13,10 +12,15 @@ use crate::config::AppConfig;
 use crate::errors::AppError;
 use crate::models::{Developer, DeveloperId, WorkspaceRole};
 use crate::repositories::db::{begin_tx, commit_tx};
+use crate::repositories::signing_keys::SigningKeyRecord;
 use crate::repositories::{
     redis_ephemeral, redis_keys, signing_keys as key_repo, tenants as tenant_repo,
 };
+use crate::services::developer_security::{
+    self, devices, factors, risk, verification, SignInClient,
+};
 use crate::services::signing_keys::{self, EcPublicJwk};
+use crate::AppState;
 
 pub const DEV_SESSION_COOKIE: &str = "dev_session_token";
 pub const CONTROL_PLANE_AUDIENCE: &str = "control-plane";
@@ -61,12 +65,13 @@ use crate::services::password_hasher::{
     hash_password_async, verify_dummy_password_async, verify_password_async,
 };
 
-pub async fn issue_developer_token(
-    db: &PgPool,
+fn issue_developer_token(
+    active_key: SigningKeyRecord,
     developer: &Developer,
     config: &AppConfig,
+    session_id: Uuid,
+    expires_at: chrono::DateTime<Utc>,
 ) -> Result<String, AppError> {
-    let active_key = signing_keys::ensure_active_signing_key(db, config).await?;
     let pkcs8_der = signing_keys::decrypt_signing_key_pkcs8(&active_key, config)?;
     let now = Utc::now().timestamp();
     let claims = DeveloperTokenClaims {
@@ -76,8 +81,8 @@ pub async fn issue_developer_token(
         display_name: developer.display_name.clone(),
         aud: CONTROL_PLANE_AUDIENCE.to_string(),
         iat: now,
-        exp: now + config.jwt_refresh_expiry_secs as i64,
-        jti: Uuid::new_v4().to_string(),
+        exp: expires_at.timestamp(),
+        jti: session_id.to_string(),
     };
 
     let mut header = Header::new(JwtAlgorithm::ES256);
@@ -174,6 +179,7 @@ pub async fn register_developer(
     password: &str,
     display_name: &str,
     workspace_name: Option<&str>,
+    client: SignInClient<'_>,
 ) -> Result<(DeveloperProfileResponse, String), AppError> {
     let normalized_email = redis_ephemeral::normalize_email(email);
     if !normalized_email.contains('@') || normalized_email.len() < 5 {
@@ -210,6 +216,7 @@ pub async fn register_developer(
         });
     let ws_slug = format!("ws-{}", &Uuid::new_v4().simple().to_string()[..12]);
 
+    let active_key = signing_keys::ensure_active_signing_key(db, config).await?;
     let mut tx = begin_tx(db).await?;
     let developer = tenant_repo::create_developer(
         &mut *tx,
@@ -231,87 +238,174 @@ pub async fn register_developer(
         serde_json::json!({ "workspace_id": workspace.id }),
     )
     .await?;
+    let session_id = Uuid::new_v4();
+    let expires_at = session_expiry(config);
+    let token = issue_developer_token(active_key, &developer, config, session_id, expires_at)?;
+    developer_security::create_session(&mut tx, session_id, developer.id, expires_at, client, None)
+        .await?;
     commit_tx(tx).await?;
-
-    let token = issue_developer_token(db, &developer, config).await?;
     Ok((DeveloperProfileResponse::from(developer), token))
+}
+
+fn session_expiry(config: &AppConfig) -> chrono::DateTime<Utc> {
+    Utc::now() + chrono::Duration::seconds(config.jwt_refresh_expiry_secs as i64)
 }
 
 pub async fn login_developer(
-    db: &PgPool,
-    redis: &RedisPool,
-    config: &AppConfig,
+    state: &AppState,
     email: &str,
     password: &str,
+    second_factor_code: Option<&str>,
+    client: SignInClient<'_>,
 ) -> Result<(DeveloperProfileResponse, String), AppError> {
     let normalized_email = redis_ephemeral::normalize_email(email);
-    let lockout_key = redis_keys::global_key("dev_login_attempt", &normalized_email);
-
-    if let Ok(mut conn) = redis.get().await {
-        let attempts: Option<String> = redis::cmd("GET")
-            .arg(&lockout_key)
-            .query_async(&mut conn)
-            .await
-            .unwrap_or(None);
-        if let Some(count) = attempts.and_then(|s| s.parse::<u32>().ok()) {
-            if count >= config.login_max_attempts {
-                return Err(AppError::TooManyRequests(
-                    "Too many failed developer sign-in attempts. Please try again later."
-                        .to_string(),
-                ));
-            }
-        }
+    let login_key = redis_keys::global_key("dev_login_attempt", &normalized_email);
+    let db = &state.db;
+    let redis = &state.redis;
+    let config = &state.config;
+    redis_ephemeral::check_attempts(redis, &login_key, config.login_max_attempts).await?;
+    if risk::network_limit(state, client.ip, &normalized_email, false).await? {
+        return Err(network_locked());
     }
 
-    let developer = match tenant_repo::find_developer_by_email(db, &normalized_email).await? {
-        Some(dev) => dev,
-        None => {
-            verify_dummy_password_async(password.to_string()).await;
-            increment_dev_failed_attempt(redis, &lockout_key, config.login_lockout_duration_secs)
-                .await;
-            return Err(AppError::InvalidCredentials);
-        }
+    let account = tenant_repo::find_developer_by_email(db, &normalized_email).await?;
+    let valid = if let Some(hash) = account
+        .as_ref()
+        .filter(|dev| dev.status == "active")
+        .and_then(|dev| dev.password_hash.as_ref())
+    {
+        verify_password_async(password.to_string(), hash.clone()).await?
+    } else {
+        verify_dummy_password_async(password.to_string()).await;
+        false
     };
-
-    if developer.status != "active" {
-        return Err(AppError::Forbidden(
-            "Developer account is suspended or inactive".to_string(),
-        ));
-    }
-
-    let hash_str = match developer.password_hash.as_deref() {
-        Some(h) => h.to_string(),
-        None => {
-            verify_dummy_password_async(password.to_string()).await;
-            return Err(AppError::InvalidCredentials);
+    if !valid {
+        let blocked = risk::network_limit(state, client.ip, &normalized_email, true).await?;
+        if let Some(dev) = account {
+            let event = if blocked {
+                "DEVELOPER_CREDENTIAL_STUFFING"
+            } else {
+                "DEVELOPER_SIGN_IN_FAILED"
+            };
+            record_failure(state, dev.id, &login_key, client, event).await?;
+        } else {
+            redis_ephemeral::record_failed_attempt(
+                redis,
+                &login_key,
+                config.login_lockout_duration_secs,
+            )
+            .await?;
         }
+        return Err(if blocked {
+            network_locked()
+        } else {
+            AppError::InvalidCredentials
+        });
     };
+    let developer = account.ok_or(AppError::InvalidCredentials)?;
 
-    if !verify_password_async(password.to_string(), hash_str).await? {
-        increment_dev_failed_attempt(redis, &lockout_key, config.login_lockout_duration_secs).await;
+    let active_key = signing_keys::ensure_active_signing_key(db, config).await?;
+    let session_id = Uuid::new_v4();
+    let expires_at = session_expiry(config);
+    let token = issue_developer_token(active_key, &developer, config, session_id, expires_at)?;
+    let mut tx = db.begin().await?;
+    if verification::lock_account(&mut tx, developer.id).await? != developer.password_hash {
         return Err(AppError::InvalidCredentials);
     }
-
-    if let Ok(mut conn) = redis.get().await {
-        let _: Result<(), _> = redis::cmd("DEL")
-            .arg(&lockout_key)
-            .query_async(&mut conn)
-            .await;
+    let factor = match factors::verify_second_factor(
+        &mut tx,
+        config,
+        developer.id,
+        second_factor_code,
+    )
+    .await
+    {
+        Ok(factor) => factor,
+        Err(error) => {
+            tx.rollback().await?;
+            if matches!(error, AppError::InvalidSecondFactor) {
+                record_failure(
+                    state,
+                    developer.id,
+                    &login_key,
+                    client,
+                    "DEVELOPER_SIGN_IN_FAILED",
+                )
+                .await?;
+            }
+            return Err(error);
+        }
+    };
+    let device_id = devices::observe_sign_in(&mut tx, developer.id, client.trusted_device).await?;
+    let flags = risk::inspect_sign_in(
+        &mut tx,
+        developer.id,
+        client,
+        device_id.is_some(),
+        matches!(factor, factors::VerifiedFactor::BackupCode),
+    )
+    .await?;
+    let preferences = risk::settings(&mut *tx, developer.id).await?;
+    developer_security::create_session(
+        &mut tx,
+        session_id,
+        developer.id,
+        expires_at,
+        client,
+        device_id,
+    )
+    .await?;
+    developer_security::record_activity(
+        &mut *tx,
+        developer.id,
+        "DEVELOPER_SIGNED_IN",
+        Some(client),
+    )
+    .await?;
+    if !flags.is_empty() {
+        developer_security::record_event(
+            &mut *tx,
+            developer.id,
+            "DEVELOPER_SUSPICIOUS_SIGN_IN",
+            Some(client),
+            &flags,
+        )
+        .await?;
     }
-
-    let token = issue_developer_token(db, &developer, config).await?;
+    tx.commit().await?;
+    if let Err(error) = redis_ephemeral::clear_attempts(redis, &login_key).await {
+        tracing::warn!(error = %error, "Could not clear developer sign-in attempts");
+    }
+    risk::notify(
+        state,
+        developer.id,
+        developer.email.clone(),
+        preferences,
+        !flags.is_empty(),
+    );
     Ok((DeveloperProfileResponse::from(developer), token))
 }
 
-async fn increment_dev_failed_attempt(redis: &RedisPool, key: &str, lockout_secs: u64) {
-    if let Ok(mut conn) = redis.get().await {
-        let count: Result<i64, _> = redis::cmd("INCR").arg(key).query_async(&mut conn).await;
-        if let Ok(1) = count {
-            let _: Result<(), _> = redis::cmd("EXPIRE")
-                .arg(key)
-                .arg(lockout_secs)
-                .query_async(&mut conn)
-                .await;
-        }
-    }
+async fn record_failure(
+    state: &AppState,
+    id: DeveloperId,
+    login_key: &str,
+    client: SignInClient<'_>,
+    event: &str,
+) -> Result<(), AppError> {
+    redis_ephemeral::record_failed_attempt(
+        &state.redis,
+        login_key,
+        state.config.login_lockout_duration_secs,
+    )
+    .await?;
+    developer_security::record_activity(&state.db, id, event, Some(client)).await
+}
+
+fn network_locked() -> AppError {
+    metrics::counter!("developer_sign_in_blocked_total", "reason" => "credential_stuffing")
+        .increment(1);
+    AppError::TooManyRequests(
+        "Too many sign-in attempts from this network. Try again later.".to_string(),
+    )
 }

@@ -4,13 +4,14 @@ use axum::http::request::Parts;
 
 use crate::errors::AppError;
 use crate::models::DeveloperId;
-use crate::repositories::tenants as tenant_repo;
 use crate::services::control_auth::{validate_developer_token, DEV_SESSION_COOKIE};
 use crate::AppState;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct AuthenticatedDeveloper {
     pub developer_id: DeveloperId,
+    pub session_id: Uuid,
     pub email: String,
     pub display_name: String,
 }
@@ -64,9 +65,21 @@ impl FromRequestParts<AppState> for AuthenticatedDeveloper {
             .parse::<DeveloperId>()
             .map_err(|_| AppError::Unauthorized("Invalid developer subject".to_string()))?;
 
-        let developer = tenant_repo::find_developer_by_id(&state.db, developer_id)
-            .await?
-            .ok_or_else(|| AppError::Unauthorized("Developer account not found".to_string()))?;
+        let session_id = claims
+            .jti
+            .parse::<Uuid>()
+            .map_err(|_| AppError::Unauthorized("Invalid developer session".to_string()))?;
+        let developer = sqlx::query_as::<_, crate::models::Developer>(
+            "SELECT d.* FROM developers d JOIN developer_sessions s ON s.developer_id = d.id
+             WHERE d.id = $1 AND s.id = $2 AND s.revoked_at IS NULL AND s.expires_at > NOW()",
+        )
+        .bind(developer_id)
+        .bind(session_id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| {
+            AppError::Unauthorized("Developer session expired or revoked".to_string())
+        })?;
 
         if developer.status != "active" {
             return Err(AppError::Forbidden(
@@ -76,6 +89,7 @@ impl FromRequestParts<AppState> for AuthenticatedDeveloper {
 
         let authenticated = Self {
             developer_id,
+            session_id,
             email: developer.email,
             display_name: developer.display_name,
         };

@@ -1734,7 +1734,7 @@ pub async fn remove_workspace_member(
 
 pub async fn change_developer_password(
     db: &PgPool,
-    developer_id: DeveloperId,
+    principal: &crate::middleware::AuthenticatedDeveloper,
     current_password: &str,
     new_password: &str,
 ) -> Result<(), AppError> {
@@ -1744,6 +1744,7 @@ pub async fn change_developer_password(
         ));
     }
 
+    let developer_id = principal.developer_id;
     let developer = tenant_repo::find_developer_by_id(db, developer_id)
         .await?
         .ok_or(AppError::UserNotFound)?;
@@ -1758,7 +1759,7 @@ pub async fn change_developer_password(
     )
     .await?
     {
-        return Err(AppError::Unauthorized(
+        return Err(AppError::Validation(
             "Current password is incorrect".to_string(),
         ));
     }
@@ -1767,18 +1768,40 @@ pub async fn change_developer_password(
         crate::services::password_hasher::hash_password_async(new_password.to_string()).await?;
 
     let mut tx = begin_tx(db).await?;
-    sqlx::query(
+    let locked_hash =
+        crate::services::developer_security::verification::lock_account(&mut tx, developer_id)
+            .await?;
+    if locked_hash.as_deref() != Some(stored_hash) {
+        return Err(AppError::InvalidCredentials);
+    }
+    crate::services::developer_security::verification::protect_existing_action(&mut tx, principal)
+        .await?;
+    let updated = sqlx::query(
         r#"
         UPDATE developers
         SET password_hash = $2, updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1 AND password_hash = $3 AND status = 'active'
         "#,
     )
     .bind(developer_id)
     .bind(&new_hash)
+    .bind(stored_hash)
     .execute(&mut *tx)
     .await?;
 
+    if updated.rows_affected() != 1 {
+        return Err(AppError::InvalidCredentials);
+    }
+    crate::services::developer_security::revoke_other_sessions(
+        &mut tx,
+        developer_id,
+        principal.session_id,
+    )
+    .await?;
+    sqlx::query("DELETE FROM developer_password_resets WHERE developer_id = $1")
+        .bind(developer_id)
+        .execute(&mut *tx)
+        .await?;
     tenant_repo::record_control_audit_log(
         &mut *tx,
         None,
