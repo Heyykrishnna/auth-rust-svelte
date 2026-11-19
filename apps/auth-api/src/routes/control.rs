@@ -3,7 +3,7 @@ use axum::Router;
 
 use crate::handlers::{
     analytics, backend_sync, client_auth, control_ops, control_plane, control_webhooks,
-    organizations,
+    developer_security as security, organizations,
 };
 use crate::middleware::{api_rate_limit_layer, auth_rate_limit_layer, sensitive_rate_limit_layer};
 use crate::AppState;
@@ -14,11 +14,52 @@ pub fn control_routes() -> Router<AppState> {
         .route("/auth/sign-in", post(control_plane::developer_sign_in))
         .route("/auth/sign-out", post(control_plane::developer_sign_out))
         .route("/auth/me", get(control_plane::developer_me))
+        .route("/auth/forgot-password", post(security::request_recovery))
+        .route("/auth/reset-password", post(security::reset_password))
         .route(
             "/auth/change-password",
             post(control_ops::change_developer_password),
         )
         .layer(auth_rate_limit_layer());
+
+    let security_mutations = Router::new()
+        .route("/step-up", post(security::verify_password))
+        .route(
+            "/step-up/passkey/start",
+            post(security::begin_passkey_verification),
+        )
+        .route(
+            "/step-up/passkey/finish",
+            post(security::finish_passkey_verification),
+        )
+        .route("/totp/start", post(security::begin_totp))
+        .route("/totp/finish", post(security::confirm_totp))
+        .route("/totp", delete(security::remove_totp))
+        .route("/backup-codes", post(security::rotate_backup_codes))
+        .route("/passkeys/start", post(security::begin_passkey))
+        .route("/passkeys/finish", post(security::finish_passkey))
+        .route("/passkeys/:id", delete(security::remove_passkey))
+        .route("/devices", post(security::trust_browser))
+        .route("/devices/:id", delete(security::forget_browser))
+        .route("/notifications", patch(security::set_notifications))
+        .route(
+            "/sessions/:id",
+            delete(control_plane::developer_revoke_session),
+        )
+        .layer(sensitive_rate_limit_layer());
+
+    let account_security = security_mutations
+        .route("/", get(control_plane::developer_security_overview))
+        .layer(api_rate_limit_layer())
+        .layer(axum::middleware::map_response(
+            |mut response: axum::response::Response| async move {
+                response.headers_mut().insert(
+                    axum::http::header::CACHE_CONTROL,
+                    axum::http::HeaderValue::from_static("no-store"),
+                );
+                response
+            },
+        ));
 
     let credential_mutation_routes = Router::new()
         .route(
@@ -222,6 +263,7 @@ pub fn control_routes() -> Router<AppState> {
 
     Router::new()
         .merge(auth_routes)
+        .nest("/auth/security", account_security)
         .merge(credential_mutation_routes)
         .merge(management_routes)
 }

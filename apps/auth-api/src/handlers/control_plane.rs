@@ -1,5 +1,5 @@
-use axum::extract::{Path, Query, State};
-use axum::http::{header, StatusCode};
+use axum::extract::{Extension, Path, Query, State};
+use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use axum_extra::extract::cookie::CookieJar;
@@ -8,6 +8,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::errors::AppError;
+use crate::middleware::rate_limit::ResolvedClientIp;
 use crate::middleware::{AuthenticatedDeveloper, PublishableKeyTenant, SecretKeyAuth};
 use crate::models::{
     Application, ApplicationDomain, ApplicationEnvironment, ApplicationId, CredentialType,
@@ -22,6 +23,7 @@ use crate::services::control_plane::{
     self, ApplicationWithEnvironments, CreatedApplicationOutput, CreatedCredentialOutput,
     CredentialSummary, UpdateEnvironmentInput,
 };
+use crate::services::developer_security::{self, SignInClient};
 use crate::services::domains as domain_service;
 use crate::services::workspace_logo;
 use crate::AppState;
@@ -38,6 +40,7 @@ pub struct DeveloperSignUpRequest {
 pub struct DeveloperSignInRequest {
     pub email: String,
     pub password: String,
+    pub second_factor_code: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -118,9 +121,22 @@ fn parse_env_kind(raw: &str) -> Result<EnvironmentKind, AppError> {
 
 pub async fn developer_sign_up(
     State(state): State<AppState>,
+    ip: Option<Extension<ResolvedClientIp>>,
+    headers: HeaderMap,
     jar: CookieJar,
     Json(body): Json<DeveloperSignUpRequest>,
 ) -> Result<(StatusCode, CookieJar, Json<DeveloperAuthResponse>), AppError> {
+    let ip = ip.map(|Extension(ip)| ip.0.to_string());
+    let client = SignInClient {
+        ip: ip.as_deref(),
+        user_agent: headers
+            .get(header::USER_AGENT)
+            .and_then(|header| header.to_str().ok())
+            .filter(|agent| agent.len() <= 512),
+        trusted_device: jar
+            .get(developer_security::devices::COOKIE_NAME)
+            .map(axum_extra::extract::cookie::Cookie::value),
+    };
     let (developer, token) = control_auth::register_developer(
         &state.db,
         &state.config,
@@ -128,6 +144,7 @@ pub async fn developer_sign_up(
         &body.password,
         &body.display_name,
         body.workspace_name.as_deref(),
+        client,
     )
     .await?;
 
@@ -141,15 +158,28 @@ pub async fn developer_sign_up(
 
 pub async fn developer_sign_in(
     State(state): State<AppState>,
+    ip: Option<Extension<ResolvedClientIp>>,
+    headers: HeaderMap,
     jar: CookieJar,
     Json(body): Json<DeveloperSignInRequest>,
 ) -> Result<(CookieJar, Json<DeveloperAuthResponse>), AppError> {
+    let ip = ip.map(|Extension(ip)| ip.0.to_string());
+    let client = SignInClient {
+        ip: ip.as_deref(),
+        user_agent: headers
+            .get(header::USER_AGENT)
+            .and_then(|header| header.to_str().ok())
+            .filter(|agent| agent.len() <= 512),
+        trusted_device: jar
+            .get(developer_security::devices::COOKIE_NAME)
+            .map(axum_extra::extract::cookie::Cookie::value),
+    };
     let (developer, token) = control_auth::login_developer(
-        &state.db,
-        &state.redis,
-        &state.config,
+        &state,
         &body.email,
         &body.password,
+        body.second_factor_code.as_deref(),
+        client,
     )
     .await?;
 
@@ -160,9 +190,47 @@ pub async fn developer_sign_in(
 pub async fn developer_sign_out(
     State(state): State<AppState>,
     jar: CookieJar,
+    developer: Result<AuthenticatedDeveloper, AppError>,
 ) -> Result<(CookieJar, Json<serde_json::Value>), AppError> {
+    match developer {
+        Ok(developer) => {
+            developer_security::revoke_session(
+                &state.db,
+                developer.developer_id,
+                developer.session_id,
+            )
+            .await?;
+        }
+        Err(AppError::Unauthorized(_) | AppError::Forbidden(_)) => {}
+        Err(error) => return Err(error),
+    }
     let jar = clear_dev_auth_cookies(jar, &state.config);
     Ok((jar, Json(json!({ "message": "Signed out" }))))
+}
+
+pub async fn developer_security_overview(
+    State(state): State<AppState>,
+    dev: AuthenticatedDeveloper,
+) -> Result<
+    (
+        [(header::HeaderName, &'static str); 1],
+        Json<developer_security::Overview>,
+    ),
+    AppError,
+> {
+    Ok((
+        [(header::CACHE_CONTROL, "no-store")],
+        Json(developer_security::overview(&state, &dev).await?),
+    ))
+}
+
+pub async fn developer_revoke_session(
+    State(state): State<AppState>,
+    dev: AuthenticatedDeveloper,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, AppError> {
+    developer_security::revoke_other_session(&state, &dev, id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn developer_me(

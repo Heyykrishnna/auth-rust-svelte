@@ -413,7 +413,7 @@ pub async fn change_developer_password(
 ) -> Result<Json<serde_json::Value>, AppError> {
     control_ops::change_developer_password(
         &state.db,
-        dev.developer_id,
+        &dev,
         &body.current_password,
         &body.new_password,
     )
