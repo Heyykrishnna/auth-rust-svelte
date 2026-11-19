@@ -1,3 +1,4 @@
+pub mod account_security;
 pub mod auth;
 pub mod control;
 pub mod health;

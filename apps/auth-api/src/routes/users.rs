@@ -8,6 +8,7 @@ use crate::AppState;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .nest("/security", crate::routes::account_security::routes())
         .route(
             "/me",
             get(handlers::users::get_me).route_layer(require_permission(Permission::ProfileRead)),
