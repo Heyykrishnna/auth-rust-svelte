@@ -29,14 +29,22 @@ pub async fn check_login_attempts(
     email: &str,
     max_attempts: u32,
 ) -> Result<Option<u32>, AppError> {
+    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
+    check_attempts(pool, &key, max_attempts).await
+}
+
+pub(crate) async fn check_attempts(
+    pool: &RedisPool,
+    key: &str,
+    max_attempts: u32,
+) -> Result<Option<u32>, AppError> {
     let mut conn = pool
         .get()
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
     let val: Option<String> = redis::cmd("GET")
-        .arg(&key)
+        .arg(key)
         .query_async(&mut conn)
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
@@ -61,39 +69,46 @@ pub async fn record_failed_login(
     email: &str,
     lockout_secs: u64,
 ) -> Result<u32, AppError> {
+    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
+    record_failed_attempt(pool, &key, lockout_secs).await
+}
+
+pub(crate) async fn record_failed_attempt(
+    pool: &RedisPool,
+    key: &str,
+    lockout_secs: u64,
+) -> Result<u32, AppError> {
     let mut conn = pool
         .get()
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
-    let count: i64 = redis::cmd("INCR")
-        .arg(&key)
-        .query_async(&mut conn)
-        .await
-        .map_err(|e| AppError::Redis(e.to_string()))?;
-
-    if count == 1 {
-        let _: () = redis::cmd("EXPIRE")
-            .arg(&key)
-            .arg(lockout_secs)
-            .query_async(&mut conn)
-            .await
-            .map_err(|e| AppError::Redis(e.to_string()))?;
-    }
-
-    Ok(count as u32)
+    let count: u32 = redis::Script::new(
+        "local count = redis.call('INCR', KEYS[1])
+         if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+         return count",
+    )
+    .key(key)
+    .arg(lockout_secs)
+    .invoke_async(&mut conn)
+    .await
+    .map_err(|e| AppError::Redis(e.to_string()))?;
+    Ok(count)
 }
 
 pub async fn clear_login_attempts(pool: &RedisPool, email: &str) -> Result<(), AppError> {
+    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
+    clear_attempts(pool, &key).await
+}
+
+pub(crate) async fn clear_attempts(pool: &RedisPool, key: &str) -> Result<(), AppError> {
     let mut conn = pool
         .get()
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;
 
-    let key = redis_keys::global_login_attempt_key(&normalize_email(email));
     let _: () = redis::cmd("DEL")
-        .arg(&key)
+        .arg(key)
         .query_async(&mut conn)
         .await
         .map_err(|e| AppError::Redis(e.to_string()))?;

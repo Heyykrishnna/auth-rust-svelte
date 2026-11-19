@@ -47,6 +47,9 @@ pub fn parse_trusted_proxy_ranges(raw: &str) -> Result<Vec<IpNet>, String> {
         .collect()
 }
 
+#[derive(Clone, Copy)]
+pub struct ResolvedClientIp(pub IpAddr);
+
 pub fn resolve_client_ip(
     headers: &HeaderMap,
     peer: IpAddr,
@@ -111,7 +114,7 @@ fn api_limit(
 
 async fn limit(
     state: AppState,
-    request: Request<Body>,
+    mut request: Request<Body>,
     next: Next,
     scope: &str,
     rate: u32,
@@ -150,7 +153,10 @@ async fn limit(
         .invoke_async(&mut connection)
         .await;
     match outcome {
-        Ok(0) => next.run(request).await,
+        Ok(0) => {
+            request.extensions_mut().insert(ResolvedClientIp(ip));
+            next.run(request).await
+        }
         Ok(wait) => (
             StatusCode::TOO_MANY_REQUESTS,
             [("retry-after", wait.to_string())],
