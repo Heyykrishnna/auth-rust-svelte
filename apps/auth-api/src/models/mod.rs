@@ -1,3 +1,4 @@
+pub mod account_security;
 pub mod audit_log;
 pub mod authorization;
 pub mod domain_event;
@@ -8,6 +9,7 @@ pub mod session;
 pub mod tenant;
 pub mod user;
 
+pub use account_security::*;
 pub use audit_log::*;
 pub use authorization::*;
 pub use domain_event::*;
