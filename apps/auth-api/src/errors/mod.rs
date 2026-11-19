@@ -47,6 +47,15 @@ pub enum AppError {
     #[error("Invalid credentials")]
     InvalidCredentials,
 
+    #[error("Enter an authenticator code or a backup code to continue")]
+    SecondFactorRequired,
+
+    #[error("That authenticator or backup code is invalid or already used")]
+    InvalidSecondFactor,
+
+    #[error("Verify your identity to continue")]
+    StepUpRequired,
+
     #[error("Email already registered")]
     EmailAlreadyExists,
 
@@ -102,6 +111,19 @@ impl AppError {
                 "INVALID_CREDENTIALS",
                 self.to_string(),
             ),
+            AppError::SecondFactorRequired => (
+                StatusCode::UNAUTHORIZED,
+                "SECOND_FACTOR_REQUIRED",
+                self.to_string(),
+            ),
+            AppError::InvalidSecondFactor => (
+                StatusCode::UNAUTHORIZED,
+                "INVALID_SECOND_FACTOR",
+                self.to_string(),
+            ),
+            AppError::StepUpRequired => {
+                (StatusCode::FORBIDDEN, "STEP_UP_REQUIRED", self.to_string())
+            }
             AppError::EmailAlreadyExists => (
                 StatusCode::CONFLICT,
                 "EMAIL_ALREADY_EXISTS",
