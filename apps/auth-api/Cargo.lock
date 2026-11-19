@@ -213,7 +213,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "rand 0.8.8",
- "rand_core 0.6.4",
+ "rand_core 0.10.1",
  "redis",
  "reqwest",
  "ring",
