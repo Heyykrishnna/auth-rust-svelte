@@ -27,6 +27,8 @@
 
 <script lang="ts">
   import ToastItem from "./ToastItem.svelte";
+
+  let { monochrome = false }: { monochrome?: boolean } = $props();
 </script>
 
 <section
@@ -39,6 +41,7 @@
         {message}
         {type}
         {duration}
+        {monochrome}
         onDismiss={() => removeToast(id)}
       />
     {/each}

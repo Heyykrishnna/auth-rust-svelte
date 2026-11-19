@@ -44,7 +44,7 @@
     class="peer sr-only"
   />
   <span
-    class="flex min-w-0 cursor-pointer items-center transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#296FF0] peer-disabled:cursor-not-allowed peer-disabled:opacity-50 {compact
+    class="flex min-w-0 cursor-pointer items-center transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-action-focus peer-disabled:cursor-not-allowed peer-disabled:opacity-50 {compact
       ? 'h-8 min-h-8 gap-2 rounded-lg border border-brand-border-hover bg-brand-surface-input px-2.5 text-brand-text-primary hover:border-brand-border-strong hover:bg-brand-surface-raised'
       : 'min-h-11 gap-3.5 rounded-xl border border-brand-border bg-brand-surface-card px-3.5 py-2.5 text-brand-text-primary hover:border-brand-border-strong hover:bg-brand-surface-raised'}"
   >

@@ -6,11 +6,13 @@
     message,
     type,
     duration,
+    monochrome = false,
     onDismiss,
   }: {
     message: string;
     type: "success" | "error" | "warning" | "info";
     duration: number;
+    monochrome?: boolean;
     onDismiss: () => void;
   } = $props();
 
@@ -44,7 +46,17 @@
       bar: "bg-[#296FF0]",
     },
   };
-  const style = $derived(styles[type]);
+  const style = $derived(
+    monochrome
+      ? {
+          label: styles[type].label,
+          color: "text-white",
+          border: "border-neutral-600",
+          iconBg: "bg-neutral-800",
+          bar: "bg-neutral-400",
+        }
+      : styles[type],
+  );
   let remaining = $state(0);
   let hovered = $state(false);
   let focused = $state(false);

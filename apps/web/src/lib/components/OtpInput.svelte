@@ -70,7 +70,7 @@
     aria-invalid={invalid}
     {disabled}
     {value}
-    pattern="[0-9]{6}"
+    pattern={'[0-9]{6}'}
     required
     oninput={() =>
       update(input.value, input.selectionStart ?? input.value.length)}
@@ -85,21 +85,21 @@
     onblur={() => (focused = false)}
     class="absolute inset-0 z-10 size-full cursor-pointer rounded-xl text-transparent caret-transparent opacity-0 disabled:cursor-not-allowed"
   />
-  <div class="flex items-center gap-1.5 sm:gap-2">
+  <div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
     {#each [0, 1, 2] as index (index)}
       {@const isCurrent = focused && cursor === index}
       <span
         aria-hidden="true"
-        class="grid h-13 w-11 place-items-center rounded-xl border bg-brand-surface-card font-mono text-xl font-bold text-white transition-all sm:h-15 sm:w-13 sm:text-2xl {invalid
+        class="grid h-13 min-w-0 flex-1 place-items-center rounded-xl border bg-brand-surface-card font-mono text-xl font-bold text-white transition-all sm:h-15 sm:text-2xl {invalid
           ? 'border-brand-danger ring-2 ring-brand-danger/30'
           : isCurrent
-            ? 'border-[#296FF0] ring-2 ring-[#296FF0]/40'
+            ? 'border-action ring-2 ring-action/40'
             : 'border-brand-border-hover'} {disabled ? 'opacity-50' : ''}"
       >
         {#if value[index]}
           {value[index]}
         {:else if isCurrent}
-          <span class="h-5 w-0.5 rounded-full bg-[#296FF0] animate-pulse"
+          <span class="h-5 w-0.5 rounded-full bg-action animate-pulse"
           ></span>
         {/if}
       </span>
@@ -108,21 +108,21 @@
 
   <span class="h-0.5 w-2 rounded-full bg-zinc-600" aria-hidden="true"></span>
 
-  <div class="flex items-center gap-1.5 sm:gap-2">
+  <div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
     {#each [3, 4, 5] as index (index)}
       {@const isCurrent = focused && cursor === index}
       <span
         aria-hidden="true"
-        class="grid h-13 w-11 place-items-center rounded-xl border bg-brand-surface-card font-mono text-xl font-bold text-white transition-all sm:h-15 sm:w-13 sm:text-2xl {invalid
+        class="grid h-13 min-w-0 flex-1 place-items-center rounded-xl border bg-brand-surface-card font-mono text-xl font-bold text-white transition-all sm:h-15 sm:text-2xl {invalid
           ? 'border-brand-danger ring-2 ring-brand-danger/30'
           : isCurrent
-            ? 'border-[#296FF0] ring-2 ring-[#296FF0]/40'
+            ? 'border-action ring-2 ring-action/40'
             : 'border-brand-border-hover'} {disabled ? 'opacity-50' : ''}"
       >
         {#if value[index]}
           {value[index]}
         {:else if isCurrent}
-          <span class="h-5 w-0.5 rounded-full bg-[#296FF0] animate-pulse"
+          <span class="h-5 w-0.5 rounded-full bg-action animate-pulse"
           ></span>
         {/if}
       </span>

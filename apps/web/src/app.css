@@ -36,28 +36,32 @@
     --color-brand-warning-text: #fcd34d;
     --color-brand-info: #a3a89a;
     --color-action: #296ff0;
+    --color-action-ink: #ffffff;
+    --color-action-danger: #dc2626;
+    --color-action-danger-hover: #b91c1c;
+    --color-action-danger-focus: #fca5a5;
     --color-action-hover: #1f60db;
     --color-action-focus: #9cc3ff;
 }
 
 @utility action-button {
   border: 1px solid rgb(255 255 255 / 40%);
-  background-color: #296ff0;
-  color: #ffffff;
+  background-color: var(--color-action);
+  color: var(--color-action-ink);
   box-shadow:
     0 3px 6px rgb(0 0 0 / 20%),
     inset 0 0 6px 2px rgb(255 255 255 / 24%),
-    0 0 0 1px #296ff0;
+    0 0 0 1px var(--color-action);
   cursor: pointer;
   transition: background-color 150ms ease, opacity 150ms ease;
 
   &:hover:not(:disabled):not([aria-disabled="true"]) {
-    background-color: #1f60db;
-    color: #ffffff;
+    background-color: var(--color-action-hover);
+    color: var(--color-action-ink);
   }
 
   &:focus-visible {
-    outline: 2px solid #9cc3ff;
+    outline: 2px solid var(--color-action-focus);
     outline-offset: 3px;
   }
 
@@ -70,22 +74,22 @@
 
 @utility danger-button {
   border: 1px solid rgb(255 255 255 / 40%);
-  background-color: #dc2626;
+  background-color: var(--color-action-danger);
   color: #ffffff;
   box-shadow:
     0 3px 6px rgb(0 0 0 / 20%),
     inset 0 0 6px 2px rgb(255 255 255 / 24%),
-    0 0 0 1px #dc2626;
+    0 0 0 1px var(--color-action-danger);
   cursor: pointer;
   transition: background-color 150ms ease, opacity 150ms ease;
 
   &:hover:not(:disabled):not([aria-disabled="true"]) {
-    background-color: #b91c1c;
+    background-color: var(--color-action-danger-hover);
     color: #ffffff;
   }
 
   &:focus-visible {
-    outline: 2px solid #fca5a5;
+    outline: 2px solid var(--color-action-danger-focus);
     outline-offset: 3px;
   }
 
@@ -98,12 +102,12 @@
 
 @utility checkbox-circle-checked {
   border: 1px solid rgb(255 255 255 / 40%);
-  background-color: #296ff0;
-  color: #ffffff;
+  background-color: var(--color-action);
+  color: var(--color-action-ink);
   box-shadow:
     0 2px 4px rgb(0 0 0 / 20%),
     inset 0 0 4px 1.5px rgb(255 255 255 / 24%),
-    0 0 0 1px #296ff0;
+    0 0 0 1px var(--color-action);
 }
 
 @utility task-surface {
@@ -232,6 +236,13 @@ dialog[open]::backdrop {
     --color-brand-danger-soft: #262626;
     --color-brand-danger-border: #595959;
     --color-brand-danger-text: #f2f2f2;
+    --color-action: #e6e6e6;
+    --color-action-ink: #161616;
+    --color-action-hover: #ffffff;
+    --color-action-focus: #b8b8b8;
+    --color-action-danger: #414141;
+    --color-action-danger-hover: #555555;
+    --color-action-danger-focus: #b8b8b8;
     --color-bg: var(--color-brand-surface);
     --color-border-hover: var(--color-brand-border-hover);
     --color-border-strong: var(--color-brand-border-strong);
@@ -240,16 +251,7 @@ dialog[open]::backdrop {
     --color-text-muted: var(--color-brand-text-secondary);
   }
 
-  .workspace-theme.workspace-accent {
-    --color-brand-lime: #8cdaa1;
-    --color-brand-lime-hover: #a3e9b4;
-    --color-brand-lime-soft: #c5f0cf;
-    --color-brand-lime-ink: #14251a;
-    --color-brand-success: #8cdaa1;
-    --color-brand-success-soft: #18291e;
-    --color-brand-success-border: #31533d;
-    --color-brand-success-text: #b1e8bf;
-  }
+
 }
 
 @layer base {
@@ -536,8 +538,8 @@ dialog[open]::backdrop {
   }
 
   .editorial-input:focus {
-    border-color: #296ff0;
-    box-shadow: 0 0 0 1px #296ff0;
+    border-color: var(--color-action);
+    box-shadow: 0 0 0 1px var(--color-action);
   }
 
   .editorial-input.has-error {

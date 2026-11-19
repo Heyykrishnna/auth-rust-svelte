@@ -76,7 +76,7 @@
         </div>
         <button
           type="button"
-          class="inline-grid size-8 shrink-0 place-items-center rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0 focus-visible:outline-2 focus-visible:outline-[#296FF0]"
+          class="inline-grid size-8 shrink-0 place-items-center rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer bg-transparent border-0 p-0 focus-visible:outline-2 focus-visible:outline-action-focus"
           onclick={oncancel}
           disabled={loading}
           aria-label="Close dialog"
