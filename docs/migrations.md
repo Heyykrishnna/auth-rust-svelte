@@ -1,6 +1,6 @@
 # Database Migrations & Rollback Guide
 
-`apps/auth-api` applies versioned SQL migrations sequentially at startup via `sqlx::migrate!("./migrations")`. Every migration file uses sequential numbering (`001`–`011`) and is designed to run cleanly both on a brand-new PostgreSQL 16 database and on an existing populated single-tenant installation.
+`apps/auth-api` applies versioned SQL migrations sequentially at startup via `sqlx::migrate!("./migrations")`. SQLx records each migration version and checksum. Preserve the contents of applied migration files and use new version numbers for subsequent schema changes.
 
 ---
 
@@ -19,6 +19,17 @@
 | `009` | `009_organizations_and_tenant_rbac.sql` | `organizations`, `organization_members`, `organization_invitations`, `environment_roles`, `environment_permissions`, `environment_role_permissions`, `application_user_roles`, `organization_member_roles` (all composite-FK isolated) |
 | `010` | `010_platform_infrastructure_and_audit.sql` | `signing_keys`, `authentication_transactions`, `outbox_events`, `webhook_endpoints`, `webhook_deliveries`, converts `audit_logs.event` from ENUM to `TEXT` and adds `environment_id` / actor / resource columns |
 | `011` | `011_tenant_row_level_security.sql` | `current_environment_id()`, `app_tenant_rls` (`NOLOGIN NOBYPASSRLS`) role, grants, and `FORCE ROW LEVEL SECURITY` (`tenant_isolation` policy) on all 17 tenant-scoped tables |
+| `012` | `012_webhook_rotation_and_circuit_breaker.sql` | Webhook secret rotation and circuit breaker |
+| `013` | `013_oidc_code_session_binding.sql` | OIDC authorization code session binding |
+| `014` | `014_analytics_environment_rollups.sql` | Environment analytics rollups |
+| `015` | `015_retention_indexes.sql` | Retention cleanup indexes |
+| `016` | `016_workspace_logos.sql` | Workspace branding |
+| `017` | `017_account_security.sql` | Earlier account security schema and session authentication methods |
+| `018` | `018_developer_security.sql` | Revocable Developer Console sessions and a developer activity index |
+| `019` | `019_comprehensive_account_security.sql` | End-user security settings, authenticators, backup codes, devices, and alerts |
+| `020` | `020_developer_authenticators.sql` | Developer authenticators, backup codes, browser trust, session verification, notification preferences, and password reset tokens |
+
+Deploy Developer Console web and API changes together. Migration `018` begins tracking new developer sessions in PostgreSQL. Developer Console sessions issued before this migration need a fresh sign-in. Account security history shows the most recent 50 developer events and the active session list shows up to 50 sessions.
 
 ---
 
